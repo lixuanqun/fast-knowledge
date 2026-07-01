@@ -1,5 +1,7 @@
 ﻿# Fast Knowledge — 快速知识库
 
+[![CI](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml/badge.svg)](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml)
+[![CD](https://github.com/lixuanqun/fast-knowledge/actions/workflows/cd.yml/badge.svg)](https://github.com/lixuanqun/fast-knowledge/actions/workflows/cd.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-21-orange)](backend/)
 [![Vue](https://img.shields.io/badge/Vue-3.5-brightgreen)](frontend/)
@@ -171,3 +173,24 @@ Fast Knowledge 采用 **AGPL-3.0 + 商业双许可** 发布：
 在符合 AGPL 的前提下（如企业内部私有化部署、或愿意按要求开源修改），可免费使用，无需额外付费。
 
 **Topics**：`knowledge-base` · `rag` · `semantic-search` · `self-hosted` · `spring-boot` · `vue3` · `langchain4j` · `docker` · `enterprise-search` · `agpl-3.0`
+
+---
+
+## CI / CD
+
+GitHub Actions 已配置持续集成与交付流水线（见 [`.github/workflows/`](.github/workflows/)）：
+
+| 工作流 | 触发 | 说明 |
+|--------|------|------|
+| **CI** | `push` / `pull_request` → `main` | 后端 `mvn test` + 打包、前端 typecheck / lint / test / build、Docker 镜像构建校验 |
+| **CD** | `push` → `main` 或标签 `v*` | 构建并推送镜像到 GHCR，打 `v*` 标签时自动创建 GitHub Release |
+
+**拉取预构建镜像（CD 成功后可用）：**
+
+```bash
+docker pull ghcr.io/lixuanqun/fast-knowledge:latest
+```
+
+首次拉取私有包需登录：`echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin`
+
+查看流水线状态：[Actions](https://github.com/lixuanqun/fast-knowledge/actions)
