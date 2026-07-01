@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fast.knowledge.mapper.ChatMapper">
+
+    <insert id="insertSession" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO kb_chat_session (user_id, kb_id, title)
+        VALUES (#{userId}, #{kbId}, #{title})
+    </insert>
+
+    <update id="updateSession">
+        UPDATE kb_chat_session SET title = #{title}, kb_id = #{kbId} WHERE id = #{id}
+    </update>
+
+    <select id="findSessionById" resultType="com.fast.knowledge.model.entity.ChatSession">
+        SELECT * FROM kb_chat_session WHERE id = #{id}
+    </select>
+
+    <select id="findSessionsByUserId" resultType="com.fast.knowledge.model.entity.ChatSession">
+        SELECT * FROM kb_chat_session WHERE user_id = #{userId} ORDER BY updated_at DESC
+    </select>
+
+    <insert id="insertMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO kb_chat_message (session_id, role, content, sources)
+        VALUES (#{sessionId}, #{role}, #{content}, #{sources})
+    </insert>
+
+    <select id="findMessagesBySessionId" resultType="com.fast.knowledge.model.entity.ChatMessage">
+        SELECT * FROM kb_chat_message WHERE session_id = #{sessionId} ORDER BY id
+    </select>
+
+    <update id="touchSession">
+        UPDATE kb_chat_session SET updated_at = NOW() WHERE id = #{sessionId}
+    </update>
+
+    <delete id="deleteMessagesBySessionId">
+        DELETE FROM kb_chat_message WHERE session_id = #{sessionId}
+    </delete>
+
+    <delete id="deleteSession">
+        DELETE FROM kb_chat_session WHERE id = #{sessionId}
+    </delete>
+</mapper>

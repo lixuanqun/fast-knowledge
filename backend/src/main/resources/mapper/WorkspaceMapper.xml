@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fast.knowledge.mapper.WorkspaceMapper">
+
+    <select id="findById" resultType="com.fast.knowledge.model.entity.Workspace">
+        SELECT * FROM kb_workspace WHERE id = #{id}
+    </select>
+
+    <select id="findByOwnerOrMember" resultType="com.fast.knowledge.model.entity.Workspace">
+        SELECT DISTINCT w.*
+        FROM kb_workspace w
+        WHERE w.owner_id = #{userId}
+        ORDER BY w.updated_at DESC
+    </select>
+
+    <select id="findDefault" resultType="com.fast.knowledge.model.entity.Workspace">
+        SELECT * FROM kb_workspace ORDER BY id LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO kb_workspace (name, owner_id, settings)
+        VALUES (#{name}, #{ownerId}, #{settings})
+    </insert>
+
+    <update id="update">
+        UPDATE kb_workspace SET name = #{name}, settings = #{settings} WHERE id = #{id}
+    </update>
+</mapper>

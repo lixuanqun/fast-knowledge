@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fast.knowledge.mapper.UserMapper">
+
+    <select id="findByUsername" resultType="com.fast.knowledge.model.entity.KbUser">
+        SELECT * FROM kb_user WHERE username = #{username}
+    </select>
+
+    <select id="findById" resultType="com.fast.knowledge.model.entity.KbUser">
+        SELECT * FROM kb_user WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultType="com.fast.knowledge.model.entity.KbUser">
+        SELECT * FROM kb_user ORDER BY id
+    </select>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM kb_user
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO kb_user (username, password, display_name, role, status, must_change_password)
+        VALUES (#{username}, #{password}, #{displayName}, #{role}, #{status}, #{mustChangePassword})
+    </insert>
+
+    <update id="update">
+        UPDATE kb_user
+        SET display_name = #{displayName},
+            role = #{role},
+            status = #{status},
+            must_change_password = #{mustChangePassword}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE kb_user SET password = #{password}, must_change_password = 0 WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM kb_user WHERE id = #{id}
+    </delete>
+</mapper>

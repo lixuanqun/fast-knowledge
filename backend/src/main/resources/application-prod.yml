@@ -1,0 +1,36 @@
+server:
+  port: 8088
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+
+knowledge:
+  jwt:
+    secret: ${JWT_SECRET}
+  storage:
+    upload-dir: /data/knowledge/uploads
+  lucene:
+    base-path: /data/knowledge/lucene
+  vector:
+    provider: ${VECTOR_PROVIDER:lucene}
+  cache:
+    provider: ${CACHE_PROVIDER:redis}
+  embedding:
+    provider: ${EMBEDDING_PROVIDER:onnx}
+    onnx-model-path: /data/knowledge/models/bge-small-zh-v1.5.onnx
+    onnx-tokenizer-path: /data/knowledge/models/tokenizer.json
+  llm:
+    provider: ${LLM_PROVIDER:ollama}
+    base-url: ${LLM_BASE_URL:}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}
+    allow-external: ${LLM_ALLOW_EXTERNAL:true}

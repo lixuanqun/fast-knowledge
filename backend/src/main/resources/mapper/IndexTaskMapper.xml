@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fast.knowledge.mapper.IndexTaskMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO kb_index_task (document_id, status, retry_count)
+        VALUES (#{documentId}, #{status}, #{retryCount})
+    </insert>
+
+    <update id="update">
+        UPDATE kb_index_task
+        SET status = #{status}, retry_count = #{retryCount}, error_msg = #{errorMsg},
+            locked_by = #{lockedBy}, locked_at = #{lockedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findByDocumentId" resultType="com.fast.knowledge.model.entity.IndexTask">
+        SELECT * FROM kb_index_task WHERE document_id = #{documentId} ORDER BY id DESC LIMIT 1
+    </select>
+
+    <select id="findPending" resultType="com.fast.knowledge.model.entity.IndexTask">
+        SELECT * FROM kb_index_task WHERE status = 'PENDING' ORDER BY id LIMIT #{limit}
+    </select>
+
+    <select id="findRecent" resultType="com.fast.knowledge.model.entity.IndexTask">
+        SELECT * FROM kb_index_task ORDER BY updated_at DESC LIMIT #{limit}
+    </select>
+
+    <select id="findFailed" resultType="com.fast.knowledge.model.entity.IndexTask">
+        SELECT * FROM kb_index_task WHERE status = 'FAILED' ORDER BY updated_at DESC LIMIT #{limit}
+    </select>
+
+    <select id="findFailedByKbId" resultType="com.fast.knowledge.model.entity.IndexTask">
+        SELECT t.* FROM kb_index_task t
+        INNER JOIN kb_document d ON t.document_id = d.id
+        WHERE d.kb_id = #{kbId} AND t.status = 'FAILED'
+        ORDER BY t.updated_at DESC LIMIT #{limit}
+    </select>
+
+    <select id="findRetryable" resultType="com.fast.knowledge.model.entity.IndexTask">
+        SELECT * FROM kb_index_task WHERE status = 'FAILED' AND retry_count &lt; #{maxRetry}
+        ORDER BY updated_at LIMIT #{limit}
+    </select>
+
+    <update id="tryAcquireLock">
+        UPDATE kb_index_task
+        SET locked_by = #{lockedBy}, locked_at = NOW()
+        WHERE document_id = #{documentId}
+          AND (locked_by IS NULL OR locked_at &lt; DATE_SUB(NOW(), INTERVAL 10 MINUTE))
+    </update>
+
+    <update id="releaseLock">
+        UPDATE kb_index_task
+        SET locked_by = NULL, locked_at = NULL
+        WHERE document_id = #{documentId} AND locked_by = #{lockedBy}
+    </update>
+</mapper>

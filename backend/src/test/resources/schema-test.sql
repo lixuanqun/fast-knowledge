@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS kb_user (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username    VARCHAR(64) NOT NULL UNIQUE,
+    password    VARCHAR(128) NOT NULL,
+    display_name VARCHAR(64) NOT NULL DEFAULT '',
+    role        VARCHAR(32) NOT NULL DEFAULT 'USER',
+    status      TINYINT NOT NULL DEFAULT 1,
+    must_change_password TINYINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS kb_system_config (
+    config_key   VARCHAR(64) PRIMARY KEY,
+    config_value VARCHAR(1024) NOT NULL,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

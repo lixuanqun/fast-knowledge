@@ -1,0 +1,9 @@
+# 单 Jar 部署：根路径托管前端静态资源，API 仍挂载在 /api
+server:
+  servlet:
+    context-path: /
+
+spring:
+  mvc:
+    servlet:
+      path: /api

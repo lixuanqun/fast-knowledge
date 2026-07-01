@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fast.knowledge.mapper.DocumentChunkMapper">
+
+    <insert id="batchInsert">
+        INSERT INTO kb_document_chunk (kb_id, document_id, chunk_index, content, token_count)
+        VALUES
+        <foreach collection="chunks" item="c" separator=",">
+            (#{c.kbId}, #{c.documentId}, #{c.chunkIndex}, #{c.content}, #{c.tokenCount})
+        </foreach>
+    </insert>
+
+    <select id="findByDocumentId" resultType="com.fast.knowledge.model.entity.DocumentChunk">
+        SELECT * FROM kb_document_chunk WHERE document_id = #{documentId} ORDER BY chunk_index
+    </select>
+
+    <select id="findById" resultType="com.fast.knowledge.model.entity.DocumentChunk">
+        SELECT * FROM kb_document_chunk WHERE id = #{id}
+    </select>
+
+    <delete id="deleteByDocumentId">
+        DELETE FROM kb_document_chunk WHERE document_id = #{documentId}
+    </delete>
+
+    <delete id="deleteByKbId">
+        DELETE FROM kb_document_chunk WHERE kb_id = #{kbId}
+    </delete>
+    <select id="findByKbId" resultType="com.fast.knowledge.model.entity.DocumentChunk">
+        SELECT * FROM kb_document_chunk WHERE kb_id = #{kbId} ORDER BY document_id, chunk_index
+    </select>
+</mapper>

@@ -1,0 +1,31 @@
+# Java
+**/target/
+*.class
+*.jar
+*.war
+*.log
+
+# Node
+**/node_modules/
+**/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Runtime data
+**/data/uploads/
+**/data/lucene/
+**/models/*.onnx
+
+# Env & secrets
+.env
+.env.*
+*.local
+deploy/.env
+
+# OS
+.DS_Store
+Thumbs.db

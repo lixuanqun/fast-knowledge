@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fast.knowledge.mapper.KnowledgeBaseMapper">
+
+    <select id="findById" resultType="com.fast.knowledge.model.entity.KnowledgeBase">
+        SELECT * FROM kb_knowledge_base WHERE id = #{id}
+    </select>
+
+    <select id="findByOwnerOrMember" resultType="com.fast.knowledge.model.entity.KnowledgeBase">
+        SELECT DISTINCT kb.*
+        FROM kb_knowledge_base kb
+        LEFT JOIN kb_kb_member m ON kb.id = m.kb_id
+        WHERE kb.owner_id = #{userId}
+           OR m.user_id = #{userId}
+           OR kb.visibility = 'PUBLIC'
+        ORDER BY kb.updated_at DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO kb_knowledge_base (name, description, workspace_id, owner_id, visibility, search_alpha, search_top_k, status)
+        VALUES (#{name}, #{description}, #{workspaceId}, #{ownerId}, #{visibility}, #{searchAlpha}, #{searchTopK}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE kb_knowledge_base
+        SET name = #{name},
+            description = #{description},
+            visibility = #{visibility},
+            search_alpha = #{searchAlpha},
+            search_top_k = #{searchTopK},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM kb_knowledge_base WHERE id = #{id}
+    </delete>
+</mapper>

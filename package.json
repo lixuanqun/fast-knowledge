@@ -1,0 +1,23 @@
+{
+  "name": "fast-knowledge",
+  "version": "1.0.0",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "description": "Fast Knowledge 快速知识库 Monorepo",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
+    "build": "powershell -ExecutionPolicy Bypass -File scripts/build.ps1",
+    "build:jar": "powershell -ExecutionPolicy Bypass -File scripts/build-jar.ps1",
+    "install:frontend": "npm install --workspace=frontend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "lint:fix": "npm run lint:fix --workspace=frontend",
+    "typecheck": "npm run typecheck --workspace=frontend",
+    "test": "npm run test:run --workspace=frontend",
+    "check:frontend": "npm run typecheck --workspace=frontend && npm run lint --workspace=frontend && npm run test:run --workspace=frontend && npm run build --workspace=frontend"
+  }
+}
