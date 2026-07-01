@@ -128,6 +128,7 @@ async function handleSubmit() {
   border: 1px solid $fk-border;
   box-shadow: $fk-card-shadow;
   padding: 16px 20px 20px;
+  background: $fk-card-bg;
 }
 
 .setup-logo {
@@ -173,7 +174,7 @@ async function handleSubmit() {
   padding: 14px 16px;
   border: 1px solid $fk-border;
   border-radius: 8px;
-  background: #fafafa;
+  background: $fk-surface-muted;
   display: flex;
   gap: 10px;
   align-items: flex-start;

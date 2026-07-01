@@ -46,8 +46,8 @@ public class HashEmbeddingProvider implements EmbeddingProvider {
         float[] vec = new float[dimension];
         byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         for (int i = 0; i < bytes.length; i++) {
-            int idx = (bytes[i] * 31 + i) % dimension;
-            vec[idx] += bytes[i] / 255.0f;
+            int idx = Math.floorMod((bytes[i] & 0xFF) * 31 + i, dimension);
+            vec[idx] += (bytes[i] & 0xFF) / 255.0f;
         }
         float norm = 0;
         for (float v : vec) {

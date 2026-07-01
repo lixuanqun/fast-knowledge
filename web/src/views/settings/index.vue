@@ -1,9 +1,21 @@
 <template>
   <div class="page-container">
-    <PageHeader title="设置与隐私" subtitle="查看实例配置与数据处理方式" />
+    <PageHeader title="设置与隐私" subtitle="查看实例配置、外观与数据处理方式" />
     <el-row :gutter="16">
       <el-col :span="12">
-        <el-card header="实例信息">
+        <el-card class="fk-card" shadow="never" header="外观">
+          <el-form label-width="88px">
+            <el-form-item label="主题模式">
+              <el-radio-group v-model="themeMode">
+                <el-radio-button value="light">浅色</el-radio-button>
+                <el-radio-button value="dark">暗色</el-radio-button>
+                <el-radio-button value="system">跟随系统</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+            <p class="theme-hint">暗色主题对齐设计稿 dark-15 色彩规范</p>
+          </el-form>
+        </el-card>
+        <el-card class="fk-card settings-card" shadow="never" header="实例信息">
           <el-descriptions v-if="config" :column="1" border>
             <el-descriptions-item label="实例名称">{{ config.instanceName }}</el-descriptions-item>
             <el-descriptions-item label="初始设置">
@@ -16,7 +28,7 @@
         </el-card>
       </el-col>
       <el-col :span="12">
-        <el-card header="隐私与数据">
+        <el-card class="fk-card" shadow="never" header="隐私与数据">
           <el-descriptions v-if="config" :column="1" border>
             <el-descriptions-item label="数据存储">本地服务器（私有化部署）</el-descriptions-item>
             <el-descriptions-item label="向量引擎">{{ config.vectorProvider }}</el-descriptions-item>
@@ -32,7 +44,7 @@
         </el-card>
       </el-col>
     </el-row>
-    <el-card v-if="llmProviders.length" class="providers-card" header="支持的 LLM 提供商">
+    <el-card v-if="llmProviders.length" class="fk-card providers-card" shadow="never" header="支持的 LLM 提供商">
       <el-table :data="llmProviders" stripe>
         <el-table-column prop="name" label="名称" width="140" />
         <el-table-column prop="id" label="标识" width="120" />
@@ -51,13 +63,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import PageHeader from '@/components/PageHeader.vue'
 import { useConfigStore } from '@/stores/config'
+import { useThemeStore, type ThemeMode } from '@/stores/theme'
 
 const configStore = useConfigStore()
+const themeStore = useThemeStore()
 const { config, llmProviders } = storeToRefs(configStore)
+
+const themeMode = computed({
+  get: () => themeStore.mode,
+  set: (val: ThemeMode) => themeStore.setMode(val)
+})
 
 onMounted(async () => {
   await configStore.ensureLoaded()
@@ -65,6 +84,24 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.providers-card { margin-top: 16px; border-radius: 10px; }
+<style scoped lang="scss">
+.fk-card {
+  border-radius: 10px;
+  border: 1px solid $fk-border;
+  background: $fk-card-bg;
+}
+
+.settings-card {
+  margin-top: 16px;
+}
+
+.providers-card {
+  margin-top: 16px;
+}
+
+.theme-hint {
+  margin: 0 0 0 88px;
+  font-size: 12px;
+  color: $fk-text-secondary;
+}
 </style>

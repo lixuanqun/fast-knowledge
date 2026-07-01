@@ -65,7 +65,7 @@ export function getDocument(kbId: number, docId: number) {
 }
 
 export function rebuildKbIndex(kbId: number) {
-  return request.post(`/kbs/${kbId}/index/rebuild`)
+  return request.post(`/index-tasks/rebuild/${kbId}`)
 }
 
 export function listKbMembers(kbId: number) {

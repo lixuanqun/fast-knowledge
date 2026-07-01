@@ -30,16 +30,19 @@ public class ChatService {
 
     private final ChatMapper chatMapper;
     private final RagService ragService;
+    private final KnowledgeBaseService knowledgeBaseService;
     private final StreamingChatModel streamingChatModel;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Executor chatExecutor;
 
     public ChatService(ChatMapper chatMapper,
                        RagService ragService,
+                       KnowledgeBaseService knowledgeBaseService,
                        StreamingChatModel streamingChatModel,
                        @org.springframework.beans.factory.annotation.Qualifier("indexExecutor") Executor chatExecutor) {
         this.chatMapper = chatMapper;
         this.ragService = ragService;
+        this.knowledgeBaseService = knowledgeBaseService;
         this.streamingChatModel = streamingChatModel;
         this.chatExecutor = chatExecutor;
     }
@@ -49,6 +52,9 @@ public class ChatService {
     }
 
     public ChatSession createSession(Long kbId, String title) {
+        if (kbId != null) {
+            knowledgeBaseService.checkReadPermission(knowledgeBaseService.getById(kbId));
+        }
         ChatSession session = new ChatSession();
         session.setUserId(UserContext.currentUserId());
         session.setKbId(kbId);

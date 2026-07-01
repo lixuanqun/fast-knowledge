@@ -1,8 +1,8 @@
+@use './theme.scss';
 @use './design-tokens.scss' as *;
 
-// 主流知识库风格：蓝白浅色布局（对齐 Element Plus 默认色系）
 $primary: $fk-primary;
-$primary-hover: #66b1ff;
+$primary-hover: $fk-primary-hover;
 $primary-light: $fk-primary-light;
 $page-bg: $fk-page-bg;
 $sidebar-bg: $fk-sidebar-bg;
@@ -11,12 +11,7 @@ $text-regular: $fk-text-regular;
 $border-color: $fk-border;
 
 :root {
-  --el-color-primary: #{$primary};
-  --fk-primary: #{$primary};
-  --fk-primary-light: #{$primary-light};
-  --fk-page-bg: #{$page-bg};
-  --fk-sidebar-bg: #{$sidebar-bg};
-  --fk-border-color: #{$border-color};
+  --el-color-primary: #{$fk-primary};
 }
 
 * {
@@ -29,6 +24,7 @@ body {
     'PingFang SC', 'Microsoft YaHei', sans-serif;
   background: $page-bg;
   color: $text-primary;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .page-container {
@@ -50,8 +46,20 @@ body {
 .el-card {
   border: 1px solid $border-color;
   border-radius: 8px;
+  background-color: $fk-card-bg;
+  --el-card-bg-color: #{$fk-card-bg};
 }
 
 .el-table {
-  --el-table-header-bg-color: #fafafa;
+  --el-table-header-bg-color: var(--fk-table-header-bg);
+  --el-table-bg-color: #{$fk-card-bg};
+  --el-table-tr-bg-color: #{$fk-card-bg};
+}
+
+.el-drawer {
+  --el-drawer-bg-color: #{$fk-card-bg};
+}
+
+.fk-card {
+  background-color: $fk-card-bg;
 }

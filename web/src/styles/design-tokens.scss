@@ -1,15 +1,23 @@
-// Fast Knowledge UI — docs/design/README.md
-$fk-primary: #409eff;
-$fk-primary-light: #ecf5ff;
-$fk-page-bg: #f5f7fa;
-$fk-sidebar-bg: #ffffff;
-$fk-border: #e4e7ed;
-$fk-text-primary: #303133;
-$fk-text-regular: #606266;
-$fk-text-secondary: #909399;
-$fk-success: #67c23a;
-$fk-danger: #f56c6c;
-$fk-warning: #e6a23c;
-$fk-login-gradient: linear-gradient(160deg, #e8f3ff 0%, #f5f7fa 45%, #f0f5ff 100%);
+// Fast Knowledge UI — SCSS 别名映射到 CSS 变量（支持浅色/暗色切换）
+$fk-primary: var(--fk-primary);
+$fk-primary-hover: var(--fk-primary-hover);
+$fk-primary-light: var(--fk-primary-light);
+$fk-page-bg: var(--fk-page-bg);
+$fk-card-bg: var(--fk-card-bg);
+$fk-sidebar-bg: var(--fk-sidebar-bg);
+$fk-header-bg: var(--fk-header-bg);
+$fk-surface: var(--fk-surface);
+$fk-surface-muted: var(--fk-surface-muted);
+$fk-border: var(--fk-border);
+$fk-text-primary: var(--fk-text-primary);
+$fk-text-regular: var(--fk-text-regular);
+$fk-text-secondary: var(--fk-text-secondary);
+$fk-success: var(--fk-success);
+$fk-success-bg: var(--fk-success-bg);
+$fk-danger: var(--fk-danger);
+$fk-danger-bg: var(--fk-danger-bg);
+$fk-warning: var(--fk-warning);
+$fk-warning-bg: var(--fk-warning-bg);
+$fk-login-gradient: var(--fk-login-gradient);
 $fk-card-radius: 12px;
-$fk-card-shadow: 0 8px 24px rgba(64, 158, 255, 0.08);
+$fk-card-shadow: var(--fk-card-shadow);

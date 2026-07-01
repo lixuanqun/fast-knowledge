@@ -1,0 +1,70 @@
+// 浅色 / 暗色主题 CSS 变量 — docs/design/README.md + dark-15-design-tokens.png
+
+:root,
+[data-theme='light'] {
+  --fk-primary: #409eff;
+  --fk-primary-hover: #66b1ff;
+  --fk-primary-light: #ecf5ff;
+  --fk-page-bg: #f5f7fa;
+  --fk-card-bg: #ffffff;
+  --fk-sidebar-bg: #ffffff;
+  --fk-header-bg: #ffffff;
+  --fk-surface: #ffffff;
+  --fk-surface-muted: #fafafa;
+  --fk-border: #e4e7ed;
+  --fk-text-primary: #303133;
+  --fk-text-regular: #606266;
+  --fk-text-secondary: #909399;
+  --fk-success: #67c23a;
+  --fk-success-bg: #f0f9eb;
+  --fk-danger: #f56c6c;
+  --fk-danger-bg: #fef0f0;
+  --fk-warning: #e6a23c;
+  --fk-warning-bg: #fdf6ec;
+  --fk-info-bg: #f4f4f5;
+  --fk-login-gradient: linear-gradient(160deg, #e8f3ff 0%, #f5f7fa 45%, #f0f5ff 100%);
+  --fk-card-shadow: 0 8px 24px rgba(64, 158, 255, 0.08);
+  --fk-menu-active-bg: #ecf5ff;
+  --fk-menu-hover-bg: #f5f7fa;
+  --fk-aside-note-bg: #f5faff;
+  --fk-aside-note-border: #b3d8ff;
+  --fk-hero-accent: rgba(64, 158, 255, 0.08);
+  --fk-table-header-bg: #fafafa;
+  --fk-code-bg: #1e1e1e;
+  --fk-code-text: #d4d4d4;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --fk-primary: #409eff;
+  --fk-primary-hover: #58a6ff;
+  --fk-primary-light: rgba(64, 158, 255, 0.15);
+  --fk-page-bg: #0d1117;
+  --fk-card-bg: #1c2128;
+  --fk-sidebar-bg: #161b22;
+  --fk-header-bg: #1c2128;
+  --fk-surface: #1c2128;
+  --fk-surface-muted: #21262d;
+  --fk-border: #30363d;
+  --fk-text-primary: #e6edf3;
+  --fk-text-regular: #c9d1d9;
+  --fk-text-secondary: #8b949e;
+  --fk-success: #3fb950;
+  --fk-success-bg: rgba(63, 185, 80, 0.15);
+  --fk-danger: #f85149;
+  --fk-danger-bg: rgba(248, 81, 73, 0.15);
+  --fk-warning: #d29922;
+  --fk-warning-bg: rgba(210, 153, 34, 0.15);
+  --fk-info-bg: rgba(139, 148, 158, 0.12);
+  --fk-login-gradient: radial-gradient(ellipse at 50% 0%, #161b22 0%, #0d1117 55%, #010409 100%);
+  --fk-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --fk-menu-active-bg: rgba(64, 158, 255, 0.15);
+  --fk-menu-hover-bg: rgba(177, 186, 196, 0.08);
+  --fk-aside-note-bg: rgba(64, 158, 255, 0.08);
+  --fk-aside-note-border: #388bfd66;
+  --fk-hero-accent: rgba(64, 158, 255, 0.12);
+  --fk-table-header-bg: #21262d;
+  --fk-code-bg: #0d1117;
+  --fk-code-text: #e6edf3;
+  color-scheme: dark;
+}

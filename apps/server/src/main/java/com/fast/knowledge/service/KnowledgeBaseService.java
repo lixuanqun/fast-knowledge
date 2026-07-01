@@ -84,7 +84,9 @@ public class KnowledgeBaseService {
         KnowledgeBase kb = getById(id);
         checkWritePermission(kb);
         kb.setName(request.getName());
-        kb.setDescription(request.getDescription());
+        if (request.getDescription() != null) {
+            kb.setDescription(request.getDescription());
+        }
         if (request.getVisibility() != null) {
             kb.setVisibility(request.getVisibility());
         }
@@ -105,7 +107,7 @@ public class KnowledgeBaseService {
         if (kb == null) {
             throw new BusinessException("知识库不存在");
         }
-        checkWritePermission(kb);
+        checkKbAdminPermission(kb);
         documentChunkMapper.deleteByKbId(id);
         documentMapper.deleteByKbId(id);
         kbMemberMapper.deleteByKbId(id);
@@ -149,5 +151,21 @@ public class KnowledgeBaseService {
             return;
         }
         throw new BusinessException(403, "无权限操作该知识库");
+    }
+
+    /** owner、知识库 ADMIN 成员或系统 ADMIN 可管理成员与删除知识库 */
+    public void checkKbAdminPermission(KnowledgeBase kb) {
+        Long userId = UserContext.currentUserId();
+        if ("ADMIN".equals(UserContext.get().getRole())) {
+            return;
+        }
+        if (kb.getOwnerId().equals(userId)) {
+            return;
+        }
+        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), userId);
+        if (member != null && "ADMIN".equals(member.getPermission())) {
+            return;
+        }
+        throw new BusinessException(403, "无权限管理该知识库");
     }
 }

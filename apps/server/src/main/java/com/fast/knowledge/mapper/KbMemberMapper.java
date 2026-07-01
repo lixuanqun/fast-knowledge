@@ -13,6 +13,10 @@ public interface KbMemberMapper {
 
     KbMember findByKbAndUser(@Param("kbId") Long kbId, @Param("userId") Long userId);
 
+    KbMember findById(@Param("id") Long id);
+
+    KbMember findByIdAndKbId(@Param("id") Long id, @Param("kbId") Long kbId);
+
     int insert(KbMember member);
 
     int update(KbMember member);

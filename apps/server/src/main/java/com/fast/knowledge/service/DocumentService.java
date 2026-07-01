@@ -36,6 +36,7 @@ public class DocumentService {
     private final DocumentIngestService documentIngestService;
     private final VectorStore vectorStore;
     private final StorageProvider storageProvider;
+    private final AuditLogService auditLogService;
     private final Tika tika = new Tika();
 
     public DocumentService(DocumentMapper documentMapper,
@@ -44,7 +45,8 @@ public class DocumentService {
                            KnowledgeBaseService knowledgeBaseService,
                            DocumentIngestService documentIngestService,
                            VectorStore vectorStore,
-                           StorageProvider storageProvider) {
+                           StorageProvider storageProvider,
+                           AuditLogService auditLogService) {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
@@ -52,6 +54,7 @@ public class DocumentService {
         this.documentIngestService = documentIngestService;
         this.vectorStore = vectorStore;
         this.storageProvider = storageProvider;
+        this.auditLogService = auditLogService;
     }
 
     public List<KbDocument> listByKb(Long kbId) {
@@ -122,6 +125,9 @@ public class DocumentService {
 
     @Transactional
     public KbDocument upload(Long kbId, MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的文件");
+        }
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
         String originalName = file.getOriginalFilename();
@@ -147,6 +153,7 @@ public class DocumentService {
         indexTaskMapper.insert(task);
 
         documentIngestService.scheduleIndex(doc.getId());
+        auditLogService.log("UPLOAD_DOC", "DOCUMENT", doc.getId(), doc.getTitle());
         return doc;
     }
 
@@ -183,12 +190,9 @@ public class DocumentService {
     }
 
     @Transactional
-    public void delete(Long docId) {
-        KbDocument doc = documentMapper.findById(docId);
-        if (doc == null) {
-            throw new BusinessException("文档不存在");
-        }
-        KnowledgeBase kb = knowledgeBaseService.getById(doc.getKbId());
+    public void delete(Long kbId, Long docId) {
+        KbDocument doc = requireDocument(kbId, docId);
+        KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
         try {
             vectorStore.deleteByDocument(doc.getKbId(), docId);
@@ -201,14 +205,12 @@ public class DocumentService {
         } catch (IOException ignored) {
         }
         documentMapper.deleteById(docId);
+        auditLogService.log("DELETE_DOC", "DOCUMENT", docId, doc.getTitle());
     }
 
-    public void reindex(Long docId) {
-        KbDocument doc = documentMapper.findById(docId);
-        if (doc == null) {
-            throw new BusinessException("文档不存在");
-        }
-        KnowledgeBase kb = knowledgeBaseService.getById(doc.getKbId());
+    public void reindex(Long kbId, Long docId) {
+        KbDocument doc = requireDocument(kbId, docId);
+        KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
         doc.setIndexStatus("PENDING");
         documentMapper.update(doc);

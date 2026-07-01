@@ -2,15 +2,16 @@ package com.fast.knowledge.controller;
 
 import com.fast.knowledge.common.ApiResponse;
 import com.fast.knowledge.model.dto.ChatMessageRequest;
+import com.fast.knowledge.model.dto.CreateSessionRequest;
 import com.fast.knowledge.model.entity.ChatMessage;
 import com.fast.knowledge.model.entity.ChatSession;
 import com.fast.knowledge.service.ChatService;
+import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/chat")
@@ -28,10 +29,8 @@ public class ChatController {
     }
 
     @PostMapping("/sessions")
-    public ApiResponse<ChatSession> createSession(@RequestBody Map<String, Object> body) {
-        Long kbId = body.get("kbId") != null ? Long.valueOf(body.get("kbId").toString()) : null;
-        String title = body.get("title") != null ? body.get("title").toString() : null;
-        return ApiResponse.ok(chatService.createSession(kbId, title));
+    public ApiResponse<ChatSession> createSession(@Valid @RequestBody CreateSessionRequest request) {
+        return ApiResponse.ok(chatService.createSession(request.getKbId(), request.getTitle()));
     }
 
     @GetMapping("/sessions/{sessionId}/messages")
@@ -46,7 +45,7 @@ public class ChatController {
     }
 
     @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@RequestBody ChatMessageRequest request) {
+    public SseEmitter stream(@Valid @RequestBody ChatMessageRequest request) {
         return chatService.chatStream(request);
     }
 }

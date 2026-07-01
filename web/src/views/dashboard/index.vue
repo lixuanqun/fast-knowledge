@@ -25,20 +25,19 @@
         </el-col>
       </el-row>
 
-      <el-card class="section-card" shadow="never">
+      <el-card class="section-card fk-card" shadow="never">
         <template #header><span class="section-title">快速入口</span></template>
-        <div class="quick-links">
-          <el-button
-            v-for="link in quickLinks"
-            :key="link.path"
-            :type="link.primary ? 'primary' : undefined"
-            :plain="!link.primary"
-            @click="$router.push(link.path)"
-          >
-            <el-icon v-if="link.icon" class="quick-links__icon"><component :is="link.icon" /></el-icon>
-            {{ link.label }}
-          </el-button>
-        </div>
+        <el-row :gutter="12" class="quick-grid">
+          <el-col v-for="link in quickLinks" :key="link.path" :xs="24" :sm="12" :md="8">
+            <QuickEntryCard
+              :path="link.path"
+              :title="link.label"
+              :description="link.desc"
+              :icon="link.icon"
+              :tone="link.tone"
+            />
+          </el-col>
+        </el-row>
       </el-card>
 
       <el-card class="section-card" shadow="never">
@@ -84,6 +83,7 @@ import {
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DashboardStatCard from '@/components/design/DashboardStatCard.vue'
+import QuickEntryCard from '@/components/design/QuickEntryCard.vue'
 import { formatDateTime } from '@/utils/format'
 import { useAuditsQuery, useDashboardStatsQuery } from '@/composables/queries/useDashboard'
 
@@ -109,11 +109,11 @@ const statCards = [
 ]
 
 const quickLinks = [
-  { path: '/kbs', label: '管理知识库', primary: true, icon: Collection },
-  { path: '/search', label: '智能检索', icon: Search },
-  { path: '/qa', label: '智能问答', icon: QuestionFilled },
-  { path: '/chat', label: '智能对话', icon: ChatDotRound },
-  { path: '/writer', label: '智能写文档', icon: EditPen }
+  { path: '/kbs', label: '知识库管理', desc: '管理知识库分类与权限', icon: Collection, tone: 'primary' as const },
+  { path: '/search', label: '智能检索', desc: '混合检索知识库内容', icon: Search, tone: 'primary' as const },
+  { path: '/qa', label: '智能问答', desc: '基于知识库 RAG 问答', icon: QuestionFilled, tone: 'success' as const },
+  { path: '/chat', label: '智能对话', desc: '多轮对话与引用来源', icon: ChatDotRound, tone: 'warning' as const },
+  { path: '/writer', label: '智能写文档', desc: 'AI 生成 Markdown 文档', icon: EditPen, tone: 'primary' as const }
 ]
 </script>
 
@@ -126,6 +126,7 @@ const quickLinks = [
   margin-top: 16px;
   border-radius: 10px;
   border: 1px solid $fk-border;
+  background: $fk-card-bg;
 }
 
 .section-title {
@@ -133,14 +134,10 @@ const quickLinks = [
   color: $fk-text-primary;
 }
 
-.quick-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.quick-links__icon {
-  margin-right: 4px;
+.quick-grid {
+  :deep(.el-col) {
+    margin-bottom: 12px;
+  }
 }
 
 .table-footer {

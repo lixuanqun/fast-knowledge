@@ -188,7 +188,7 @@ watch(hasError, failed => {
   color: $fk-text-regular;
   max-height: 60vh;
   overflow: auto;
-  background: #fafafa;
+  background: $fk-surface-muted;
   padding: 12px 14px;
   border-radius: 8px;
 }

@@ -49,7 +49,7 @@ public class IndexTaskController {
 
     @PostMapping("/rebuild/{kbId}")
     public ApiResponse<Map<String, Object>> rebuild(@PathVariable Long kbId) {
-        indexRebuildService.rebuildKbIndexAsync(kbId);
+        indexRebuildService.requestRebuild(kbId);
         return ApiResponse.ok(Map.of("accepted", true, "message", "索引重建已在后台执行"));
     }
 }

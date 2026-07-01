@@ -3,7 +3,13 @@
     <div class="login-hero__circle login-hero__circle--tl" />
     <div class="login-hero__circle login-hero__circle--br" />
     <div class="login-hero__dots" />
-    <svg class="login-hero__illus" viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      v-if="!isDark"
+      class="login-hero__illus"
+      viewBox="0 0 320 280"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <rect x="48" y="72" width="120" height="148" rx="12" fill="#fff" fill-opacity="0.9" />
       <rect x="64" y="96" width="88" height="8" rx="4" fill="#d9ecff" />
       <rect x="64" y="116" width="72" height="6" rx="3" fill="#e8f3ff" />
@@ -30,7 +36,28 @@
   </div>
 </template>
 
-<style scoped>
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
+
+const isDark = ref(false)
+let observer: MutationObserver | undefined
+
+function readTheme() {
+  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
+}
+
+onMounted(() => {
+  readTheme()
+  observer = new MutationObserver(readTheme)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] })
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
+})
+</script>
+
+<style scoped lang="scss">
 .login-hero {
   position: absolute;
   inset: 0;
@@ -41,7 +68,7 @@
 .login-hero__circle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(64, 158, 255, 0.08);
+  background: var(--fk-hero-accent);
 }
 
 .login-hero__circle--tl {
@@ -64,9 +91,9 @@
   top: 28%;
   width: 140px;
   height: 140px;
-  background-image: radial-gradient(#409eff 1.5px, transparent 1.5px);
+  background-image: radial-gradient($fk-primary 1.5px, transparent 1.5px);
   background-size: 14px 14px;
-  opacity: 0.25;
+  opacity: 0.2;
 }
 
 .login-hero__illus {

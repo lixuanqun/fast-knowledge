@@ -28,6 +28,6 @@ public class WorkspaceController {
 
     @GetMapping("/{id}")
     public ApiResponse<WorkspaceVO> getById(@PathVariable Long id) {
-        return ApiResponse.ok(workspaceService.getVoById(id));
+        return ApiResponse.ok(workspaceService.getVoById(id, UserContext.currentUserId()));
     }
 }

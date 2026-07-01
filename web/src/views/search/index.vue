@@ -220,7 +220,7 @@ async function handleSearch() {
   color: $fk-text-regular;
   line-height: 1.75;
   font-size: 14px;
-  background: #fafafa;
+  background: $fk-surface-muted;
   padding: 12px 14px;
   border-radius: 8px;
 }

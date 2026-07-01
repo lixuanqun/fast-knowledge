@@ -53,6 +53,12 @@ public class IndexRebuildService {
         this.auditLogService = auditLogService;
     }
 
+    public void requestRebuild(Long kbId) {
+        KnowledgeBase kb = knowledgeBaseService.getById(kbId);
+        knowledgeBaseService.checkWritePermission(kb);
+        rebuildKbIndexAsync(kbId);
+    }
+
     @Async("indexExecutor")
     public void rebuildKbIndexAsync(Long kbId) {
         try {

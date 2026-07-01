@@ -45,3 +45,13 @@ export function formatDateTime(value?: string) {
 export function visibilityLabel(v: string) {
   return v === 'PUBLIC' ? '公开' : '私有'
 }
+
+const PERMISSION_MAP: Record<string, string> = {
+  READ: '只读',
+  WRITE: '编辑',
+  ADMIN: '管理'
+}
+
+export function permissionLabel(p: string) {
+  return PERMISSION_MAP[p] || p
+}

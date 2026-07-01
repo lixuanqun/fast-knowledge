@@ -4,8 +4,9 @@
     <el-card class="login-card" shadow="never">
       <div class="login-brand">
         <h1 class="brand-title">Fast Knowledge 快速知识库</h1>
-        <p class="brand-desc">高效管理知识 · 智能检索 · 团队协作</p>
+        <p class="brand-desc">高效管理知识，让信息触手可及</p>
       </div>
+      <el-divider class="brand-divider" />
       <el-form
         ref="formRef"
         :model="form"
@@ -27,27 +28,37 @@
             @keyup.enter="handleLogin"
           />
         </el-form-item>
+        <div class="login-options">
+          <el-checkbox v-model="rememberMe">记住我</el-checkbox>
+        </div>
         <el-button class="login-btn" type="primary" :loading="loading" @click="handleLogin">
           登录
         </el-button>
       </el-form>
-      <p class="hint">默认账号 admin / admin123（首次登录须修改密码）</p>
+      <p class="hint">
+        提示：默认用户名为 <span class="hint-strong">admin</span>，默认密码为
+        <span class="hint-strong">admin123</span>
+      </p>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { initTheme } from '@/stores/theme'
 import { prefetchAfterLogin, prefetchMainLayout, prefetchView } from '@/router/prefetch'
 import LoginHero from '@/components/design/LoginHero.vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Lock, User } from '@element-plus/icons-vue'
 
+const REMEMBER_KEY = 'fk-remember-username'
+
 const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
+const rememberMe = ref(false)
 const formRef = ref<FormInstance>()
 const form = reactive({ username: '', password: '' })
 const rules: FormRules = {
@@ -56,8 +67,18 @@ const rules: FormRules = {
 }
 
 onMounted(() => {
+  initTheme()
+  const saved = localStorage.getItem(REMEMBER_KEY)
+  if (saved) {
+    form.username = saved
+    rememberMe.value = true
+  }
   prefetchMainLayout()
   prefetchView('/dashboard')
+})
+
+watch(rememberMe, checked => {
+  if (!checked) localStorage.removeItem(REMEMBER_KEY)
 })
 
 async function handleLogin() {
@@ -65,6 +86,11 @@ async function handleLogin() {
   if (!valid) return
   loading.value = true
   try {
+    if (rememberMe.value) {
+      localStorage.setItem(REMEMBER_KEY, form.username)
+    } else {
+      localStorage.removeItem(REMEMBER_KEY)
+    }
     const data = await authStore.login(form.username, form.password)
     const target = data.mustChangePassword ? '/setup' : '/dashboard'
     prefetchAfterLogin(target)
@@ -98,11 +124,12 @@ async function handleLogin() {
   border: 1px solid $fk-border;
   box-shadow: $fk-card-shadow;
   padding: 12px 16px 8px;
+  background: $fk-card-bg;
 }
 
 .login-brand {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 8px;
 }
 
 .brand-title {
@@ -119,6 +146,18 @@ async function handleLogin() {
   font-size: 14px;
 }
 
+.brand-divider {
+  margin: 16px 0 20px;
+  border-color: $fk-border;
+}
+
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
 .login-btn {
   width: 100%;
   margin-top: 8px;
@@ -131,5 +170,10 @@ async function handleLogin() {
   font-size: 12px;
   text-align: center;
   margin: 18px 0 8px;
+}
+
+.hint-strong {
+  color: $fk-primary;
+  font-weight: 600;
 }
 </style>

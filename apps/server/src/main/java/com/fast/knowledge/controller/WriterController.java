@@ -26,7 +26,7 @@ public class WriterController {
     }
 
     @PostMapping(value = "/generate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter generate(@RequestBody WriterRequest request) {
+    public SseEmitter generate(@Valid @RequestBody WriterRequest request) {
         return writerService.generate(request);
     }
 

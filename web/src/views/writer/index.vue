@@ -187,10 +187,9 @@ async function handleSave() {
   white-space: pre-wrap;
   line-height: 1.75;
   font-size: 13px;
-  color: $fk-text-primary;
   font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--fk-code-bg);
+  color: var(--fk-code-text);
   padding: 16px;
   border-radius: 8px;
   max-height: 520px;

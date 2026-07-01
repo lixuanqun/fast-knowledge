@@ -23,10 +23,11 @@ defineProps<{
 }>()
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .stat-card {
   border-radius: 10px;
-  border: 1px solid var(--fk-border-color, #e4e7ed);
+  border: 1px solid $fk-border;
+  background: $fk-card-bg;
 }
 
 .stat-card__body {
@@ -46,47 +47,47 @@ defineProps<{
 }
 
 .stat-card__icon.is-primary {
-  background: #ecf5ff;
-  color: #409eff;
+  background: $fk-primary-light;
+  color: $fk-primary;
 }
 
 .stat-card__icon.is-success {
-  background: #f0f9eb;
-  color: #67c23a;
+  background: $fk-success-bg;
+  color: $fk-success;
 }
 
 .stat-card__icon.is-danger {
-  background: #fef0f0;
-  color: #f56c6c;
+  background: $fk-danger-bg;
+  color: $fk-danger;
 }
 
 .stat-card__icon.is-warning {
-  background: #fdf6ec;
-  color: #e6a23c;
+  background: $fk-warning-bg;
+  color: $fk-warning;
 }
 
 .stat-card__value {
   font-size: 28px;
   font-weight: 700;
   line-height: 1.2;
-  color: #303133;
+  color: $fk-text-primary;
 }
 
 .stat-card.is-success .stat-card__value {
-  color: #67c23a;
+  color: $fk-success;
 }
 
 .stat-card.is-danger .stat-card__value {
-  color: #f56c6c;
+  color: $fk-danger;
 }
 
 .stat-card.is-warning .stat-card__value {
-  color: #e6a23c;
+  color: $fk-warning;
 }
 
 .stat-card__label {
   margin-top: 4px;
   font-size: 13px;
-  color: #909399;
+  color: $fk-text-secondary;
 }
 </style>

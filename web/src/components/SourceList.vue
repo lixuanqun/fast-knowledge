@@ -81,7 +81,7 @@ watch(
   color: $fk-text-regular;
   font-size: 13px;
   line-height: 1.7;
-  background: #fafafa;
+  background: $fk-surface-muted;
   padding: 10px 12px;
   border-radius: 6px;
   border-left: 3px solid $fk-primary;

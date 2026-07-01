@@ -98,21 +98,12 @@ knowledge:
 
 ## API
 
-启动后访问 `/api/swagger-ui.html`。
+接口契约与后端设计文档：
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/auth/login` | 登录 |
-| POST | `/api/auth/setup` | 首次安装向导 |
-| GET | `/api/system/config` | 公开系统配置 |
-| GET | `/api/kbs` | 知识库列表（含 PUBLIC） |
-| POST | `/api/kbs/{id}/documents/upload` | 上传文档 |
-| POST | `/api/search` | 混合检索 |
-| POST | `/api/qa` | RAG 问答 |
-| POST | `/api/chat/messages/stream` | 多轮对话（SSE） |
-| POST | `/api/writer/generate` | 智能写文档（SSE） |
-| GET | `/api/dashboard/stats` | 运营概览 |
-| GET | `/api/index-tasks/*` | 索引任务管理 |
+- **[api.md](./api.md)** — 前后端接口契约（45 REST + 2 SSE），开发联调以此为准
+- **[backend-design.md](./backend-design.md)** — 后端设计指南（需求 → 数据结构 → 表结构 → 开发）
+
+启动后访问 `/api/swagger-ui.html`（辅助参考，与 api.md 冲突时以 api.md 为准）。
 
 ## 本地开发
 

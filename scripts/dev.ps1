@@ -16,8 +16,13 @@ $serverCmd = @"
 Set-Location '$Root'
 `$env:JAVA_HOME='$JdkHome'
 `$env:Path="`$env:JAVA_HOME\bin;`$env:Path"
-Write-Host '[server] mvn -pl apps/server spring-boot:run' -ForegroundColor Green
-mvn -pl apps/server spring-boot:run
+if (Test-Path (Join-Path '$Root' 'apps\server\src\main\resources\application-local.yml')) {
+    Write-Host '[server] profile=local (MySQL, 见 application-local.yml)' -ForegroundColor Green
+    mvn -pl apps/server spring-boot:run '-Dspring-boot.run.profiles=local'
+} else {
+    Write-Host '[server] 默认 MySQL localhost/fast_knowledge；无库可用 -Dspring-boot.run.profiles=minimal' -ForegroundColor Green
+    mvn -pl apps/server spring-boot:run
+}
 "@
 
 $webCmd = @"

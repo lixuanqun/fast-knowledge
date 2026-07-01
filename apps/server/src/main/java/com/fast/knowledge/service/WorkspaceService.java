@@ -4,6 +4,7 @@ import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.mapper.WorkspaceMapper;
 import com.fast.knowledge.model.entity.Workspace;
 import com.fast.knowledge.model.vo.WorkspaceVO;
+import com.fast.knowledge.security.UserContext;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,10 +30,13 @@ public class WorkspaceService {
         return listMine(userId).stream().map(this::toVo).toList();
     }
 
-    public WorkspaceVO getVoById(Long id) {
+    public WorkspaceVO getVoById(Long id, Long userId) {
         Workspace ws = workspaceMapper.findById(id);
         if (ws == null) {
             throw new BusinessException("工作区不存在");
+        }
+        if (!ws.getOwnerId().equals(userId) && !"ADMIN".equals(UserContext.get().getRole())) {
+            throw new BusinessException(403, "无权限访问该工作区");
         }
         return toVo(ws);
     }

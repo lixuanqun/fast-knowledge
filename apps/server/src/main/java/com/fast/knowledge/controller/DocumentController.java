@@ -48,13 +48,13 @@ public class DocumentController {
 
     @DeleteMapping("/{docId}")
     public ApiResponse<Void> delete(@PathVariable Long kbId, @PathVariable Long docId) {
-        documentService.delete(docId);
+        documentService.delete(kbId, docId);
         return ApiResponse.ok();
     }
 
     @PostMapping("/{docId}/reindex")
     public ApiResponse<Void> reindex(@PathVariable Long kbId, @PathVariable Long docId) {
-        documentService.reindex(docId);
+        documentService.reindex(kbId, docId);
         return ApiResponse.ok();
     }
 }

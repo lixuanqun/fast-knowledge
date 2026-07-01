@@ -19,12 +19,14 @@
 **/data/uploads/
 **/data/lucene/
 **/data/models/*.onnx
+apps/server/data/
 
 # Env & secrets
 .env
 .env.*
 *.local
 docker/.env
+apps/server/src/main/resources/application-local.yml
 
 # OS
 .DS_Store

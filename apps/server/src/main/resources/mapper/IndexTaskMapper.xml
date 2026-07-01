@@ -46,7 +46,7 @@
         UPDATE kb_index_task
         SET locked_by = #{lockedBy}, locked_at = NOW()
         WHERE document_id = #{documentId}
-          AND (locked_by IS NULL OR locked_at &lt; DATE_SUB(NOW(), INTERVAL 10 MINUTE))
+          AND (locked_by IS NULL OR locked_at &lt; TIMESTAMPADD(MINUTE, -10, CURRENT_TIMESTAMP))
     </update>
 
     <update id="releaseLock">

@@ -1,0 +1,24 @@
+# 本地 MySQL 开发配置（参考 zt_repo 的 datasource 写法）
+# 用法：
+#   1. 复制为 application-local.yml（已加入 .gitignore，勿提交密码）
+#   2. 修改 url / username / password 为你的 MySQL 实例
+#   3. 启动：mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=local
+#
+# zt_repo 示例（Aliyun RDS）：
+#   jdbc:mysql://<host>:6765/<db>?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+#   username: root
+#   driver-class-name: com.mysql.cj.jdbc.Driver
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fast_knowledge?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: your-password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+knowledge:
+  cache:
+    provider: caffeine
+  embedding:
+    # 无 ONNX 模型时用 hash；有模型可改为 onnx
+    provider: hash

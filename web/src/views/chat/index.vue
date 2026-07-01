@@ -210,7 +210,7 @@ async function send() {
 
 .session-panel {
   width: 260px;
-  background: #fff;
+  background: $fk-card-bg;
   border: 1px solid $fk-border;
   border-radius: 10px;
   padding: 12px;
@@ -242,7 +242,7 @@ async function send() {
 .session-item:hover,
 .session-item.active {
   background: $fk-primary-light;
-  border-color: #b3d8ff;
+  border-color: var(--fk-aside-note-border);
 }
 
 .session-title {
@@ -272,7 +272,7 @@ async function send() {
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px 14px;
-  background: #fff;
+  background: $fk-card-bg;
   border: 1px solid $fk-border;
   border-radius: 10px;
 }
@@ -285,7 +285,7 @@ async function send() {
 .messages {
   flex: 1;
   overflow-y: auto;
-  background: #fff;
+  background: $fk-card-bg;
   padding: 16px;
   border: 1px solid $fk-border;
   border-radius: 10px;
@@ -317,7 +317,7 @@ async function send() {
 
 .msg-bubble__body {
   max-width: 75%;
-  background: #f6f7f8;
+  background: $fk-surface-muted;
   padding: 12px 14px;
   border-radius: 10px;
 }
@@ -327,7 +327,7 @@ async function send() {
 }
 
 .msg-bubble__body.is-streaming {
-  border: 1px dashed #b3d8ff;
+  border: 1px dashed var(--fk-aside-note-border);
 }
 
 .msg-text {
@@ -382,7 +382,7 @@ async function send() {
   gap: 12px;
   align-items: flex-end;
   padding: 12px;
-  background: #fff;
+  background: $fk-card-bg;
   border: 1px solid $fk-border;
   border-radius: 10px;
 }

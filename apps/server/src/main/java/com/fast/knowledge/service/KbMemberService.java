@@ -35,7 +35,7 @@ public class KbMemberService {
 
     public KbMember addMember(Long kbId, KbMemberRequest request) {
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
-        knowledgeBaseService.checkWritePermission(kb);
+        knowledgeBaseService.checkKbAdminPermission(kb);
         KbUser user = userMapper.findByUsername(request.getUsername());
         if (user == null) {
             throw new BusinessException("用户不存在: " + request.getUsername());
@@ -45,10 +45,10 @@ public class KbMemberService {
         }
         KbMember existing = kbMemberMapper.findByKbAndUser(kbId, user.getId());
         if (existing != null) {
-            existing.setPermission(request.getPermission());
+            existing.setPermission(request.getPermission() != null ? request.getPermission() : "READ");
             kbMemberMapper.update(existing);
             auditLogService.log("UPDATE_MEMBER", "KB", kbId, "user=" + user.getUsername());
-            return existing;
+            return requireEnrichedMember(existing.getId());
         }
         KbMember member = new KbMember();
         member.setKbId(kbId);
@@ -56,12 +56,16 @@ public class KbMemberService {
         member.setPermission(request.getPermission() != null ? request.getPermission() : "READ");
         kbMemberMapper.insert(member);
         auditLogService.log("ADD_MEMBER", "KB", kbId, "user=" + user.getUsername());
-        return member;
+        return requireEnrichedMember(member.getId());
     }
 
     public void removeMember(Long kbId, Long memberId) {
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
-        knowledgeBaseService.checkWritePermission(kb);
+        knowledgeBaseService.checkKbAdminPermission(kb);
+        KbMember member = kbMemberMapper.findByIdAndKbId(memberId, kbId);
+        if (member == null) {
+            throw new BusinessException("成员不存在");
+        }
         kbMemberMapper.deleteById(memberId);
         auditLogService.log("REMOVE_MEMBER", "KB", kbId, "memberId=" + memberId);
     }
@@ -78,5 +82,13 @@ public class KbMemberService {
             return "READ";
         }
         return null;
+    }
+
+    private KbMember requireEnrichedMember(Long memberId) {
+        KbMember enriched = kbMemberMapper.findById(memberId);
+        if (enriched == null) {
+            throw new BusinessException("成员记录不存在");
+        }
+        return enriched;
     }
 }

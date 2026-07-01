@@ -14,9 +14,9 @@ spring:
       max-file-size: 50MB
       max-request-size: 55MB
   datasource:
-    url: jdbc:mysql://localhost:3306/fast_knowledge?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fast_knowledge?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
