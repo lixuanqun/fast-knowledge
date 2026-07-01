@@ -34,7 +34,7 @@ Vue3 前端 ──► Spring Boot API ──► MySQL（业务数据）
 | kb_chat_session / kb_chat_message | 多轮对话会话与消息（含 sources JSON） |
 | kb_audit_log | 操作审计日志 |
 
-Schema 由 Flyway 管理：`backend/src/main/resources/db/migration/`。
+Schema 由 Flyway 管理：`apps/server/src/main/resources/db/migration/`。
 
 ## 向量存储配置
 
@@ -61,7 +61,7 @@ knowledge:
 
 ## Embedding 建议
 
-1. **生产离线**：`EMBEDDING_PROVIDER=onnx` + `models/bge-small-zh-v1.5.onnx` + `tokenizer.json`
+1. **生产离线**：`EMBEDDING_PROVIDER=onnx` + `data/models/bge-small-zh-v1.5.onnx` + `tokenizer.json`
 2. **Docker 演示**：`EMBEDDING_PROVIDER=ollama` + `nomic-embed-text`
 3. **开发联调**：`EMBEDDING_PROVIDER=hash`（无需外部服务，质量有限）
 
@@ -118,7 +118,7 @@ knowledge:
 
 ```powershell
 npm install
-npm run dev
+scripts/dev.ps1
 ```
 
 默认 `CACHE_PROVIDER=caffeine`，无需 Redis 即可启动后端（LLM 仍需配置才有问答能力）。

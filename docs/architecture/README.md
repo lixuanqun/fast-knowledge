@@ -1,25 +1,32 @@
 # Fast Knowledge 模块结构
 
-面向中小企业的开源私有化知识库 Monorepo，采用 **前后端分离 + Java 单体后端** 架构。
+面向中小企业的开源私有化知识库 Monorepo，采用 **Maven 父工程 + Spring Boot 服务端 + Vue Web 前端** 架构。
 
 ## 仓库布局
 
 ```
 fast-knowledge/
-├── backend/                 # Java 21 后端（核心业务）
-├── frontend/                # Vue 3 前端（管理界面）
-├── deploy/                  # Docker / Nginx / 环境变量模板
-├── docs/                    # 产品与技术文档
-│   ├── architecture/        # 架构与模块说明（本目录）
-│   └── deployment/          # 部署指南
-├── models/                  # ONNX 模型与 tokenizer（不入库）
-├── scripts/                 # 构建与安装脚本
-├── package.json             # 根 workspace（frontend）
+├── pom.xml                  # Maven 父 POM
+├── apps/
+│   └── server/              # Spring Boot 应用（com.fast.knowledge）
+├── web/                     # Vue 3 管理界面
+├── docker/                  # 容器与 Compose
+├── data/models/             # ONNX 模型（gitignore，运行时挂载）
+├── docs/
+├── scripts/
 ├── LICENSE
 └── LICENSE-COMMERCIAL.md
 ```
 
-## 后端分层（`com.fast.knowledge`）
+## 构建关系
+
+```
+web (npm build) ──dist──► apps/server/target/classes/static ──► fast-knowledge-server.jar
+```
+
+由根目录 `mvn -pl apps/server -am package -Pbundle` 触发 `frontend-maven-plugin` 完成。
+
+## 服务端分层（`com.fast.knowledge`）
 
 | 包 | 职责 | 示例 |
 |----|------|------|
@@ -54,7 +61,7 @@ fast-knowledge/
 | EmbeddingProvider | `knowledge.embedding.provider` | `onnx` |
 | LLM | `knowledge.llm.provider` | `ollama` |
 
-## 前端模块
+## Web 模块
 
 | 目录 | 职责 |
 |------|------|

@@ -1,4 +1,4 @@
-# Fast Knowledge — 生产构建：分别打包后端 Jar 与前端静态资源
+# Fast Knowledge — 生产构建：Maven 统一打包（-Pbundle 嵌入 web 静态资源）
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 
@@ -10,22 +10,14 @@ Write-Host ""
 Write-Host "Fast Knowledge — 构建" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "[1/2] 后端 mvn package ..." -ForegroundColor Green
-Push-Location "$Root\backend"
-mvn package -DskipTests
-Pop-Location
-
-Write-Host ""
-Write-Host "[2/2] 前端 npm run build ..." -ForegroundColor Green
-Push-Location "$Root\frontend"
-if (-not (Test-Path node_modules)) { npm install }
-npm run build
+Push-Location $Root
+mvn -pl apps/server -am clean package -DskipTests -Pbundle
 Pop-Location
 
 Write-Host ""
 Write-Host "构建完成：" -ForegroundColor Green
-Write-Host "  后端 Jar   backend\target\fast-knowledge-backend-*.jar"
-Write-Host "  前端静态   frontend\dist\"
+Write-Host "  单 Jar（含前端）  apps\server\target\fast-knowledge-server-*.jar"
 Write-Host ""
-Write-Host "部署方式见 deploy/ 目录（Nginx 或单 Jar：npm run build:jar）"
+Write-Host "运行：java -jar apps\server\target\fast-knowledge-server-*.jar --spring.profiles.active=prod,bundle"
+Write-Host "部署方式见 docker/ 目录"
 Write-Host ""

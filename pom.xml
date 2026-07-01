@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.11</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.fast</groupId>
+    <artifactId>fast-knowledge</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>fast-knowledge</name>
+    <description>Fast Knowledge 快速知识库 Monorepo</description>
+
+    <licenses>
+        <license>
+            <name>GNU Affero General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+            <distribution>repo</distribution>
+            <comments>Commercial licensing available — see LICENSE-COMMERCIAL.md</comments>
+        </license>
+    </licenses>
+
+    <modules>
+        <module>apps/server</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <lucene.version>9.11.1</lucene.version>
+        <tika.version>3.3.0</tika.version>
+        <langchain4j.version>1.17.1</langchain4j.version>
+        <djl.version>0.31.1</djl.version>
+        <springdoc.version>2.8.6</springdoc.version>
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <node.version>v22.12.0</node.version>
+        <npm.version>10.9.2</npm.version>
+        <frontend.dir>${maven.multiModuleProjectDirectory}/web</frontend.dir>
+        <skip.frontend>true</skip.frontend>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>${langchain4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>bundle</id>
+            <properties>
+                <skip.frontend>false</skip.frontend>
+            </properties>
+        </profile>
+    </profiles>
+</project>

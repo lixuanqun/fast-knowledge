@@ -18,13 +18,13 @@
 # Runtime data
 **/data/uploads/
 **/data/lucene/
-**/models/*.onnx
+**/data/models/*.onnx
 
 # Env & secrets
 .env
 .env.*
 *.local
-deploy/.env
+docker/.env
 
 # OS
 .DS_Store

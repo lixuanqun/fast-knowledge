@@ -1,0 +1,100 @@
+# Fast Knowledge 全栈部署（应用 + MySQL + Redis + Ollama）
+# 用法：cd docker && docker compose -f docker-compose.full.yml up -d
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fast-knowledge-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fast_knowledge
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: fast-knowledge-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: fast-knowledge-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: fast-knowledge-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    profiles:
+      - qdrant
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: fast-knowledge-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod,bundle
+      DB_URL: jdbc:mysql://mysql:3306/fast_knowledge?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      DB_USER: root
+      DB_PASSWORD: root
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_PROVIDER: redis
+      EMBEDDING_PROVIDER: ollama
+      OLLAMA_EMBED_URL: http://ollama:11434
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+      EMBEDDING_MODEL: nomic-embed-text
+      JWT_SECRET: ${JWT_SECRET:-fast-knowledge-docker-jwt-secret-change-me-32c}
+      VECTOR_PROVIDER: ${VECTOR_PROVIDER:-lucene}
+      QDRANT_HOST: qdrant
+    volumes:
+      - app_data:/data/knowledge
+      - ../data/models:/app/models:ro
+
+volumes:
+  mysql_data:
+  redis_data:
+  ollama_data:
+  qdrant_data:
+  app_data:

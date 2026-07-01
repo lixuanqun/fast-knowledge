@@ -1,0 +1,18 @@
+export * from './auth'
+export * from './kb'
+export * from './search'
+export * from './config'
+export * from './workspace'
+export * from './users'
+export * from './dashboard'
+export * from './documents'
+export * from './index-tasks'
+export * from './qa'
+export * from './writer'
+export * from './chat'
+export * from './sse'
+
+// backward-compatible type re-exports
+export type { KbUser } from './users'
+export type { DocumentPreview, DocumentChunk } from './documents'
+export type { StreamDoneMeta } from './sse'

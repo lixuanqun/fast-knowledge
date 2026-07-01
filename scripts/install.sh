@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT/deploy"
+cd "$ROOT/docker"
 
 echo "==> Fast Knowledge 一键安装"
 echo "    将启动 MySQL、Redis、Ollama 与应用容器"

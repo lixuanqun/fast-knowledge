@@ -1,0 +1,35 @@
+# 零依赖演示：内嵌 H2 + Caffeine + Hash Embedding + Lucene
+# 启动：mvn spring-boot:run -Dspring-boot.run.profiles=minimal
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/fast-knowledge-minimal;MODE=MySQL;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+knowledge:
+  cache:
+    provider: caffeine
+  embedding:
+    provider: hash
+  vector:
+    provider: lucene
+  lucene:
+    base-path: ./data/lucene-minimal
+  storage:
+    provider: local
+    upload-dir: ./data/uploads-minimal
+  llm:
+    provider: ollama
+    allow-external: true
