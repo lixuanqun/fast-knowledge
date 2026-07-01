@@ -4,6 +4,26 @@
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Fast Knowledge 快速知识库 Monorepo",
+  "keywords": [
+    "knowledge-base",
+    "rag",
+    "semantic-search",
+    "self-hosted",
+    "private-deployment",
+    "spring-boot",
+    "vue3",
+    "langchain4j",
+    "docker",
+    "enterprise-search"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lixuanqun/fast-knowledge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lixuanqun/fast-knowledge/issues"
+  },
+  "homepage": "https://github.com/lixuanqun/fast-knowledge#readme",
   "workspaces": [
     "frontend"
   ],

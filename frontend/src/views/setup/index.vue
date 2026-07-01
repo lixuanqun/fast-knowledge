@@ -27,25 +27,21 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import type { FormInstance, FormRules } from 'element-plus'
 import { completeSetup } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { useConfigStore } from '@/stores/config'
-import { useSystemConfigQuery } from '@/composables/queries/useSystemConfig'
 import { prefetchAfterLogin, prefetchMainLayout } from '@/router/prefetch'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const configStore = useConfigStore()
-const { data: config } = useSystemConfigQuery()
+const { config } = storeToRefs(configStore)
 
 const loading = ref(false)
 const formRef = ref<FormInstance>()
-
-onMounted(() => {
-  prefetchMainLayout()
-})
 
 const form = reactive({
   instanceName: 'Fast Knowledge',
@@ -64,6 +60,11 @@ const rules: FormRules = {
     }
   ]
 }
+
+onMounted(() => {
+  prefetchMainLayout()
+  configStore.fetchConfig()
+})
 
 async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)

@@ -1,5 +1,10 @@
 ﻿# Fast Knowledge — 快速知识库
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-21-orange)](backend/)
+[![Vue](https://img.shields.io/badge/Vue-3.5-brightgreen)](frontend/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](backend/)
+
 面向**中小企业**的开源私有化知识库：**单实例部署、数据本地不出网、开箱即用**。
 
 > 详细产品说明见 [docs/产品说明.md](docs/产品说明.md) · 架构与配置见 [docs/fast_knowledge.md](docs/fast_knowledge.md)
@@ -164,3 +169,5 @@ Fast Knowledge 采用 **AGPL-3.0 + 商业双许可** 发布：
 - **商业许可**：若您将本项目用于 SaaS、闭源集成、OEM 分发等不愿遵守 AGPL 开源义务的场景，请阅读 [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) 并联系我们获取商业授权。
 
 在符合 AGPL 的前提下（如企业内部私有化部署、或愿意按要求开源修改），可免费使用，无需额外付费。
+
+**Topics**：`knowledge-base` · `rag` · `semantic-search` · `self-hosted` · `spring-boot` · `vue3` · `langchain4j` · `docker` · `enterprise-search` · `agpl-3.0`

@@ -3,7 +3,7 @@
     <el-aside width="220px" class="aside">
       <div class="logo">
         <span class="logo-icon">FK</span>
-        <span class="logo-text">Fast Knowledge</span>
+        <span class="logo-text">{{ instanceName }}</span>
       </div>
       <el-menu
         :default-active="route.path"
@@ -54,16 +54,19 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useConfigStore } from '@/stores/config'
 import { prefetchAllViewsOnIdle, prefetchView } from '@/router/prefetch'
 import { ChangePasswordDialog } from '@/components/async'
 import {
-  Odometer, Collection, Search, QuestionFilled, ChatDotRound, EditPen, User
+  Odometer, Collection, Search, QuestionFilled, ChatDotRound, EditPen, User, Setting
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const configStore = useConfigStore()
 const { user, isAdmin } = storeToRefs(authStore)
+const { instanceName } = storeToRefs(configStore)
 const pwdDialog = ref<{ open: () => void }>()
 
 const menuItems = [
@@ -73,6 +76,7 @@ const menuItems = [
   { path: '/qa', label: '智能问答', icon: QuestionFilled },
   { path: '/chat', label: '智能对话', icon: ChatDotRound },
   { path: '/writer', label: '智能写文档', icon: EditPen },
+  { path: '/settings', label: '设置与隐私', icon: Setting },
   { path: '/users', label: '用户管理', icon: User, adminOnly: true }
 ]
 
@@ -81,7 +85,7 @@ const visibleMenus = computed(() =>
 )
 
 const roleLabel = computed(() => {
-  const map: Record<string, string> = { ADMIN: '管理员', EDITOR: '编辑者', VIEWER: '查看者' }
+  const map: Record<string, string> = { ADMIN: '管理员', USER: '普通用户' }
   return map[user.value?.role || ''] || user.value?.role
 })
 
@@ -92,6 +96,7 @@ const pageTitle = computed(() => {
 })
 
 onMounted(() => {
+  configStore.ensureLoaded().catch(() => {})
   const paths = visibleMenus.value.map(m => m.path)
   prefetchAllViewsOnIdle(paths)
 })
