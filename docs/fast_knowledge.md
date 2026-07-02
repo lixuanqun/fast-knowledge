@@ -57,6 +57,13 @@ knowledge:
 | sqlite-vec | standalone | FTS5 + 向量 |
 | pgvector | prod | tsvector + pgvector |
 
+### 规模建议
+
+单机 `sqlite-vec` 在 **Java 向量回退路径**（未加载 sqlite-vec 原生扩展）下为全表扫描，**chunk 数超过约 5 万**时检索延迟会明显上升。建议：
+
+- 小规模试用 / 部门知识库：继续使用 `standalone`
+- 大规模生产：迁移至 `prod` + PostgreSQL **pgvector**
+
 ## 缓存与存储
 
 单机：`caffeine` + `local`  

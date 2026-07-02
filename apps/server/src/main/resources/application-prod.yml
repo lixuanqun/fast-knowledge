@@ -9,7 +9,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   sql:
     init:
-      mode: always
+      mode: ${SQL_INIT_MODE:never}
       schema-locations: classpath:db/schema-postgres.sql
   data:
     redis:

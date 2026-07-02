@@ -5,9 +5,11 @@ spring:
   datasource:
     url: jdbc:sqlite:${SQLITE_DB_PATH:./data/fast-knowledge.db}?enable_load_extension=true
     driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
   sql:
     init:
-      mode: always
+      mode: ${SQL_INIT_MODE:always}
       schema-locations: classpath:db/schema-sqlite.sql
   autoconfigure:
     exclude:

@@ -19,10 +19,14 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
     private final CacheProvider cacheProvider;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, CacheProvider cacheProvider) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil,
+                                   TokenBlacklistService tokenBlacklistService,
+                                   CacheProvider cacheProvider) {
         this.jwtUtil = jwtUtil;
+        this.tokenBlacklistService = tokenBlacklistService;
         this.cacheProvider = cacheProvider;
     }
 
@@ -39,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String auth = request.getHeader("Authorization");
             if (auth != null && auth.startsWith("Bearer ")) {
                 String token = auth.substring(7);
-                if (cacheProvider.get("kb:token:blacklist:" + token).isEmpty()) {
+                if (!tokenBlacklistService.isBlacklisted(token)) {
                     DecodedJWT jwt = jwtUtil.verify(token);
                     AuthenticatedUser user = new AuthenticatedUser(
                             jwt.getClaim("userId").asLong(),

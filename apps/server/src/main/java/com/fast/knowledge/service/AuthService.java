@@ -1,6 +1,6 @@
 package com.fast.knowledge.service;
 
-import com.fast.knowledge.cache.CacheProvider;
+import com.fast.knowledge.security.TokenBlacklistService;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.mapper.UserMapper;
 import com.fast.knowledge.model.dto.LoginRequest;
@@ -10,22 +10,20 @@ import com.fast.knowledge.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-
 @Service
 public class AuthService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final CacheProvider cacheProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public AuthService(UserMapper userMapper, PasswordEncoder passwordEncoder,
-                       JwtUtil jwtUtil, CacheProvider cacheProvider) {
+                       JwtUtil jwtUtil, TokenBlacklistService tokenBlacklistService) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.cacheProvider = cacheProvider;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     public LoginVO login(LoginRequest request) {
@@ -51,6 +49,6 @@ public class AuthService {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-        cacheProvider.set("kb:token:blacklist:" + token, "1", Duration.ofHours(24));
+        tokenBlacklistService.blacklist(token);
     }
 }
