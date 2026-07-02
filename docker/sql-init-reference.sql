@@ -1,3 +1,0 @@
--- Fast Knowledge 数据库初始化（参考）
--- 单机：应用自动执行 classpath:db/schema-sqlite.sql
--- 集群：应用自动执行 classpath:db/schema-postgres.sql（需 CREATE EXTENSION vector）

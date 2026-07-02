@@ -17,7 +17,6 @@
 
 # Runtime data
 **/data/uploads/
-**/data/lucene/
 **/data/models/*.onnx
 apps/server/data/
 
