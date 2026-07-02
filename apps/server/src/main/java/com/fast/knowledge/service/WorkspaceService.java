@@ -31,7 +31,7 @@ public class WorkspaceService {
     }
 
     public WorkspaceVO getVoById(Long id, Long userId) {
-        Workspace ws = workspaceMapper.findById(id);
+        Workspace ws = workspaceMapper.selectById(id);
         if (ws == null) {
             throw new BusinessException("工作区不存在");
         }

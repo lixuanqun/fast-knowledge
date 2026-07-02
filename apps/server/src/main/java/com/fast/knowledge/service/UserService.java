@@ -34,7 +34,7 @@ public class UserService {
         if (userId == null) {
             throw new BusinessException(401, "未登录");
         }
-        KbUser user = userMapper.findById(userId);
+        KbUser user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -62,7 +62,7 @@ public class UserService {
         user.setMustChangePassword(false);
         userMapper.insert(user);
         auditLogService.log("CREATE_USER", "USER", user.getId(), user.getUsername());
-        return toVO(userMapper.findById(user.getId()));
+        return toVO(userMapper.selectById(user.getId()));
     }
 
     @Transactional
@@ -81,9 +81,9 @@ public class UserService {
             }
             user.setStatus(request.getStatus());
         }
-        userMapper.update(user);
+        userMapper.updateById(user);
         auditLogService.log("UPDATE_USER", "USER", id, user.getUsername());
-        return toVO(userMapper.findById(id));
+        return toVO(userMapper.selectById(id));
     }
 
     @Transactional
@@ -127,7 +127,7 @@ public class UserService {
     }
 
     private KbUser requireUser(Long id) {
-        KbUser user = userMapper.findById(id);
+        KbUser user = userMapper.selectById(id);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }

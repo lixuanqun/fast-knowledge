@@ -35,12 +35,12 @@ web (npm build) ──dist──► apps/server/target/classes/static ──► 
 | `security` | JWT、Spring Security | `JwtAuthenticationFilter` |
 | `config` | 配置与启动 | `KnowledgeProperties`, `DataInitializer` |
 | `model` | DTO / Entity / VO | `KbUser`, `SearchRequest` |
-| `mapper` | MyBatis 数据访问 | `UserMapper` |
-| `vector` | 向量存储 SPI | `VectorStore`, `LuceneVectorStore` |
+| `mapper` | MyBatis Plus 数据访问 | `UserMapper extends BaseMapper` |
+| `vector` | 向量存储 SPI | `VectorStore`, `SqliteVecVectorStore`, `PgVectorStore` |
 | `embedding` | 向量化 SPI | `OnnxEmbeddingProvider`, `OllamaEmbeddingProvider` |
 | `cache` | 缓存 SPI | `CaffeineCacheProvider`, `RedisCacheProvider` |
 | `llm` | 大模型提供商预设与解析 | `LlmProvider`, `LlmConfigResolver` |
-| `langchain4j` | LangChain4j 适配 | `LangChain4jConfig`, `LuceneEmbeddingStore` |
+| `langchain4j` | LangChain4j 适配 | `LangChain4jConfig`, `KbEmbeddingStore` |
 | `common` | 通用工具与异常 | `ApiResponse`, `BusinessException` |
 
 ## 数据流
@@ -56,7 +56,7 @@ web (npm build) ──dist──► apps/server/target/classes/static ──► 
 
 | SPI | 配置项 | 默认 |
 |-----|--------|------|
-| VectorStore | `knowledge.vector.provider` | `lucene` |
+| VectorStore | `knowledge.vector.provider` | `sqlite-vec`（单机）/ `pgvector`（集群） |
 | CacheProvider | `knowledge.cache.provider` | `caffeine` |
 | EmbeddingProvider | `knowledge.embedding.provider` | `onnx` |
 | LLM | `knowledge.llm.provider` | `ollama` |

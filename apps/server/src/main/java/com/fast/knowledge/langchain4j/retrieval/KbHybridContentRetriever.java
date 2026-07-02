@@ -1,5 +1,6 @@
-package com.fast.knowledge.langchain4j.lucene;
+package com.fast.knowledge.langchain4j.retrieval;
 
+import com.fast.knowledge.langchain4j.KbEmbeddingStore;
 import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.SearchService;
@@ -37,10 +38,10 @@ public class KbHybridContentRetriever implements ContentRetriever {
 
     private Content toContent(SearchHitVO hit) {
         Metadata metadata = Metadata.from(Map.of(
-                LuceneEmbeddingStore.META_KB_ID, kbId,
-                LuceneEmbeddingStore.META_DOC_ID, hit.getDocumentId(),
-                LuceneEmbeddingStore.META_CHUNK_ID, hit.getChunkId(),
-                LuceneEmbeddingStore.META_TITLE, hit.getDocumentTitle() != null ? hit.getDocumentTitle() : "",
+                KbEmbeddingStore.META_KB_ID, kbId,
+                KbEmbeddingStore.META_DOC_ID, hit.getDocumentId(),
+                KbEmbeddingStore.META_CHUNK_ID, hit.getChunkId(),
+                KbEmbeddingStore.META_TITLE, hit.getDocumentTitle() != null ? hit.getDocumentTitle() : "",
                 "score", hit.getScore()
         ));
         TextSegment segment = TextSegment.from(

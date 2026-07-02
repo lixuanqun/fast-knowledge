@@ -11,7 +11,6 @@ public class KnowledgeProperties {
 
     private Jwt jwt = new Jwt();
     private Storage storage = new Storage();
-    private Lucene lucene = new Lucene();
     private Vector vector = new Vector();
     private Cache cache = new Cache();
     private Embedding embedding = new Embedding();
@@ -23,22 +22,15 @@ public class KnowledgeProperties {
 
     @Data
     public static class Vector {
-        private String provider = "lucene";
-        private PgVector pgvector = new PgVector();
-        private Qdrant qdrant = new Qdrant();
+        /** sqlite-vec | pgvector */
+        private String provider = "sqlite-vec";
+        private SqliteVec sqliteVec = new SqliteVec();
     }
 
     @Data
-    public static class PgVector {
-        private String datasourceUrl = "jdbc:postgresql://localhost:5432/fast_knowledge";
-        private String username = "postgres";
-        private String password = "postgres";
-    }
-
-    @Data
-    public static class Qdrant {
-        private String host = "localhost";
-        private int port = 6333;
+    public static class SqliteVec {
+        /** sqlite-vec 扩展库路径；留空则从 classpath/native 自动解压 */
+        private String extensionPath = "";
     }
 
     @Data
@@ -64,14 +56,20 @@ public class KnowledgeProperties {
 
     @Data
     public static class Storage {
-        /** local | s3（预留） */
+        /** local | minio */
         private String provider = "local";
         private String uploadDir = "./data/uploads";
+        private Minio minio = new Minio();
     }
 
     @Data
-    public static class Lucene {
-        private String basePath = "./data/lucene";
+    public static class Minio {
+        private String endpoint = "";
+        private String bucket = "";
+        private String accessKey = "";
+        private String secretKey = "";
+        private String region = "";
+        private String prefix = "";
     }
 
     @Data
@@ -96,6 +94,7 @@ public class KnowledgeProperties {
     public static class Search {
         private int defaultTopK = 8;
         private double hybridAlpha = 0.6;
+        private int cacheTtlMinutes = 5;
     }
 
     @Data

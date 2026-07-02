@@ -5,111 +5,82 @@
 ## 架构概览
 
 ```
-Vue3 前端 ──► Spring Boot API ──► MySQL（业务数据）
+Vue3 前端 ──► Spring Boot API
                     │
-                    ├── VectorStore SPI ──► Lucene（默认）/ pgvector / Qdrant
-                    ├── EmbeddingProvider ──► ONNX / Ollama / hash
-                    ├── CacheProvider ──► Caffeine（默认）/ Redis
-                    └── LangChain4j RAG ──► 本地或兼容 OpenAI 的 LLM
+        ┌───────────┴───────────┐
+        ▼                       ▼
+  单机 standalone          集群 prod
+  SQLite + sqlite-vec      PostgreSQL + pgvector
+  Caffeine + 本地文件       Redis + MinIO
+        │                       │
+        └──────── LLM 外部 API ─┘
 ```
 
 ## 设计原则
 
-1. **Privacy by Default**：文档、向量、对话默认不出服务器
-2. **Single Instance**：每企独立部署，轻量工作区组织知识库
-3. **Pluggable Backends**：向量库、缓存一行 YAML 切换
-4. **Progressive Complexity**：开发 hash → Docker 演示 → 生产 ONNX/Ollama
+1. **Privacy by Default**：文档、向量、对话默认不出服务器（LLM 走外部 API）
+2. **Single Instance First**：单机 Linux 开箱即用，零中间件
+3. **Unified Data Base**：业务表与向量表在同一数据库引擎内
+4. **Progressive Complexity**：单机 SQLite → 集群 PostgreSQL + MinIO
 
 ## 数据模型
 
 | 表 | 说明 |
 |----|------|
-| kb_user | 用户（ADMIN / USER），支持首次改密 |
+| kb_user | 用户（ADMIN / USER） |
 | kb_workspace | 工作区 |
-| kb_knowledge_base | 知识库（workspace_id、PUBLIC/PRIVATE、search_alpha/top_k） |
-| kb_kb_member | KB 级 ACL：READ / WRITE / ADMIN |
-| kb_system_config | 实例配置、安装向导状态 |
+| kb_knowledge_base | 知识库 |
+| kb_kb_member | KB 级 ACL |
 | kb_document / kb_document_chunk | 文档与分块 |
-| kb_index_task | 异步索引任务（含 DB 锁 + 缓存锁） |
-| kb_chat_session / kb_chat_message | 多轮对话会话与消息（含 sources JSON） |
-| kb_audit_log | 操作审计日志 |
+| kb_index_task | 异步索引任务 |
+| kb_vector_chunk | 向量索引 |
+| kb_chat_session / kb_chat_message | 对话 |
+| kb_audit_log | 审计日志 |
+| kb_system_config | 实例配置 |
 
-Schema 由 Flyway 管理：`apps/server/src/main/resources/db/migration/`。
+Schema：
 
-## 向量存储配置
+- 单机：`db/schema-sqlite.sql`
+- 集群：`db/schema-postgres.sql`
+
+## 向量存储
 
 ```yaml
 knowledge:
   vector:
-    provider: lucene   # lucene | pgvector | qdrant
+    provider: sqlite-vec   # standalone
+    # provider: pgvector   # prod
 ```
 
-- **lucene**：内置，零外部依赖，HNSW + SmartChinese BM25 混合检索
-- **pgvector**：需 PostgreSQL + pgvector 扩展及 `kb_vector_chunk` 表
-- **qdrant**：`docker compose --profile qdrant` 启动 Qdrant 容器
+| 实现 | 模式 | 混合检索 |
+|------|------|----------|
+| sqlite-vec | standalone | FTS5 + 向量 |
+| pgvector | prod | tsvector + pgvector |
 
-## 缓存配置
+## 缓存与存储
 
-```yaml
-knowledge:
-  cache:
-    provider: caffeine   # caffeine | redis
-```
+单机：`caffeine` + `local`  
+集群：`redis` + `minio`
 
-- **caffeine**：进程内缓存，开发与小规模部署无需 Redis
-- **redis**：生产推荐，用于检索缓存、Token 黑名单、索引分布式锁
+## Embedding
 
-## Embedding 建议
+- 生产：`onnx` + BGE 模型
+- 演示：`hash`（`minimal` profile）
+- 可选：`ollama`
 
-1. **生产离线**：`EMBEDDING_PROVIDER=onnx` + `data/models/bge-small-zh-v1.5.onnx` + `tokenizer.json`
-2. **Docker 演示**：`EMBEDDING_PROVIDER=ollama` + `nomic-embed-text`
-3. **开发联调**：`EMBEDDING_PROVIDER=hash`（无需外部服务，质量有限）
-
-## 分块与检索
-
-```yaml
-knowledge:
-  chunk:
-    size: 512
-    overlap: 50
-  search:
-    default-top-k: 8
-    hybrid-alpha: 0.6
-```
-
-分块策略：段落感知拆分 → Markdown 标题识别 → jtokkit token 计数 → 滑动窗口兜底。
-
-## LangChain4j 集成
+## LangChain4j
 
 | 组件 | 实现 |
 |------|------|
-| LLM | `OpenAiChatModel` / `OpenAiStreamingChatModel` |
-| 向量存储 | `LuceneEmbeddingStore`（LangChain4j EmbeddingStore SPI） |
-| RAG 检索 | `KbHybridContentRetriever`（HNSW + BM25 混合） |
-| Embedding | `ProviderEmbeddingModel` 桥接 hash / Ollama / ONNX |
+| LLM | OpenAI 兼容 API |
+| 向量 | `KbEmbeddingStore` → `VectorStore` SPI |
+| RAG | `KbHybridContentRetriever` → `SearchService` |
 
-## 部署模式
+## 部署
 
-| 模式 | 命令 | 说明 |
-|------|------|------|
-| 全栈 Docker | `scripts/install.sh` | 应用 + MySQL + Redis |
-| 单 Jar | `npm run build:jar` | 前后端同端口 8088（profile=bundle） |
-| Nginx 分离 | `npm run build` | 静态 dist + API 反代 |
+| 模式 | Profile |
+|------|---------|
+| 单机 | `standalone,bundle` |
+| 集群 | `prod,bundle` |
 
-## API
-
-接口契约与后端设计文档：
-
-- **[api.md](./api.md)** — 前后端接口契约（45 REST + 2 SSE），开发联调以此为准
-- **[backend-design.md](./backend-design.md)** — 后端设计指南（需求 → 数据结构 → 表结构 → 开发）
-
-启动后访问 `/api/swagger-ui.html`（辅助参考，与 api.md 冲突时以 api.md 为准）。
-
-## 本地开发
-
-```powershell
-npm install
-scripts/dev.ps1
-```
-
-默认 `CACHE_PROVIDER=caffeine`，无需 Redis 即可启动后端（LLM 仍需配置才有问答能力）。
+详见 [deployment/docker.md](./deployment/docker.md)。

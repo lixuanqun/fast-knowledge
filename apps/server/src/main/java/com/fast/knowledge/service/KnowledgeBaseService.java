@@ -27,6 +27,7 @@ public class KnowledgeBaseService {
     private final KnowledgeProperties properties;
     private final AuditLogService auditLogService;
     private final WorkspaceService workspaceService;
+    private final SearchCacheService searchCacheService;
 
     public KnowledgeBaseService(KnowledgeBaseMapper knowledgeBaseMapper,
                                 DocumentMapper documentMapper,
@@ -35,7 +36,8 @@ public class KnowledgeBaseService {
                                 VectorStore vectorStore,
                                 KnowledgeProperties properties,
                                 AuditLogService auditLogService,
-                                WorkspaceService workspaceService) {
+                                WorkspaceService workspaceService,
+                                SearchCacheService searchCacheService) {
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
@@ -44,6 +46,7 @@ public class KnowledgeBaseService {
         this.properties = properties;
         this.auditLogService = auditLogService;
         this.workspaceService = workspaceService;
+        this.searchCacheService = searchCacheService;
     }
 
     public List<KnowledgeBase> listMine() {
@@ -51,7 +54,7 @@ public class KnowledgeBaseService {
     }
 
     public KnowledgeBase getById(Long id) {
-        KnowledgeBase kb = knowledgeBaseMapper.findById(id);
+        KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
         if (kb == null) {
             throw new BusinessException("知识库不存在");
         }
@@ -96,14 +99,14 @@ public class KnowledgeBaseService {
         if (request.getSearchTopK() != null) {
             kb.setSearchTopK(request.getSearchTopK());
         }
-        knowledgeBaseMapper.update(kb);
+        knowledgeBaseMapper.updateById(kb);
         auditLogService.log("UPDATE_KB", "KB", id, kb.getName());
         return kb;
     }
 
     @Transactional
     public void delete(Long id) {
-        KnowledgeBase kb = knowledgeBaseMapper.findById(id);
+        KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
         if (kb == null) {
             throw new BusinessException("知识库不存在");
         }
@@ -117,6 +120,7 @@ public class KnowledgeBaseService {
             throw new BusinessException("删除索引失败: " + e.getMessage());
         }
         knowledgeBaseMapper.deleteById(id);
+        searchCacheService.invalidateForKb(id);
         auditLogService.log("DELETE_KB", "KB", id, kb.getName());
     }
 

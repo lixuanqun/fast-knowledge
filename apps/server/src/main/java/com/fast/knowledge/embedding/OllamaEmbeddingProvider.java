@@ -25,10 +25,13 @@ public class OllamaEmbeddingProvider implements EmbeddingProvider {
     private final KnowledgeProperties properties;
     private final String baseUrl;
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
-    public OllamaEmbeddingProvider(KnowledgeProperties properties, ExternalAccessGuard externalAccessGuard) {
+    public OllamaEmbeddingProvider(KnowledgeProperties properties,
+                                     ExternalAccessGuard externalAccessGuard,
+                                     ObjectMapper objectMapper) {
         this.properties = properties;
+        this.objectMapper = objectMapper;
         this.baseUrl = OllamaUrlHelper.toNativeBaseUrl(properties.getEmbedding().getOllamaUrl());
         externalAccessGuard.validateEmbeddingEndpoint(baseUrl);
         log.info("Ollama Embedding 服务地址: {}", baseUrl);

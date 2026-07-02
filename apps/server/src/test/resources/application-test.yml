@@ -1,15 +1,11 @@
 spring:
-  flyway:
-    enabled: false
   datasource:
-    url: jdbc:h2:mem:fast_knowledge;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:sqlite:file:memdb1?mode=memory&cache=shared&enable_load_extension=true
+    driver-class-name: org.sqlite.JDBC
   sql:
     init:
       mode: always
-      schema-locations: classpath:schema-h2.sql
+      schema-locations: classpath:db/schema-sqlite.sql
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
@@ -21,9 +17,7 @@ knowledge:
   embedding:
     provider: hash
   vector:
-    provider: lucene
-  lucene:
-    base-path: ./target/test-lucene
+    provider: sqlite-vec
   storage:
     provider: local
     upload-dir: ./target/test-uploads

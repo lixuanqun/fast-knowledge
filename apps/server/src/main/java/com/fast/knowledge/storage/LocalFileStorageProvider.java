@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -65,6 +66,11 @@ public class LocalFileStorageProvider implements StorageProvider {
             throw new BusinessException("非法文件路径");
         }
         return path;
+    }
+
+    @Override
+    public InputStream openInputStream(String filePath) throws IOException {
+        return Files.newInputStream(readablePath(filePath));
     }
 
     private Path kbDir(Long kbId) {

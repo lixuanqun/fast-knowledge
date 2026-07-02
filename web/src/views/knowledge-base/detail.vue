@@ -383,7 +383,7 @@ async function handleRetry(documentId: number) {
 }
 
 async function handleRebuild() {
-  await ElMessageBox.confirm('将从分块数据全量重建 Lucene 索引，确认？', '重建索引', { type: 'warning' })
+  await ElMessageBox.confirm('将从分块数据全量重建向量索引，确认？', '重建索引', { type: 'warning' })
   try {
     await rebuildMutation.mutateAsync()
     ElMessage.success('索引重建已在后台执行，列表将自动刷新')

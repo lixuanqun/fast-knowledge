@@ -4,6 +4,8 @@ server:
     context-path: /api
 
 spring:
+  profiles:
+    default: standalone
   threads:
     virtual:
       enabled: true
@@ -13,52 +15,19 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 55MB
-  datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/fast_knowledge?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai}
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:root}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      database: 0
-      timeout: 10000ms
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
 
-mybatis:
+mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     call-setters-on-nulls: true
-  mapper-locations: classpath:mapper/*.xml
-
-pagehelper:
-  helper-dialect: mysql
-  reasonable: true
+  global-config:
+    db-config:
+      id-type: auto
 
 knowledge:
   jwt:
     secret: ${JWT_SECRET:fast-knowledge-jwt-secret-change-in-production-32chars}
     expire-seconds: 86400
-  storage:
-    provider: ${STORAGE_PROVIDER:local}
-    upload-dir: ./data/uploads
-  lucene:
-    base-path: ./data/lucene
-  vector:
-    provider: ${VECTOR_PROVIDER:lucene}
-    pgvector:
-      datasource-url: ${PGVECTOR_URL:jdbc:postgresql://localhost:5432/fast_knowledge}
-      username: ${PGVECTOR_USER:postgres}
-      password: ${PGVECTOR_PASSWORD:postgres}
-    qdrant:
-      host: ${QDRANT_HOST:localhost}
-      port: ${QDRANT_PORT:6333}
-  cache:
-    provider: ${CACHE_PROVIDER:caffeine}
   embedding:
     provider: ${EMBEDDING_PROVIDER:onnx}
     onnx-model-path: ./data/models/bge-small-zh-v1.5.onnx
@@ -74,6 +43,7 @@ knowledge:
   search:
     default-top-k: 8
     hybrid-alpha: 0.6
+    cache-ttl-minutes: 5
   llm:
     provider: ${LLM_PROVIDER:ollama}
     base-url: ${LLM_BASE_URL:}
@@ -92,3 +62,12 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

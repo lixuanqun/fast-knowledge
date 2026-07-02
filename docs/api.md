@@ -120,7 +120,7 @@ interface UserVO {
 interface SystemConfig {
   instanceName: string
   setupComplete: boolean
-  vectorProvider: string       // 如 "lucene"
+  vectorProvider: string       // 如 "sqlite-vec" / "pgvector"
   embeddingProvider: string    // 如 "onnx" | "ollama" | "hash"
   llmProvider?: string
   llmProviderName?: string
@@ -924,7 +924,7 @@ interface AuditLog {
 
 #### POST /search
 
-Lucene 向量 + BM25 混合检索。
+向量 + 全文混合检索。
 
 | 项 | 值 |
 |----|-----|

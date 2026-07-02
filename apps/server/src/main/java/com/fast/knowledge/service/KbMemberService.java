@@ -46,7 +46,7 @@ public class KbMemberService {
         KbMember existing = kbMemberMapper.findByKbAndUser(kbId, user.getId());
         if (existing != null) {
             existing.setPermission(request.getPermission() != null ? request.getPermission() : "READ");
-            kbMemberMapper.update(existing);
+            kbMemberMapper.updateById(existing);
             auditLogService.log("UPDATE_MEMBER", "KB", kbId, "user=" + user.getUsername());
             return requireEnrichedMember(existing.getId());
         }
@@ -85,7 +85,7 @@ public class KbMemberService {
     }
 
     private KbMember requireEnrichedMember(Long memberId) {
-        KbMember enriched = kbMemberMapper.findById(memberId);
+        KbMember enriched = kbMemberMapper.findEnrichedById(memberId);
         if (enriched == null) {
             throw new BusinessException("成员记录不存在");
         }

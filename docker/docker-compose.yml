@@ -1,26 +1,23 @@
-# Fast Knowledge 本地/测试环境依赖（MySQL + Redis）
+# Fast Knowledge 集群本地开发依赖（PostgreSQL/pgvector + Redis）
+# 单机 standalone 开发无需 Docker，直接 mvn spring-boot:run 即可
 # 用法：cd docker && docker compose up -d
-#
-# 应用本身在宿主机运行：
-#   scripts/dev.ps1    # 开发
-#   mvn -pl apps/server -am package -Pbundle  # 单 Jar 打包
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: fast-knowledge-mysql
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: fast-knowledge-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: fast_knowledge
+      POSTGRES_DB: fast_knowledge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fast_knowledge"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,5 +37,5 @@ services:
       retries: 5
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:

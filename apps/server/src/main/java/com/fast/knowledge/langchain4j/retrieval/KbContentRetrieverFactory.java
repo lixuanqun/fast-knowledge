@@ -1,4 +1,4 @@
-package com.fast.knowledge.langchain4j.lucene;
+package com.fast.knowledge.langchain4j.retrieval;
 
 import com.fast.knowledge.service.SearchService;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;

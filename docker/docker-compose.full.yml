@@ -1,22 +1,22 @@
-# Fast Knowledge 全栈部署（应用 + MySQL + Redis + Ollama）
+# Fast Knowledge 集群全栈部署（应用 + PostgreSQL/pgvector + Redis + MinIO）
 # 用法：cd docker && docker compose -f docker-compose.full.yml up -d
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: fast-knowledge-mysql
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: fast-knowledge-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: fast_knowledge
+      POSTGRES_DB: fast_knowledge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fast_knowledge"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -35,6 +35,32 @@ services:
       timeout: 3s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: fast-knowledge-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/fast-knowledge || true;
+      exit 0;
+      "
+
   ollama:
     image: ollama/ollama:latest
     container_name: fast-knowledge-ollama
@@ -43,17 +69,8 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: fast-knowledge-qdrant
-    restart: unless-stopped
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
     profiles:
-      - qdrant
+      - ai
 
   app:
     build:
@@ -62,39 +79,47 @@ services:
     container_name: fast-knowledge-app
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      ollama:
-        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - "8088:8088"
     environment:
       SPRING_PROFILES_ACTIVE: prod,bundle
-      DB_URL: jdbc:mysql://mysql:3306/fast_knowledge?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-      DB_USER: root
-      DB_PASSWORD: root
+      DB_URL: jdbc:postgresql://postgres:5432/fast_knowledge
+      DB_USER: postgres
+      DB_PASSWORD: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CACHE_PROVIDER: redis
-      EMBEDDING_PROVIDER: ollama
-      OLLAMA_EMBED_URL: http://ollama:11434
-      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
-      LLM_API_KEY: ${LLM_API_KEY:-ollama}
-      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
-      EMBEDDING_MODEL: nomic-embed-text
-      JWT_SECRET: ${JWT_SECRET:-fast-knowledge-docker-jwt-secret-change-me-32c}
-      VECTOR_PROVIDER: ${VECTOR_PROVIDER:-lucene}
-      QDRANT_HOST: qdrant
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKET: fast-knowledge
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_PREFIX: knowledge/
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-onnx}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:?请设置 LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      JWT_SECRET: ${JWT_SECRET:?请设置 JWT_SECRET}
+      VECTOR_PROVIDER: pgvector
     volumes:
       - app_data:/data/knowledge
-      - ../data/models:/app/models:ro
+      - ../data/models:/data/knowledge/models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:
+  minio_data:
   ollama_data:
-  qdrant_data:
   app_data:

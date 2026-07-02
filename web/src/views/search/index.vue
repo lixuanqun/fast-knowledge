@@ -1,6 +1,6 @@
 <template>
   <div class="page-container">
-    <PageHeader title="智能检索" subtitle="基于 Lucene 混合检索（向量 + 关键词）" />
+    <PageHeader title="智能检索" subtitle="混合检索（向量 + 关键词）" />
 
     <el-card class="fk-card search-form-card" shadow="never">
       <el-form label-width="90px">

@@ -10,7 +10,7 @@ RUN mvn -pl apps/server -am package -DskipTests -Pbundle -q
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN apk add --no-cache tzdata && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+RUN apk add --no-cache tzdata curl && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 COPY --from=build /build/apps/server/target/fast-knowledge-server-*.jar app.jar
 ENV TZ=Asia/Shanghai
 ENV SPRING_PROFILES_ACTIVE=prod,bundle

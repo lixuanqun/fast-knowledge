@@ -27,11 +27,20 @@ public class AppConfig {
 
     @Bean(name = "indexExecutor")
     public Executor indexExecutor() {
+        return createExecutor("index-", 2, 4, 100);
+    }
+
+    @Bean(name = "chatExecutor")
+    public Executor chatExecutor() {
+        return createExecutor("chat-", 4, 8, 200);
+    }
+
+    private static Executor createExecutor(String threadPrefix, int core, int max, int queue) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("index-");
+        executor.setCorePoolSize(core);
+        executor.setMaxPoolSize(max);
+        executor.setQueueCapacity(queue);
+        executor.setThreadNamePrefix(threadPrefix);
         executor.initialize();
         return executor;
     }

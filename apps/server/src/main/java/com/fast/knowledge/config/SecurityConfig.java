@@ -38,6 +38,8 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/system/config",
                                 "/system/llm-providers",
+                                "/actuator/health",
+                                "/actuator/health/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",

@@ -6,6 +6,11 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-postgres.sql
   data:
     redis:
       host: ${REDIS_HOST}
@@ -16,12 +21,19 @@ spring:
 knowledge:
   jwt:
     secret: ${JWT_SECRET}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:}
   storage:
-    upload-dir: /data/knowledge/uploads
-  lucene:
-    base-path: /data/knowledge/lucene
+    provider: minio
+    minio:
+      endpoint: ${MINIO_ENDPOINT}
+      bucket: ${MINIO_BUCKET}
+      access-key: ${MINIO_ACCESS_KEY}
+      secret-key: ${MINIO_SECRET_KEY}
+      region: ${MINIO_REGION:}
+      prefix: ${MINIO_PREFIX:knowledge/}
   vector:
-    provider: ${VECTOR_PROVIDER:lucene}
+    provider: pgvector
   cache:
     provider: ${CACHE_PROVIDER:redis}
   embedding:
@@ -34,3 +46,18 @@ knowledge:
     api-key: ${LLM_API_KEY:}
     model: ${LLM_MODEL:}
     allow-external: ${LLM_ALLOW_EXTERNAL:true}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

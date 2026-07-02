@@ -24,7 +24,7 @@ public class WriterService {
 
     public WriterService(RagService ragService,
                          StreamingChatModel streamingChatModel,
-                         @Qualifier("indexExecutor") Executor chatExecutor) {
+                         @Qualifier("chatExecutor") Executor chatExecutor) {
         this.ragService = ragService;
         this.streamingChatModel = streamingChatModel;
         this.chatExecutor = chatExecutor;

@@ -20,7 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,7 @@ public class DocumentService {
     private final VectorStore vectorStore;
     private final StorageProvider storageProvider;
     private final AuditLogService auditLogService;
+    private final SearchCacheService searchCacheService;
     private final Tika tika = new Tika();
 
     public DocumentService(DocumentMapper documentMapper,
@@ -46,7 +48,8 @@ public class DocumentService {
                            DocumentIngestService documentIngestService,
                            VectorStore vectorStore,
                            StorageProvider storageProvider,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService,
+                           SearchCacheService searchCacheService) {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
@@ -55,6 +58,7 @@ public class DocumentService {
         this.vectorStore = vectorStore;
         this.storageProvider = storageProvider;
         this.auditLogService = auditLogService;
+        this.searchCacheService = searchCacheService;
     }
 
     public List<KbDocument> listByKb(Long kbId) {
@@ -79,12 +83,14 @@ public class DocumentService {
 
         String fileType = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
         String content;
-        if ("txt".equals(fileType) || "md".equals(fileType)) {
-            content = Files.readString(storageProvider.readablePath(doc.getFilePath()));
-            vo.setPreviewMode("raw");
-        } else {
-            content = tika.parseToString(storageProvider.readablePath(doc.getFilePath()).toFile());
-            vo.setPreviewMode("extracted");
+        try (InputStream in = storageProvider.openInputStream(doc.getFilePath())) {
+            if ("txt".equals(fileType) || "md".equals(fileType)) {
+                content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                vo.setPreviewMode("raw");
+            } else {
+                content = tika.parseToString(in);
+                vo.setPreviewMode("extracted");
+            }
         }
 
         vo.setContentLength(content.length());
@@ -107,7 +113,7 @@ public class DocumentService {
     }
 
     private KbDocument requireDocument(Long kbId, Long docId) {
-        KbDocument doc = documentMapper.findById(docId);
+        KbDocument doc = documentMapper.selectById(docId);
         if (doc == null || !doc.getKbId().equals(kbId)) {
             throw new BusinessException("文档不存在");
         }
@@ -205,6 +211,7 @@ public class DocumentService {
         } catch (IOException ignored) {
         }
         documentMapper.deleteById(docId);
+        searchCacheService.invalidateForKb(kbId);
         auditLogService.log("DELETE_DOC", "DOCUMENT", docId, doc.getTitle());
     }
 
@@ -213,7 +220,7 @@ public class DocumentService {
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
         doc.setIndexStatus("PENDING");
-        documentMapper.update(doc);
+        documentMapper.updateById(doc);
         IndexTask task = new IndexTask();
         task.setDocumentId(docId);
         task.setStatus("PENDING");

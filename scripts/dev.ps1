@@ -16,13 +16,8 @@ $serverCmd = @"
 Set-Location '$Root'
 `$env:JAVA_HOME='$JdkHome'
 `$env:Path="`$env:JAVA_HOME\bin;`$env:Path"
-if (Test-Path (Join-Path '$Root' 'apps\server\src\main\resources\application-local.yml')) {
-    Write-Host '[server] profile=local (MySQL, 见 application-local.yml)' -ForegroundColor Green
-    mvn -pl apps/server spring-boot:run '-Dspring-boot.run.profiles=local'
-} else {
-    Write-Host '[server] 默认 MySQL localhost/fast_knowledge；无库可用 -Dspring-boot.run.profiles=minimal' -ForegroundColor Green
-    mvn -pl apps/server spring-boot:run
-}
+Write-Host '[server] profile=standalone,bundle（SQLite + sqlite-vec，零外部依赖）' -ForegroundColor Green
+mvn -pl apps/server spring-boot:run '-Dspring-boot.run.profiles=standalone,bundle'
 "@
 
 $webCmd = @"
@@ -43,4 +38,6 @@ Write-Host "已在新窗口启动：" -ForegroundColor Green
 Write-Host "  后端 API   http://localhost:8088/api"
 Write-Host "  前端页面   http://localhost:5174"
 Write-Host "  Swagger    http://localhost:8088/api/swagger-ui.html"
+Write-Host ""
+Write-Host "集群开发：先 cd docker; docker compose up -d，再以 prod profile 启动后端" -ForegroundColor Yellow
 Write-Host ""

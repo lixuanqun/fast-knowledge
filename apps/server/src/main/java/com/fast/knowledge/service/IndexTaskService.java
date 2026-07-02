@@ -46,7 +46,7 @@ public class IndexTaskService {
     }
 
     public void retry(Long documentId) {
-        KbDocument doc = documentMapper.findById(documentId);
+        KbDocument doc = documentMapper.selectById(documentId);
         if (doc == null) {
             throw new BusinessException("文档不存在");
         }

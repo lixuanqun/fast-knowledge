@@ -1,6 +1,7 @@
 package com.fast.knowledge.storage;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 
 /**
@@ -15,4 +16,6 @@ public interface StorageProvider {
     void delete(String filePath) throws IOException;
 
     Path readablePath(String filePath);
+
+    InputStream openInputStream(String filePath) throws IOException;
 }

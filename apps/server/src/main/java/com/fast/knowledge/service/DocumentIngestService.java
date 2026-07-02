@@ -1,10 +1,10 @@
 package com.fast.knowledge.service;
 
 import com.fast.knowledge.common.BusinessException;
-import com.fast.knowledge.config.KnowledgeProperties;
+import com.fast.knowledge.storage.StorageProvider;
 import com.fast.knowledge.embedding.EmbeddingProvider;
-import com.fast.knowledge.langchain4j.lucene.LuceneEmbeddingStore;
-import com.fast.knowledge.langchain4j.lucene.LuceneEmbeddingStoreFactory;
+import com.fast.knowledge.langchain4j.KbEmbeddingStore;
+import com.fast.knowledge.langchain4j.KbEmbeddingStoreFactory;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.mapper.IndexTaskMapper;
@@ -23,8 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.apache.tika.Tika;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,9 +40,11 @@ public class DocumentIngestService {
     private final IndexTaskMapper indexTaskMapper;
     private final ChunkService chunkService;
     private final EmbeddingProvider embeddingProvider;
-    private final LuceneEmbeddingStoreFactory luceneEmbeddingStoreFactory;
+    private final KbEmbeddingStoreFactory kbEmbeddingStoreFactory;
     private final VectorStore vectorStore;
+    private final StorageProvider storageProvider;
     private final com.fast.knowledge.cache.CacheProvider cacheProvider;
+    private final SearchCacheService searchCacheService;
     private final Tika tika = new Tika();
 
     public DocumentIngestService(DocumentMapper documentMapper,
@@ -49,17 +52,21 @@ public class DocumentIngestService {
                                  IndexTaskMapper indexTaskMapper,
                                  ChunkService chunkService,
                                  EmbeddingProvider embeddingProvider,
-                                 LuceneEmbeddingStoreFactory luceneEmbeddingStoreFactory,
+                                 KbEmbeddingStoreFactory kbEmbeddingStoreFactory,
                                  VectorStore vectorStore,
-                                 com.fast.knowledge.cache.CacheProvider cacheProvider) {
+                                 StorageProvider storageProvider,
+                                 com.fast.knowledge.cache.CacheProvider cacheProvider,
+                                 SearchCacheService searchCacheService) {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
         this.chunkService = chunkService;
         this.embeddingProvider = embeddingProvider;
-        this.luceneEmbeddingStoreFactory = luceneEmbeddingStoreFactory;
+        this.kbEmbeddingStoreFactory = kbEmbeddingStoreFactory;
         this.vectorStore = vectorStore;
+        this.storageProvider = storageProvider;
         this.cacheProvider = cacheProvider;
+        this.searchCacheService = searchCacheService;
     }
 
     @Async("indexExecutor")
@@ -69,11 +76,11 @@ public class DocumentIngestService {
         boolean locked = cacheProvider.setIfAbsent(lockKey, lockOwner, java.time.Duration.ofMinutes(10));
         if (!locked) {
             IndexTask task = indexTaskMapper.findByDocumentId(documentId);
-            if (task != null && indexTaskMapper.tryAcquireLock(documentId, lockOwner) == 0) {
+            if (task != null && tryAcquireLock(documentId, lockOwner) == 0) {
                 return;
             }
         } else if (indexTaskMapper.findByDocumentId(documentId) != null) {
-            indexTaskMapper.tryAcquireLock(documentId, lockOwner);
+            tryAcquireLock(documentId, lockOwner);
         }
         try {
             indexDocument(documentId);
@@ -81,6 +88,11 @@ public class DocumentIngestService {
             cacheProvider.delete(lockKey);
             indexTaskMapper.releaseLock(documentId, lockOwner);
         }
+    }
+
+    private int tryAcquireLock(Long documentId, String lockOwner) {
+        LocalDateTime now = LocalDateTime.now();
+        return indexTaskMapper.tryAcquireLock(documentId, lockOwner, now, now.minusMinutes(10));
     }
 
     @Scheduled(fixedDelay = 30000)
@@ -92,24 +104,24 @@ public class DocumentIngestService {
         List<IndexTask> retryable = indexTaskMapper.findRetryable(3, 3);
         for (IndexTask task : retryable) {
             task.setStatus("PENDING");
-            indexTaskMapper.update(task);
+            indexTaskMapper.updateById(task);
             scheduleIndex(task.getDocumentId());
         }
     }
 
     @Transactional
     public void indexDocument(Long documentId) {
-        KbDocument doc = documentMapper.findById(documentId);
+        KbDocument doc = documentMapper.selectById(documentId);
         if (doc == null) {
             return;
         }
         IndexTask task = indexTaskMapper.findByDocumentId(documentId);
         if (task != null) {
             task.setStatus("INDEXING");
-            indexTaskMapper.update(task);
+            indexTaskMapper.updateById(task);
         }
         doc.setIndexStatus("INDEXING");
-        documentMapper.update(doc);
+        documentMapper.updateById(doc);
         try {
             String text = extractText(doc);
             List<String> parts = chunkService.split(text);
@@ -131,15 +143,15 @@ public class DocumentIngestService {
                 List<DocumentChunk> saved = documentChunkMapper.findByDocumentId(documentId);
                 List<String> texts = saved.stream().map(DocumentChunk::getContent).toList();
                 List<float[]> vectors = embeddingProvider.embedBatch(texts);
-                LuceneEmbeddingStore embeddingStore = luceneEmbeddingStoreFactory.getStore(doc.getKbId());
+                KbEmbeddingStore embeddingStore = kbEmbeddingStoreFactory.getStore(doc.getKbId());
                 List<Embedding> embeddings = new ArrayList<>(saved.size());
                 List<TextSegment> segments = new ArrayList<>(saved.size());
                 for (int i = 0; i < saved.size(); i++) {
                     DocumentChunk chunk = saved.get(i);
                     Metadata metadata = Metadata.from(Map.of(
-                            LuceneEmbeddingStore.META_DOC_ID, documentId,
-                            LuceneEmbeddingStore.META_CHUNK_ID, chunk.getId(),
-                            LuceneEmbeddingStore.META_TITLE, doc.getTitle()
+                            KbEmbeddingStore.META_DOC_ID, documentId,
+                            KbEmbeddingStore.META_CHUNK_ID, chunk.getId(),
+                            KbEmbeddingStore.META_TITLE, doc.getTitle()
                     ));
                     segments.add(TextSegment.from(chunk.getContent(), metadata));
                     embeddings.add(Embedding.from(vectors.get(i)));
@@ -151,9 +163,10 @@ public class DocumentIngestService {
             }
             doc.setIndexStatus("INDEXED");
             doc.setIndexError(null);
+            searchCacheService.invalidateForKb(doc.getKbId());
             if (task != null) {
                 task.setStatus("DONE");
-                indexTaskMapper.update(task);
+                indexTaskMapper.updateById(task);
             }
         } catch (Exception e) {
             log.error("索引文档失败 docId={}", documentId, e);
@@ -163,19 +176,21 @@ public class DocumentIngestService {
                 task.setStatus("FAILED");
                 task.setErrorMsg(e.getMessage());
                 task.setRetryCount(task.getRetryCount() + 1);
-                indexTaskMapper.update(task);
+                indexTaskMapper.updateById(task);
             }
             throw new BusinessException("索引失败: " + e.getMessage());
         } finally {
-            documentMapper.update(doc);
+            documentMapper.updateById(doc);
         }
     }
 
     private String extractText(KbDocument doc) throws Exception {
-        String path = doc.getFilePath();
-        if ("txt".equalsIgnoreCase(doc.getFileType()) || "md".equalsIgnoreCase(doc.getFileType())) {
-            return Files.readString(Paths.get(path));
+        String fileType = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
+        try (InputStream in = storageProvider.openInputStream(doc.getFilePath())) {
+            if ("txt".equals(fileType) || "md".equals(fileType)) {
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+            return tika.parseToString(in);
         }
-        return tika.parseToString(Paths.get(path).toFile());
     }
 }

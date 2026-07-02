@@ -16,7 +16,7 @@
         ↓
 ② 设计数据结构（Entity / DTO / VO）
         ↓
-③ 设计表结构（Flyway 迁移脚本）
+③ 设计表结构（`db/schema-sqlite.sql` / `db/schema-postgres.sql`）
         ↓
 ④ 分层实现（Controller → Service → Mapper）
         ↓
@@ -30,7 +30,7 @@
 | 接口契约优先 | 所有 Controller 路径、请求/响应字段以 [api.md](./api.md) 为准 |
 | 统一响应 | 非 SSE 接口返回 `ApiResponse<T>`，成功 `code=0` |
 | 禁止 Mock | 后端提供真实持久化与业务逻辑，前端直接调用 |
-| Schema 版本化 | 表结构变更通过 Flyway `V{n}__*.sql` 增量迁移，禁止手改生产库 |
+| Schema 版本化 | 表结构变更同步更新 `schema-sqlite.sql` 与 `schema-postgres.sql`，禁止手改生产库 |
 | 权限分层 | 系统角色（ADMIN）在 Controller 注解；知识库 ACL 在 Service 层校验 |
 
 ### 1.2 代码分层
@@ -39,19 +39,24 @@
 apps/server/src/main/java/com/fast/knowledge/
 ├── controller/     # 接口层：路径、参数校验、调用 Service、返回 ApiResponse
 ├── service/        # 业务层：权限、事务、领域逻辑、审计
-├── mapper/         # 数据访问接口（MyBatis）
+├── mapper/         # 数据访问（MyBatis Plus BaseMapper + 注解 SQL）
 ├── model/
-│   ├── entity/     # 与数据库表一一对应
+│   ├── entity/     # @TableName / @TableId 实体，与表一一对应
 │   ├── dto/        # 请求入参（Request Body / 查询参数封装）
 │   └── vo/         # 响应出参（与 api.md 中 TypeScript 类型对齐）
 ├── security/       # JWT 认证、UserContext
 ├── common/         # ApiResponse、BusinessException、全局异常处理
-└── config/         # Spring 配置、KnowledgeProperties
+└── config/         # Spring 配置、MybatisPlusConfig、MetaObjectHandler
 
 apps/server/src/main/resources/
-├── db/migration/   # Flyway 表结构脚本
-└── mapper/         # MyBatis XML
+└── db/             # schema-sqlite.sql / schema-postgres.sql
 ```
+
+**MyBatis Plus 约定**：
+- Entity 使用 `@TableName`、`@TableId`；非表字段用 `@TableField(exist = false)`
+- Mapper 继承 `BaseMapper<T>`；简单条件用 `Wrappers.lambdaQuery()`，复杂 JOIN/锁用 `@Select`/`@Update`
+- 时间字段由 `MybatisMetaObjectHandler` 自动填充 `createdAt` / `updatedAt`
+- 分页使用内置 `PaginationInnerInterceptor`（按需 `Page<T>`）
 
 ---
 
@@ -128,7 +133,7 @@ apps/server/src/main/resources/
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
 | 文档列表/详情 | GET documents | 按 kbId 查询 |
-| 上传 | POST upload | multipart，存本地/OSS，创建 `PENDING` 索引任务 |
+| 上传 | POST upload | multipart，存本地/MinIO，创建 `PENDING` 索引任务 |
 | 预览/分块 | GET preview, GET chunks | 解析文件内容 / 返回 chunk 列表 |
 | 删除/重建 | DELETE, POST reindex | 删文件 + DB + 向量；重建触发 IndexTask |
 | 索引任务 | /index-tasks/* | 异步消费：PENDING → INDEXING → INDEXED/FAILED |
@@ -145,7 +150,7 @@ PENDING → INDEXING → INDEXED
 
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
-| 混合检索 | POST /search | Lucene HNSW + BM25，alpha 加权 |
+| 混合检索 | POST /search | 向量 + 全文混合，alpha 加权 |
 | RAG 问答 | POST /qa | 检索 → LLM 生成，返回 answer + sources |
 | 流式对话 | POST /chat/messages/stream | SSE 多轮，自动创建会话，持久化消息 |
 | 智能写作 | POST /writer/generate | SSE 生成 Markdown |
@@ -234,7 +239,10 @@ PENDING → INDEXING → INDEXED
 
 ## 4. 表结构设计
 
-Schema 由 Flyway 管理，基线脚本：`apps/server/src/main/resources/db/migration/V1__baseline.sql`。
+Schema 基线脚本：
+
+- 单机：`apps/server/src/main/resources/db/schema-sqlite.sql`
+- 集群：`apps/server/src/main/resources/db/schema-postgres.sql`
 
 ### 4.1 ER 关系图
 
@@ -246,7 +254,7 @@ kb_user ─────────┬──────── kb_workspace (own
                  │              ├── kb_kb_member (user_id)
                  │              ├── kb_document (kb_id)
                  │              │       └── kb_document_chunk (document_id)
-                 │              └── (向量索引，非 MySQL 表)
+                 │              └── kb_vector_chunk（与业务库同引擎）
                  │
                  ├──────── kb_chat_session (user_id, kb_id)
                  │              └── kb_chat_message (session_id)
@@ -398,7 +406,7 @@ kb_system_config (KV 存储，实例配置)
 
 1. 在本文档 §4 补充字段说明与 API 映射
 2. 在 [api.md](./api.md) 补充/更新 TypeScript 类型
-3. 新增 Flyway 脚本 `V{n}__description.sql`（**禁止修改已发布的 V1**）
+3. 更新 `schema-sqlite.sql` / `schema-postgres.sql` 或新增增量 SQL 脚本
 4. 同步更新 `model.entity` 与 Mapper XML
 5. 运行集成测试验证迁移
 
@@ -466,7 +474,7 @@ kb_system_config (KV 存储，实例配置)
 ### 阶段三：表结构（③）
 
 - [ ] 评估是否需要新表或改表
-- [ ] 编写 `V{n}__*.sql` Flyway 脚本
+- [ ] 更新 `schema-sqlite.sql` / `schema-postgres.sql`
 - [ ] 更新本文档 §4 表结构说明
 - [ ] 本地执行迁移验证
 

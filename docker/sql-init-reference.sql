@@ -1,4 +1,3 @@
 -- Fast Knowledge 数据库初始化（参考）
--- 推荐使用 Flyway 自动迁移：启动应用即可
--- 手动建库：CREATE DATABASE fast_knowledge DEFAULT CHARSET utf8mb4;
--- 等价 schema 见：backend/src/main/resources/db/migration/V1__baseline.sql
+-- 单机：应用自动执行 classpath:db/schema-sqlite.sql
+-- 集群：应用自动执行 classpath:db/schema-postgres.sql（需 CREATE EXTENSION vector）

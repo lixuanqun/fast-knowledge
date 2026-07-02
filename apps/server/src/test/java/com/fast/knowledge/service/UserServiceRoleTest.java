@@ -58,8 +58,8 @@ class UserServiceRoleTest {
             KbUser u = inv.getArgument(0);
             u.setId(2L);
             return null;
-        }).when(userMapper).insert(any());
-        when(userMapper.findById(2L)).thenAnswer(inv -> {
+        }).when(userMapper).insert(any(KbUser.class));
+        when(userMapper.selectById(2L)).thenAnswer(inv -> {
             KbUser u = new KbUser();
             u.setId(2L);
             u.setUsername("bob");
@@ -88,8 +88,8 @@ class UserServiceRoleTest {
             KbUser u = inv.getArgument(0);
             u.setId(3L);
             return null;
-        }).when(userMapper).insert(any());
-        when(userMapper.findById(3L)).thenAnswer(inv -> {
+        }).when(userMapper).insert(any(KbUser.class));
+        when(userMapper.selectById(3L)).thenAnswer(inv -> {
             KbUser u = new KbUser();
             u.setId(3L);
             u.setUsername("carol");
@@ -115,7 +115,7 @@ class UserServiceRoleTest {
         existing.setId(5L);
         existing.setUsername("dave");
         existing.setRole("USER");
-        when(userMapper.findById(5L)).thenReturn(existing, existing);
+        when(userMapper.selectById(5L)).thenReturn(existing, existing);
 
         UpdateUserRequest req = new UpdateUserRequest();
         req.setRole("ADMIN");
@@ -123,7 +123,7 @@ class UserServiceRoleTest {
         userService.update(5L, req);
 
         ArgumentCaptor<KbUser> captor = ArgumentCaptor.forClass(KbUser.class);
-        verify(userMapper).update(captor.capture());
+        verify(userMapper).updateById(captor.capture());
         assertEquals("ADMIN", captor.getValue().getRole());
     }
 }

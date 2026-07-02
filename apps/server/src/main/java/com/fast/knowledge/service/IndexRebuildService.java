@@ -1,9 +1,9 @@
 package com.fast.knowledge.service;
 
 import com.fast.knowledge.embedding.EmbeddingProvider;
-import com.fast.knowledge.langchain4j.lucene.KbContentRetrieverFactory;
-import com.fast.knowledge.langchain4j.lucene.LuceneEmbeddingStore;
-import com.fast.knowledge.langchain4j.lucene.LuceneEmbeddingStoreFactory;
+import com.fast.knowledge.langchain4j.retrieval.KbContentRetrieverFactory;
+import com.fast.knowledge.langchain4j.KbEmbeddingStore;
+import com.fast.knowledge.langchain4j.KbEmbeddingStoreFactory;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.model.entity.DocumentChunk;
@@ -29,28 +29,31 @@ public class IndexRebuildService {
     private final DocumentChunkMapper documentChunkMapper;
     private final DocumentMapper documentMapper;
     private final EmbeddingProvider embeddingProvider;
-    private final LuceneEmbeddingStoreFactory luceneEmbeddingStoreFactory;
+    private final KbEmbeddingStoreFactory kbEmbeddingStoreFactory;
     private final KbContentRetrieverFactory kbContentRetrieverFactory;
     private final VectorStore vectorStore;
     private final KnowledgeBaseService knowledgeBaseService;
     private final AuditLogService auditLogService;
+    private final SearchCacheService searchCacheService;
 
     public IndexRebuildService(DocumentChunkMapper documentChunkMapper,
                                DocumentMapper documentMapper,
                                EmbeddingProvider embeddingProvider,
-                               LuceneEmbeddingStoreFactory luceneEmbeddingStoreFactory,
+                               KbEmbeddingStoreFactory kbEmbeddingStoreFactory,
                                KbContentRetrieverFactory kbContentRetrieverFactory,
                                VectorStore vectorStore,
                                KnowledgeBaseService knowledgeBaseService,
-                               AuditLogService auditLogService) {
+                               AuditLogService auditLogService,
+                               SearchCacheService searchCacheService) {
         this.documentChunkMapper = documentChunkMapper;
         this.documentMapper = documentMapper;
         this.embeddingProvider = embeddingProvider;
-        this.luceneEmbeddingStoreFactory = luceneEmbeddingStoreFactory;
+        this.kbEmbeddingStoreFactory = kbEmbeddingStoreFactory;
         this.kbContentRetrieverFactory = kbContentRetrieverFactory;
         this.vectorStore = vectorStore;
         this.knowledgeBaseService = knowledgeBaseService;
         this.auditLogService = auditLogService;
+        this.searchCacheService = searchCacheService;
     }
 
     public void requestRebuild(Long kbId) {
@@ -73,12 +76,13 @@ public class IndexRebuildService {
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
         vectorStore.deleteKb(kbId);
-        luceneEmbeddingStoreFactory.evict(kbId);
+        kbEmbeddingStoreFactory.evict(kbId);
         kbContentRetrieverFactory.evict(kbId);
 
         List<DocumentChunk> chunks = documentChunkMapper.findByKbId(kbId);
         if (chunks.isEmpty()) {
             auditLogService.log("REBUILD_INDEX", "KB", kbId, "chunks=0");
+            searchCacheService.invalidateForKb(kbId);
             return 0;
         }
 
@@ -89,19 +93,19 @@ public class IndexRebuildService {
         }
         List<float[]> vectors = embeddingProvider.embedBatch(texts);
 
-        LuceneEmbeddingStore embeddingStore = luceneEmbeddingStoreFactory.getStore(kbId);
+        KbEmbeddingStore embeddingStore = kbEmbeddingStoreFactory.getStore(kbId);
         List<Embedding> embeddings = new ArrayList<>(chunks.size());
         List<TextSegment> segments = new ArrayList<>(chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             DocumentChunk chunk = chunks.get(i);
             String title = docTitles.computeIfAbsent(chunk.getDocumentId(), docId -> {
-                KbDocument doc = documentMapper.findById(docId);
+                KbDocument doc = documentMapper.selectById(docId);
                 return doc != null ? doc.getTitle() : "文档";
             });
             Metadata metadata = Metadata.from(Map.of(
-                    LuceneEmbeddingStore.META_DOC_ID, chunk.getDocumentId(),
-                    LuceneEmbeddingStore.META_CHUNK_ID, chunk.getId(),
-                    LuceneEmbeddingStore.META_TITLE, title
+                    KbEmbeddingStore.META_DOC_ID, chunk.getDocumentId(),
+                    KbEmbeddingStore.META_CHUNK_ID, chunk.getId(),
+                    KbEmbeddingStore.META_TITLE, title
             ));
             segments.add(TextSegment.from(chunk.getContent(), metadata));
             embeddings.add(Embedding.from(vectors.get(i)));
@@ -109,6 +113,7 @@ public class IndexRebuildService {
         embeddingStore.addAll(embeddings, segments);
 
         auditLogService.log("REBUILD_INDEX", "KB", kbId, "chunks=" + chunks.size());
+        searchCacheService.invalidateForKb(kbId);
         log.info("知识库 {} 索引重建完成，共 {} 个分块", kbId, chunks.size());
         return chunks.size();
     }

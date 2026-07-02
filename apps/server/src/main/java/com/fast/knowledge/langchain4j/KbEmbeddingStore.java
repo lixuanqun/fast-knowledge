@@ -1,6 +1,7 @@
-package com.fast.knowledge.langchain4j.lucene;
+package com.fast.knowledge.langchain4j;
 
 import com.fast.knowledge.config.KnowledgeProperties;
+import com.fast.knowledge.vector.SearchHit;
 import com.fast.knowledge.vector.VectorChunk;
 import com.fast.knowledge.vector.VectorStore;
 import dev.langchain4j.data.document.Metadata;
@@ -12,15 +13,13 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 
-import com.fast.knowledge.vector.SearchHit;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class LuceneEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class KbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public static final String META_KB_ID = "kbId";
     public static final String META_DOC_ID = "docId";
@@ -31,7 +30,7 @@ public class LuceneEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final VectorStore vectorStore;
     private final KnowledgeProperties properties;
 
-    public LuceneEmbeddingStore(Long kbId, VectorStore vectorStore, KnowledgeProperties properties) {
+    public KbEmbeddingStore(Long kbId, VectorStore vectorStore, KnowledgeProperties properties) {
         this.kbId = kbId;
         this.vectorStore = vectorStore;
         this.properties = properties;

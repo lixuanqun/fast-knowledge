@@ -12,4 +12,7 @@ public interface CacheProvider {
     boolean setIfAbsent(String key, String value, Duration ttl);
 
     void delete(String key);
+
+    /** 删除所有以 prefix 开头的缓存键（用于按知识库失效检索缓存等场景）。 */
+    void deleteByPrefix(String prefix);
 }
