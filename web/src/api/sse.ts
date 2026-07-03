@@ -1,9 +1,11 @@
 import { getToken } from '@/utils/auth'
 import { API_BASE } from '@/utils/api-base'
 
+import type { SearchHit } from './search'
+
 export interface StreamDoneMeta {
   sessionId?: number
-  sources?: Array<{ documentTitle: string; content: string; score?: number }>
+  sources?: SearchHit[]
 }
 
 export async function consumeSse(

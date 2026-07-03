@@ -17,6 +17,14 @@ export function logout() {
   return request.post('/auth/logout')
 }
 
+export function ldapLogin(username: string, password: string) {
+  return request.post<any, { data: LoginResult }>('/auth/ldap/login', { username, password })
+}
+
+export function getOidcAuthorizeUrl() {
+  return request.get<any, { data: { authorizationUrl: string } }>('/auth/oidc/authorize')
+}
+
 export function completeSetup(instanceName: string, newPassword: string) {
   return request.post('/auth/setup', { instanceName, newPassword })
 }

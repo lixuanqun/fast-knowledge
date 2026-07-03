@@ -18,6 +18,6 @@ Write-Host ""
 Write-Host "构建完成：" -ForegroundColor Green
 Write-Host "  单 Jar（含前端）  apps\server\target\fast-knowledge-server-*.jar"
 Write-Host ""
-Write-Host "运行：java -jar apps\server\target\fast-knowledge-server-*.jar --spring.profiles.active=prod,bundle"
+Write-Host "运行：java -jar apps\server\target\fast-knowledge-server-*.jar --spring.profiles.active=bundle"
 Write-Host "部署方式见 docker/ 目录"
 Write-Host ""

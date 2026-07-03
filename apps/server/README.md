@@ -1,75 +1,67 @@
 ﻿# Fast Knowledge — Server 模块
 
-Java 21 + Spring Boot 3.5 知识库 API 服务。
+Java 21 + Spring Boot 3.5 知识库 API 服务，RAG 基于 **LangChain4j 1.17**。
 
-> 仓库结构、启动与部署见根目录 [README.md](../../README.md)。
+> **产品定位**：中小企业私有化知识库后端 — 单实例、LLM 中立、Privacy by Default。  
+> [产品说明](../../docs/产品说明.md) · [功能清单](../../docs/产品说明.md#二功能特性清单) · [根 README](../../README.md)
 
-## 功能
+## 核心能力
 
-- JWT 认证 + 知识库 ACL
-- 文档上传与异步索引（Tika 解析）
-- 混合检索（向量 + 全文）
-- RAG 问答、多轮对话（SSE）、智能写文档
+- JWT 认证 + 知识库 ACL + 用户管理
+- 文档上传与异步索引（Tika）
+- PgVector **HYBRID** 混合检索 + 可选 **Reranker**（ONNX / Cohere / Jina）
+- LangChain4j RAG：问答 / 多轮流式对话 / 智能写文档
+- **LLM 中立**：`LlmSettingsService` + `LlmModelRegistry` 管理界面配置热刷新
 
-## 部署模式
+## 运行时依赖
 
-| 模式 | Profile | 数据库 | 向量 | 缓存 | 文件 |
-|------|---------|--------|------|------|------|
-| 单机 | `standalone,bundle` | SQLite | sqlite-vec | Caffeine | 本地 |
-| 集群 | `prod,bundle` | PostgreSQL | pgvector | Redis | MinIO |
+| 组件 | 技术 |
+|------|------|
+| 数据库 + 向量 | PostgreSQL 16 + pgvector（`kb_embeddings`） |
+| 缓存 | Redis |
+| 文件存储 | MinIO |
+| LLM | OpenAI 兼容 API / Ollama（UI 或环境变量配置） |
+| Embedding | ONNX 本地（默认）/ Ollama / hash |
 
-## 环境要求
-
-- **JDK 21**
-- 单机：无外部中间件
-- 集群：PostgreSQL（pgvector）、Redis、MinIO
-- 外部 LLM API（`LLM_BASE_URL` + `LLM_API_KEY`）
-
-## 快速启动（单机）
+## 快速启动
 
 ```powershell
-mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=standalone,bundle
+cd docker; docker compose up -d
+mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=bundle
 ```
 
-- API：http://localhost:8088/api
-- Swagger：http://localhost:8088/api/swagger-ui.html
+- API：http://localhost:8088/api · Swagger：http://localhost:8088/api/swagger-ui.html
 - 默认账号：**admin / admin123**
+- 或使用 `scripts/dev.ps1` / `scripts/install.sh`
 
-数据目录：`./data/`（`fast-knowledge.db`、`uploads/`、`models/`）
+## LangChain4j 模块
 
-## 集群本地开发
+| 包 / 类 | 说明 |
+|---------|------|
+| `llm/LlmConfigResolver` | LLM 预设解析（DB > env > 默认） |
+| `llm/LlmModelRegistry` | ChatModel 热刷新 |
+| `langchain4j/store/` | PgVector HYBRID |
+| `langchain4j/ingest/` | 分块与向量化 |
+| `langchain4j/rerank/` | 可选检索重排序 |
+| `service/RagService` | 单轮 RAG 问答 |
+| `langchain4j/assistant/KbChatAssistant` | 流式多轮对话 |
+| `langchain4j/memory/DbChatMemoryStore` | 会话记忆 |
+
+## 配置 Profile
+
+| Profile | 用途 |
+|---------|------|
+| `bundle` | 单 Jar 托管前端 |
+| `minimal` | hash 伪向量，免 ONNX |
+
+## 测试
 
 ```bash
-cd docker && docker compose up -d
-cp src/main/resources/application-local.example.yml src/main/resources/application-local.yml
-mvn spring-boot:run -Dspring-boot.run.profiles=prod,local,bundle
+mvn -pl apps/server test -Dtest="!*Integration*"
 ```
 
-## 技术栈
+## 相关文档
 
-| 组件 | 版本 |
-|------|------|
-| Spring Boot | 3.5.11 |
-| LangChain4j | 1.17.1 |
-| SQLite / PostgreSQL | sqlite-jdbc / postgresql |
-| SpringDoc | 2.8.6 |
-
-## VectorStore SPI
-
-- `sqlite-vec` — 单机（`SqliteVecVectorStore`）
-- `pgvector` — 集群（`PgVectorStore`）
-
-## Embedding
-
-| Provider | 说明 |
-|----------|------|
-| `onnx` | 生产推荐，BGE 中文模型 |
-| `hash` | 开发/演示 |
-| `ollama` | 可选外部服务 |
-
-## Schema
-
-- `src/main/resources/db/schema-sqlite.sql`
-- `src/main/resources/db/schema-postgres.sql`
-
-应用启动时 `spring.sql.init` 自动建表。
+- [docs/fast_knowledge.md](../../docs/fast_knowledge.md)
+- [docs/api.md](../../docs/api.md)
+- [docs/deployment/llm-providers.md](../../docs/deployment/llm-providers.md)

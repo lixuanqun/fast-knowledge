@@ -1,23 +1,20 @@
 package com.fast.knowledge.service;
 
-import com.fast.knowledge.embedding.EmbeddingProvider;
+import com.fast.knowledge.langchain4j.assistant.KbAssistantFactory;
+import com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory;
+import com.fast.knowledge.langchain4j.ingest.KbEmbeddingIngestor;
 import com.fast.knowledge.langchain4j.retrieval.KbContentRetrieverFactory;
-import com.fast.knowledge.langchain4j.KbEmbeddingStore;
 import com.fast.knowledge.langchain4j.KbEmbeddingStoreFactory;
+import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.model.entity.DocumentChunk;
 import com.fast.knowledge.model.entity.KbDocument;
 import com.fast.knowledge.model.entity.KnowledgeBase;
-import com.fast.knowledge.vector.VectorStore;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,29 +25,35 @@ public class IndexRebuildService {
 
     private final DocumentChunkMapper documentChunkMapper;
     private final DocumentMapper documentMapper;
-    private final EmbeddingProvider embeddingProvider;
     private final KbEmbeddingStoreFactory kbEmbeddingStoreFactory;
     private final KbContentRetrieverFactory kbContentRetrieverFactory;
-    private final VectorStore vectorStore;
+    private final KbAssistantFactory kbAssistantFactory;
+    private final KbChatAssistantFactory kbChatAssistantFactory;
+    private final KbVectorIndexService vectorIndexService;
+    private final KbEmbeddingIngestor embeddingIngestor;
     private final KnowledgeBaseService knowledgeBaseService;
     private final AuditLogService auditLogService;
     private final SearchCacheService searchCacheService;
 
     public IndexRebuildService(DocumentChunkMapper documentChunkMapper,
                                DocumentMapper documentMapper,
-                               EmbeddingProvider embeddingProvider,
                                KbEmbeddingStoreFactory kbEmbeddingStoreFactory,
                                KbContentRetrieverFactory kbContentRetrieverFactory,
-                               VectorStore vectorStore,
+                               KbAssistantFactory kbAssistantFactory,
+                               KbChatAssistantFactory kbChatAssistantFactory,
+                               KbVectorIndexService vectorIndexService,
+                               KbEmbeddingIngestor embeddingIngestor,
                                KnowledgeBaseService knowledgeBaseService,
                                AuditLogService auditLogService,
                                SearchCacheService searchCacheService) {
         this.documentChunkMapper = documentChunkMapper;
         this.documentMapper = documentMapper;
-        this.embeddingProvider = embeddingProvider;
         this.kbEmbeddingStoreFactory = kbEmbeddingStoreFactory;
         this.kbContentRetrieverFactory = kbContentRetrieverFactory;
-        this.vectorStore = vectorStore;
+        this.kbAssistantFactory = kbAssistantFactory;
+        this.kbChatAssistantFactory = kbChatAssistantFactory;
+        this.vectorIndexService = vectorIndexService;
+        this.embeddingIngestor = embeddingIngestor;
         this.knowledgeBaseService = knowledgeBaseService;
         this.auditLogService = auditLogService;
         this.searchCacheService = searchCacheService;
@@ -75,9 +78,11 @@ public class IndexRebuildService {
     public int rebuildKbIndex(Long kbId) throws Exception {
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
-        vectorStore.deleteKb(kbId);
+        vectorIndexService.deleteKb(kbId);
         kbEmbeddingStoreFactory.evict(kbId);
         kbContentRetrieverFactory.evict(kbId);
+        kbAssistantFactory.evict(kbId);
+        kbChatAssistantFactory.evict(kbId);
 
         List<DocumentChunk> chunks = documentChunkMapper.findByKbId(kbId);
         if (chunks.isEmpty()) {
@@ -86,31 +91,17 @@ public class IndexRebuildService {
             return 0;
         }
 
-        Map<Long, String> docTitles = new HashMap<>();
-        List<String> texts = new ArrayList<>(chunks.size());
+        Map<Long, KbDocument> docCache = new HashMap<>();
+        Map<Long, List<DocumentChunk>> byDoc = new HashMap<>();
         for (DocumentChunk chunk : chunks) {
-            texts.add(chunk.getContent());
+            byDoc.computeIfAbsent(chunk.getDocumentId(), id -> new java.util.ArrayList<>()).add(chunk);
         }
-        List<float[]> vectors = embeddingProvider.embedBatch(texts);
-
-        KbEmbeddingStore embeddingStore = kbEmbeddingStoreFactory.getStore(kbId);
-        List<Embedding> embeddings = new ArrayList<>(chunks.size());
-        List<TextSegment> segments = new ArrayList<>(chunks.size());
-        for (int i = 0; i < chunks.size(); i++) {
-            DocumentChunk chunk = chunks.get(i);
-            String title = docTitles.computeIfAbsent(chunk.getDocumentId(), docId -> {
-                KbDocument doc = documentMapper.selectById(docId);
-                return doc != null ? doc.getTitle() : "文档";
-            });
-            Metadata metadata = Metadata.from(Map.of(
-                    KbEmbeddingStore.META_DOC_ID, chunk.getDocumentId(),
-                    KbEmbeddingStore.META_CHUNK_ID, chunk.getId(),
-                    KbEmbeddingStore.META_TITLE, title
-            ));
-            segments.add(TextSegment.from(chunk.getContent(), metadata));
-            embeddings.add(Embedding.from(vectors.get(i)));
+        for (Map.Entry<Long, List<DocumentChunk>> entry : byDoc.entrySet()) {
+            KbDocument doc = docCache.computeIfAbsent(entry.getKey(), documentMapper::selectById);
+            if (doc != null) {
+                embeddingIngestor.embedChunks(doc, entry.getValue());
+            }
         }
-        embeddingStore.addAll(embeddings, segments);
 
         auditLogService.log("REBUILD_INDEX", "KB", kbId, "chunks=" + chunks.size());
         searchCacheService.invalidateForKb(kbId);

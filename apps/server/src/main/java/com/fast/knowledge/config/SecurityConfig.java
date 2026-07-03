@@ -36,6 +36,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/auth/login",
+                                "/auth/ldap/login",
+                                "/auth/oidc/authorize",
+                                "/auth/oidc/callback",
                                 "/system/config",
                                 "/system/llm-providers",
                                 "/actuator/health",

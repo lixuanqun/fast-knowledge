@@ -35,7 +35,8 @@ public class DataInitializer implements CommandLineRunner {
             admin.setDisplayName("系统管理员");
             admin.setRole("ADMIN");
             admin.setStatus(1);
-            admin.setMustChangePassword(true);
+            admin.setMustChangePassword(1);
+            admin.setAuthSource("LOCAL");
             userMapper.insert(admin);
             workspaceService.createDefaultForUser(admin.getId());
             log.info("已创建默认管理员账号: admin / admin123（首次登录须修改密码）");

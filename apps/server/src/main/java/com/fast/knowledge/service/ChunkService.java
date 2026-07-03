@@ -60,6 +60,20 @@ public class ChunkService {
         return encoding.countTokens(text);
     }
 
+    /** 从分块内容提取首个 Markdown 标题作为章节名 */
+    public String extractSectionTitle(String content) {
+        if (content == null) {
+            return null;
+        }
+        for (String line : content.split("\n")) {
+            String trimmed = line.trim();
+            if (MARKDOWN_HEADING.matcher(trimmed).matches()) {
+                return trimmed.replaceFirst("^#{1,6}\\s+", "").trim();
+            }
+        }
+        return null;
+    }
+
     private List<String> splitParagraphs(String text) {
         List<String> parts = new ArrayList<>();
         for (String block : PARAGRAPH_SPLIT.split(text)) {

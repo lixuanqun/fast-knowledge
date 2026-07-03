@@ -1,23 +1,43 @@
 package com.fast.knowledge.llm;
 
 import com.fast.knowledge.config.KnowledgeProperties;
+import com.fast.knowledge.mapper.SystemConfigMapper;
 import com.fast.knowledge.security.ExternalAccessGuard;
-import com.fast.knowledge.common.BusinessException;
+import com.fast.knowledge.service.LlmSettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class LlmConfigResolverTest {
+
+    @Mock
+    private SystemConfigMapper systemConfigMapper;
 
     private KnowledgeProperties properties;
     private LlmConfigResolver resolver;
 
+    private final Map<String, String> store = new HashMap<>();
+
     @BeforeEach
     void setUp() {
         properties = new KnowledgeProperties();
-        resolver = new LlmConfigResolver(properties, new ExternalAccessGuard(properties));
+        when(systemConfigMapper.getValue(anyString())).thenAnswer(inv -> store.get(inv.getArgument(0)));
+
+        LlmSettingsService llmSettingsService = new LlmSettingsService(systemConfigMapper, properties);
+        resolver = new LlmConfigResolver(properties, new ExternalAccessGuard(properties), llmSettingsService);
     }
 
     @Test
@@ -46,7 +66,8 @@ class LlmConfigResolverTest {
         properties.getLlm().setBaseUrl("https://api.deepseek.com/v1");
         properties.getLlm().setModel("deepseek-chat");
         properties.getLlm().setAllowExternal(false);
-        assertThrows(BusinessException.class, resolver::resolve);
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.fast.knowledge.common.BusinessException.class, resolver::resolve);
     }
 
     @Test
@@ -58,7 +79,16 @@ class LlmConfigResolverTest {
     }
 
     @Test
-    void listsAllPresetsExceptCustom() {
-        assertEquals(6, resolver.listProviderPresets().size());
+    void dbOverridesEnv() {
+        properties.getLlm().setProvider("ollama");
+        store.put(LlmSettingsService.KEY_PROVIDER, "deepseek");
+        store.put(LlmSettingsService.KEY_API_KEY, "sk-db");
+        ResolvedLlmConfig cfg = resolver.resolve();
+        assertEquals(LlmProvider.DEEPSEEK, cfg.getProvider());
+    }
+
+    @Test
+    void listsAllPresetsIncludingCustom() {
+        assertEquals(7, resolver.listProviderPresets().size());
     }
 }

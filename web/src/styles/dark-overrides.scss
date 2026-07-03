@@ -1,0 +1,96 @@
+// Element Plus 暗色桥接 + 组件暗色微调 — 对齐 dark-15-design-tokens.png
+
+html.dark {
+  --el-bg-color: var(--fk-page-bg);
+  --el-bg-color-page: var(--fk-page-bg);
+  --el-bg-color-overlay: var(--fk-card-bg);
+  --el-text-color-primary: var(--fk-text-primary);
+  --el-text-color-regular: var(--fk-text-regular);
+  --el-text-color-secondary: var(--fk-text-secondary);
+  --el-text-color-placeholder: var(--fk-text-secondary);
+  --el-border-color: var(--fk-border);
+  --el-border-color-light: var(--fk-border);
+  --el-border-color-lighter: var(--fk-border);
+  --el-fill-color-blank: var(--fk-surface-muted);
+  --el-fill-color-light: var(--fk-surface-muted);
+  --el-fill-color: var(--fk-surface-muted);
+  --el-color-primary: var(--fk-primary);
+  --el-color-primary-light-3: var(--fk-primary-hover);
+  --el-color-primary-light-5: var(--fk-primary-light);
+  --el-color-primary-light-9: var(--fk-primary-light);
+  --el-color-success: var(--fk-success);
+  --el-color-warning: var(--fk-warning);
+  --el-color-danger: var(--fk-danger);
+  --el-menu-bg-color: var(--fk-sidebar-bg);
+  --el-menu-hover-bg-color: var(--fk-menu-hover-bg);
+  --el-menu-active-color: var(--fk-primary);
+  --el-menu-text-color: var(--fk-text-regular);
+  --el-dialog-bg-color: var(--fk-card-bg);
+  --el-drawer-bg-color: var(--fk-card-bg);
+  --el-mask-color: rgba(1, 4, 9, 0.72);
+  --el-disabled-bg-color: var(--fk-surface-muted);
+  --el-disabled-text-color: var(--fk-text-secondary);
+}
+
+html.dark {
+  .el-input__wrapper,
+  .el-textarea__inner,
+  .el-select__wrapper {
+    background-color: var(--fk-surface-muted);
+    box-shadow: 0 0 0 1px var(--fk-border) inset;
+  }
+
+  .el-input__wrapper:hover,
+  .el-textarea__inner:hover,
+  .el-select__wrapper:hover {
+    box-shadow: 0 0 0 1px var(--fk-primary) inset;
+  }
+
+  .el-table {
+    --el-table-border-color: var(--fk-border);
+    --el-table-row-hover-bg-color: var(--fk-surface-muted);
+    --el-table-current-row-bg-color: var(--fk-primary-light);
+    --el-table-striped-row-bg-color: rgba(177, 186, 196, 0.04);
+  }
+
+  .el-table th.el-table__cell {
+    color: var(--fk-text-regular);
+  }
+
+  .el-pagination.is-background .btn-next,
+  .el-pagination.is-background .btn-prev,
+  .el-pagination.is-background .el-pager li {
+    background-color: var(--fk-surface-muted);
+    color: var(--fk-text-regular);
+  }
+
+  .el-pagination.is-background .el-pager li.is-active {
+    background-color: var(--fk-primary);
+    color: #fff;
+  }
+
+  .el-dialog,
+  .el-drawer {
+    border: 1px solid var(--fk-border);
+  }
+
+  .el-tabs__item {
+    color: var(--fk-text-secondary);
+  }
+
+  .el-tabs__item.is-active {
+    color: var(--fk-primary);
+  }
+
+  .el-tabs__nav-wrap::after {
+    background-color: var(--fk-border);
+  }
+
+  .el-descriptions__body .el-descriptions__table {
+    --el-descriptions-item-bordered-label-background: var(--fk-surface-muted);
+  }
+
+  .el-skeleton__item {
+    background: linear-gradient(90deg, var(--fk-surface-muted) 25%, var(--fk-border) 37%, var(--fk-surface-muted) 63%);
+  }
+}

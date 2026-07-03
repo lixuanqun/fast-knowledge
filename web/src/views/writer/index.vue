@@ -5,37 +5,41 @@
     <el-row :gutter="20">
       <el-col :xs="24" :lg="10">
         <el-card class="fk-card writer-form-card" shadow="never">
-          <template #header><span class="card-title">生成参数</span></template>
-          <el-form label-width="72px">
-            <el-form-item label="知识库">
+          <el-form label-width="88px">
+            <el-form-item label="知识库（可选）">
               <KbSelect
                 v-model="form.kbId"
                 width="100%"
                 :auto-default="false"
                 clearable
-                placeholder="可选，用于引用资料"
+                placeholder="请选择知识库"
               />
             </el-form-item>
             <el-form-item label="主题" required>
               <el-input v-model="form.topic" placeholder="文档主题" maxlength="100" show-word-limit />
             </el-form-item>
-            <el-form-item label="大纲">
+            <el-form-item label="大纲" required>
               <el-input
                 v-model="form.outline"
                 type="textarea"
-                :rows="3"
-                placeholder="可选，列出章节结构"
-                maxlength="500"
+                :rows="8"
+                placeholder="列出章节结构，支持 Markdown 标题"
+                maxlength="2000"
                 show-word-limit
               />
             </el-form-item>
             <el-form-item label="风格">
-              <el-input v-model="form.style" placeholder="正式、专业" />
+              <el-select v-model="form.style" style="width:100%">
+                <el-option label="正式、专业" value="正式、专业" />
+                <el-option label="轻松、易懂" value="轻松、易懂" />
+                <el-option label="技术、严谨" value="技术、严谨" />
+              </el-select>
             </el-form-item>
             <el-form-item label="字数">
               <el-input-number v-model="form.wordCount" :min="200" :max="5000" style="width:100%" />
             </el-form-item>
             <el-button type="primary" class="generate-btn" :loading="generating" @click="generate">
+              <el-icon class="btn-icon"><MagicStick /></el-icon>
               生成文档
             </el-button>
           </el-form>
@@ -45,12 +49,27 @@
         <el-card v-if="content || generating" v-loading="generating" class="fk-card writer-result-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <el-radio-group v-model="viewMode" size="small">
-                <el-radio-button value="preview">预览</el-radio-button>
-                <el-radio-button value="source">源码</el-radio-button>
-              </el-radio-group>
+              <div class="preview-tabs">
+                <button
+                  type="button"
+                  :class="['preview-tab', { active: viewMode === 'preview' }]"
+                  @click="viewMode = 'preview'"
+                >
+                  预览
+                </button>
+                <button
+                  type="button"
+                  :class="['preview-tab', { active: viewMode === 'source' }]"
+                  @click="viewMode = 'source'"
+                >
+                  源码
+                </button>
+              </div>
               <div class="card-header__actions">
-                <el-button size="small" @click="copyContent">复制</el-button>
+                <el-button size="small" @click="copyContent">
+                  <el-icon class="btn-icon"><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
                 <el-button
                   v-if="form.kbId"
                   type="primary"
@@ -85,6 +104,7 @@ import { MarkdownBody } from '@/components/async'
 import EmptyState from '@/components/EmptyState.vue'
 import { useSaveWriterDocumentMutation } from '@/composables/queries/useWriter'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { DocumentCopy, MagicStick } from '@element-plus/icons-vue'
 
 const generating = ref(false)
 const content = ref('')
@@ -102,6 +122,10 @@ const form = reactive({
 async function generate() {
   if (!form.topic.trim()) {
     ElMessage.warning('请填写文档主题')
+    return
+  }
+  if (!form.outline.trim()) {
+    ElMessage.warning('请填写文档大纲')
     return
   }
   generating.value = true
@@ -159,11 +183,6 @@ async function handleSave() {
   min-height: 420px;
 }
 
-.card-title {
-  font-weight: 600;
-  color: $fk-text-primary;
-}
-
 .generate-btn {
   width: 100%;
   height: 40px;
@@ -175,6 +194,27 @@ async function handleSave() {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.preview-tabs {
+  display: flex;
+  gap: 20px;
+}
+
+.preview-tab {
+  background: none;
+  border: none;
+  padding: 0 0 6px;
+  font-size: 14px;
+  color: $fk-text-regular;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.preview-tab.active {
+  color: $fk-primary;
+  font-weight: 600;
+  border-bottom-color: $fk-primary;
 }
 
 .card-header__actions {
@@ -237,5 +277,9 @@ async function handleSave() {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+.btn-icon {
+  margin-right: 4px;
 }
 </style>

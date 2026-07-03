@@ -19,7 +19,21 @@
         <el-descriptions-item v-if="docCreatedAt" label="上传时间">
           {{ formatDateTime(docCreatedAt) }}
         </el-descriptions-item>
+        <el-descriptions-item v-if="doc.docType" label="文档类型">{{ doc.docType }}</el-descriptions-item>
+        <el-descriptions-item v-if="doc.docNo" label="文号">{{ doc.docNo }}</el-descriptions-item>
+        <el-descriptions-item v-if="doc.department" label="部门">{{ doc.department }}</el-descriptions-item>
       </el-descriptions>
+
+      <el-alert
+        v-if="preview?.highlightSnippet"
+        type="info"
+        :closable="false"
+        show-icon
+        class="highlight-alert"
+        title="引用定位"
+      >
+        <pre class="highlight-snippet">{{ preview.highlightSnippet }}</pre>
+      </el-alert>
 
       <el-tabs v-model="tab" class="preview-tabs">
         <el-tab-pane label="内容预览" name="preview">
@@ -58,11 +72,12 @@
               <template #title>
                 <div class="chunk-title">
                   <span class="chunk-title__index">#{{ chunk.chunkIndex + 1 }}</span>
+                  <span v-if="chunk.sectionTitle" class="chunk-title__section">{{ chunk.sectionTitle }}</span>
                   <span class="chunk-title__meta">{{ chunk.tokenCount }} 字</span>
                   <span class="chunk-title__preview">{{ chunkPreview(chunk.content) }}</span>
                 </div>
               </template>
-              <pre class="chunk-content">{{ chunk.content }}</pre>
+              <pre :class="['chunk-content', { 'chunk-content--highlight': chunk.id === activeChunkId }]">{{ chunk.content }}</pre>
             </el-collapse-item>
           </el-collapse>
         </el-tab-pane>
@@ -88,12 +103,14 @@ const props = defineProps<{
   visible: boolean
   kbId: number
   docId?: number
+  highlightChunkId?: number
 }>()
 
 defineEmits<{ 'update:visible': [value: boolean] }>()
 
 const tab = ref('preview')
 const activeDocId = ref<number>()
+const activeChunkId = ref<number>()
 const activeChunk = ref<number>()
 
 const enabled = computed(() => props.visible && activeDocId.value != null && activeDocId.value > 0)
@@ -104,7 +121,8 @@ const { data: doc, isLoading: docLoading, isError: docError } = useDocumentQuery
 )
 const { data: preview, isLoading: previewLoading, isError: previewError } = useDocumentPreviewQuery(
   () => props.kbId,
-  activeDocId
+  activeDocId,
+  activeChunkId
 )
 const { data: chunksData, isLoading: chunksLoading, isError: chunksError } = useDocumentChunksQuery(
   () => props.kbId,
@@ -135,20 +153,26 @@ function chunkPreview(content: string) {
 }
 
 watch(
-  () => [props.visible, props.docId] as const,
-  ([visible, docId]) => {
+  () => [props.visible, props.docId, props.highlightChunkId] as const,
+  ([visible, docId, chunkId]) => {
     if (!visible || !docId) {
       activeDocId.value = undefined
+      activeChunkId.value = undefined
       return
     }
-    tab.value = 'preview'
+    tab.value = chunkId ? 'chunks' : 'preview'
     activeDocId.value = docId
+    activeChunkId.value = chunkId
   },
   { immediate: true }
 )
 
 watch(chunks, list => {
-  if (list.length) activeChunk.value = list[0].id
+  if (activeChunkId.value) {
+    activeChunk.value = activeChunkId.value
+  } else if (list.length) {
+    activeChunk.value = list[0].id
+  }
 })
 
 watch(hasError, failed => {
@@ -248,8 +272,33 @@ watch(hasError, failed => {
   flex: 1;
 }
 
+.chunk-title__section {
+  color: $fk-primary;
+  flex-shrink: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chunk-content {
   margin: 0 12px 12px;
   max-height: 40vh;
+}
+
+.chunk-content--highlight {
+  border: 1px solid $fk-primary;
+  background: $fk-primary-light;
+}
+
+.highlight-alert {
+  margin-bottom: 12px;
+}
+
+.highlight-snippet {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

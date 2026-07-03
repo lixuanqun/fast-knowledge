@@ -3,10 +3,11 @@ package com.fast.knowledge.service;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.storage.StoredObject;
 import com.fast.knowledge.storage.StorageProvider;
-import com.fast.knowledge.vector.VectorStore;
+import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.mapper.IndexTaskMapper;
+import com.fast.knowledge.model.dto.DocumentMetadataRequest;
 import com.fast.knowledge.model.entity.IndexTask;
 import com.fast.knowledge.model.entity.DocumentChunk;
 import com.fast.knowledge.model.entity.KbDocument;
@@ -35,7 +36,7 @@ public class DocumentService {
     private final IndexTaskMapper indexTaskMapper;
     private final KnowledgeBaseService knowledgeBaseService;
     private final DocumentIngestService documentIngestService;
-    private final VectorStore vectorStore;
+    private final KbVectorIndexService vectorIndexService;
     private final StorageProvider storageProvider;
     private final AuditLogService auditLogService;
     private final SearchCacheService searchCacheService;
@@ -46,7 +47,7 @@ public class DocumentService {
                            IndexTaskMapper indexTaskMapper,
                            KnowledgeBaseService knowledgeBaseService,
                            DocumentIngestService documentIngestService,
-                           VectorStore vectorStore,
+                           KbVectorIndexService vectorIndexService,
                            StorageProvider storageProvider,
                            AuditLogService auditLogService,
                            SearchCacheService searchCacheService) {
@@ -55,7 +56,7 @@ public class DocumentService {
         this.indexTaskMapper = indexTaskMapper;
         this.knowledgeBaseService = knowledgeBaseService;
         this.documentIngestService = documentIngestService;
-        this.vectorStore = vectorStore;
+        this.vectorIndexService = vectorIndexService;
         this.storageProvider = storageProvider;
         this.auditLogService = auditLogService;
         this.searchCacheService = searchCacheService;
@@ -72,7 +73,7 @@ public class DocumentService {
         return doc;
     }
 
-    public DocumentPreviewVO preview(Long kbId, Long docId) throws Exception {
+    public DocumentPreviewVO preview(Long kbId, Long docId, Long highlightChunkId) throws Exception {
         KbDocument doc = requireDocument(kbId, docId);
         knowledgeBaseService.getById(kbId);
 
@@ -80,6 +81,8 @@ public class DocumentService {
         vo.setDocumentId(doc.getId());
         vo.setTitle(doc.getTitle());
         vo.setFileType(doc.getFileType());
+        vo.setDocNo(doc.getDocNo());
+        vo.setDocType(doc.getDocType());
 
         String fileType = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
         String content;
@@ -101,7 +104,47 @@ public class DocumentService {
             vo.setContent(content);
             vo.setTruncated(false);
         }
+        if (highlightChunkId != null) {
+            documentChunkMapper.findByDocumentId(docId).stream()
+                    .filter(c -> c.getId().equals(highlightChunkId))
+                    .findFirst()
+                    .ifPresent(c -> vo.setHighlightSnippet(c.getContent()));
+        }
         return vo;
+    }
+
+    @Transactional
+    public KbDocument updateMetadata(Long kbId, Long docId, DocumentMetadataRequest metadata) {
+        KbDocument doc = requireDocument(kbId, docId);
+        knowledgeBaseService.checkWritePermission(knowledgeBaseService.getById(kbId));
+        applyMetadata(doc, metadata);
+        documentMapper.updateById(doc);
+        searchCacheService.invalidateForKb(kbId);
+        return doc;
+    }
+
+    private void applyMetadata(KbDocument doc, DocumentMetadataRequest metadata) {
+        if (metadata == null) {
+            return;
+        }
+        if (metadata.getDocType() != null) {
+            doc.setDocType(metadata.getDocType().isBlank() ? null : metadata.getDocType().trim());
+        }
+        if (metadata.getDocNo() != null) {
+            doc.setDocNo(metadata.getDocNo().isBlank() ? null : metadata.getDocNo().trim());
+        }
+        if (metadata.getEffectiveDate() != null) {
+            doc.setEffectiveDate(metadata.getEffectiveDate());
+        }
+        if (metadata.getExpireDate() != null) {
+            doc.setExpireDate(metadata.getExpireDate());
+        }
+        if (metadata.getDepartment() != null) {
+            doc.setDepartment(metadata.getDepartment().isBlank() ? null : metadata.getDepartment().trim());
+        }
+        if (metadata.getTags() != null) {
+            doc.setTags(metadata.getTags().isBlank() ? null : metadata.getTags().trim());
+        }
     }
 
     public List<DocumentChunkVO> listChunks(Long kbId, Long docId) {
@@ -126,11 +169,12 @@ public class DocumentService {
         vo.setChunkIndex(chunk.getChunkIndex());
         vo.setContent(chunk.getContent());
         vo.setTokenCount(chunk.getTokenCount());
+        vo.setSectionTitle(chunk.getSectionTitle());
         return vo;
     }
 
     @Transactional
-    public KbDocument upload(Long kbId, MultipartFile file) throws IOException {
+    public KbDocument upload(Long kbId, MultipartFile file, DocumentMetadataRequest metadata) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("请选择要上传的文件");
         }
@@ -150,6 +194,7 @@ public class DocumentService {
         doc.setChunkCount(0);
         doc.setEnabled(1);
         doc.setCreatedBy(UserContext.currentUserId());
+        applyMetadata(doc, metadata);
         documentMapper.insert(doc);
 
         IndexTask task = new IndexTask();
@@ -200,11 +245,7 @@ public class DocumentService {
         KbDocument doc = requireDocument(kbId, docId);
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
-        try {
-            vectorStore.deleteByDocument(doc.getKbId(), docId);
-        } catch (java.io.IOException e) {
-            throw new BusinessException("删除索引失败: " + e.getMessage());
-        }
+        vectorIndexService.deleteByDocument(doc.getKbId(), docId);
         documentChunkMapper.deleteByDocumentId(docId);
         try {
             storageProvider.delete(doc.getFilePath());

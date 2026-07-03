@@ -16,6 +16,12 @@ public interface UserMapper extends BaseMapper<KbUser> {
         return selectOne(Wrappers.<KbUser>lambdaQuery().eq(KbUser::getUsername, username));
     }
 
+    default KbUser findByAuthSourceAndExternalId(String authSource, String externalId) {
+        return selectOne(Wrappers.<KbUser>lambdaQuery()
+                .eq(KbUser::getAuthSource, authSource)
+                .eq(KbUser::getExternalId, externalId));
+    }
+
     default List<KbUser> findAll() {
         return selectList(Wrappers.<KbUser>lambdaQuery().orderByAsc(KbUser::getId));
     }

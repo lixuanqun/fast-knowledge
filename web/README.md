@@ -2,55 +2,49 @@
 
 Vue 3 + Vite + Element Plus 管理界面。
 
+> **产品定位**：[产品说明.md](../docs/产品说明.md) — 中小企业单实例私有化知识库，非 SaaS 多租户。  
+> 接口契约：[api.md](../docs/api.md)
+
+## 页面与路由
+
+| 页面 | 路径 | 权限 |
+|------|------|------|
+| 概览 | `/dashboard` | 登录 |
+| 知识库 | `/kbs`、`/kbs/:id` | 登录 |
+| 智能检索 / 问答 / 对话 / 写文档 | `/search`、`/qa`、`/chat`、`/writer` | 登录 |
+| 设置与隐私 | `/settings` | 登录 |
+| **大模型配置** | `/settings/llm` | 管理员 |
+| 用户管理 | `/users` | 管理员 |
+
 ## 开发
 
 ```powershell
 cd web
-npm install          # 首次
+npm install
 npm run dev          # http://localhost:5174
 ```
 
-需另开终端启动服务端：`mvn -pl apps/server spring-boot:run`（仓库根目录），或使用 `scripts/dev.ps1` 同时启动。
-
-开发时 Vite 将 `/api` 代理到 `http://localhost:8088`。
+需启动后端（`scripts/dev.ps1` 或 `mvn ... spring-boot:run`）。Vite 代理 `/api` → `http://localhost:8088`。
 
 ## 构建
 
-```powershell
-cd web
-npm run build
-```
-
-产物：`web/dist/`。生产单 Jar 打包时由 Maven `frontend-maven-plugin` 自动构建并复制到 `apps/server/target/classes/static`：
-
 ```bash
-mvn -pl apps/server -am package -DskipTests -Pbundle
+mvn -pl apps/server -am package -DskipTests -Pbundle   # 单 Jar 自动构建 web/dist
 ```
 
-## 目录说明
+或 `cd web && npm run build` → `web/dist/`
+
+## 目录
 
 ```
-web/
-├── index.html
-├── package.json
-├── vite.config.ts      # 开发代理 /api
-├── src/
-│   ├── api/            # 接口封装
-│   ├── components/
-│   ├── layouts/
-│   ├── router/
-│   ├── stores/
-│   ├── utils/          # axios baseURL: /api
-│   └── views/
-└── dist/               # 构建输出（gitignore）
+web/src/
+├── api/            # 接口（含 llm-config.ts）
+├── views/          # 页面（settings/llm.vue 大模型配置）
+├── stores/         # Pinia（config、auth）
+└── router/         # 路由与 adminOnly 守卫
 ```
 
-## 环境变量
+## 相关文档
 
-生产构建默认使用相对路径 `/api`，与 Nginx 或单 Jar 部署一致。若需指定独立 API 域名，可在 `web/` 添加 `.env.production`：
-
-```
-VITE_API_BASE=https://api.example.com/api
-```
-
-并在 `src/utils/request.ts` 中读取 `import.meta.env.VITE_API_BASE`（当前默认 `/api`，一般无需修改）。
+- [docs/api.md](../docs/api.md)
+- [docs/产品说明.md](../docs/产品说明.md)

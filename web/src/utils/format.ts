@@ -55,3 +55,18 @@ const PERMISSION_MAP: Record<string, string> = {
 export function permissionLabel(p: string) {
   return PERMISSION_MAP[p] || p
 }
+
+const AUDIT_ACTION_MAP: Record<
+  string,
+  { icon: 'Collection' | 'Upload' | 'Refresh' | 'CircleCheck' | 'User' | 'Document'; tone: string }
+> = {
+  创建知识库: { icon: 'Collection', tone: 'is-primary' },
+  上传文档: { icon: 'Upload', tone: 'is-primary' },
+  开始索引: { icon: 'Refresh', tone: 'is-primary' },
+  索引完成: { icon: 'CircleCheck', tone: 'is-success' },
+  创建用户: { icon: 'User', tone: 'is-primary' }
+}
+
+export function auditActionMeta(action: string) {
+  return AUDIT_ACTION_MAP[action] || { icon: 'Document' as const, tone: 'is-primary' }
+}

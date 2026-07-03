@@ -1,38 +1,41 @@
 package com.fast.knowledge.langchain4j;
 
 import com.fast.knowledge.config.KnowledgeProperties;
-import com.fast.knowledge.vector.SearchHit;
-import com.fast.knowledge.vector.VectorChunk;
-import com.fast.knowledge.vector.VectorStore;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
+
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 
 @Slf4j
-public class KbEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class KbEmbeddingStore implements dev.langchain4j.store.embedding.EmbeddingStore<TextSegment> {
 
     public static final String META_KB_ID = "kbId";
     public static final String META_DOC_ID = "docId";
     public static final String META_CHUNK_ID = "chunkId";
     public static final String META_TITLE = "title";
+    public static final String META_DOC_TYPE = "docType";
+    public static final String META_DOC_NO = "docNo";
+    public static final String META_SECTION = "section";
 
     private final Long kbId;
-    private final VectorStore vectorStore;
+    private final PgVectorEmbeddingStore delegate;
     private final KnowledgeProperties properties;
 
-    public KbEmbeddingStore(Long kbId, VectorStore vectorStore, KnowledgeProperties properties) {
+    public KbEmbeddingStore(Long kbId, PgVectorEmbeddingStore delegate, KnowledgeProperties properties) {
         this.kbId = kbId;
-        this.vectorStore = vectorStore;
+        this.delegate = delegate;
         this.properties = properties;
     }
 
@@ -43,23 +46,31 @@ public class KbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void add(String id, Embedding embedding) {
-        throw new UnsupportedOperationException("请使用 add(embedding, textSegment) 并附带元数据");
+        throw new UnsupportedOperationException("请使用 add(id, embedding, textSegment)");
     }
 
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
-        try {
-            vectorStore.addChunks(kbId, List.of(toVectorChunk(embedding, textSegment)));
-            Metadata metadata = textSegment.metadata();
-            return String.valueOf(metadata.getLong(META_CHUNK_ID));
-        } catch (Exception e) {
-            throw new RuntimeException("写入向量索引失败", e);
-        }
+        String id = resolveId(textSegment);
+        addAll(List.of(id), List.of(embedding), List.of(textSegment));
+        return id;
     }
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        throw new UnsupportedOperationException("请使用 addAll(embeddings, segments)");
+        throw new UnsupportedOperationException("请使用 addAll(ids, embeddings, segments)");
+    }
+
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
+        if (embeddings.size() != segments.size() || ids.size() != segments.size()) {
+            throw new IllegalArgumentException("ids、embeddings 与 segments 数量不一致");
+        }
+        List<TextSegment> enriched = new ArrayList<>(segments.size());
+        for (TextSegment segment : segments) {
+            enriched.add(withKbMetadata(segment));
+        }
+        delegate.addAll(ids, embeddings, enriched);
     }
 
     @Override
@@ -67,86 +78,102 @@ public class KbEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("embeddings 与 segments 数量不一致");
         }
-        try {
-            List<String> ids = new ArrayList<>(embeddings.size());
-            List<VectorChunk> chunks = new ArrayList<>(embeddings.size());
-            for (int i = 0; i < embeddings.size(); i++) {
-                TextSegment textSegment = embedded.get(i);
-                chunks.add(toVectorChunk(embeddings.get(i), textSegment));
-                ids.add(String.valueOf(textSegment.metadata().getLong(META_CHUNK_ID)));
-            }
-            vectorStore.addChunks(kbId, chunks);
-            return ids;
-        } catch (Exception e) {
-            throw new RuntimeException("批量写入向量索引失败", e);
+        List<String> ids = new ArrayList<>(embedded.size());
+        for (TextSegment segment : embedded) {
+            ids.add(resolveId(segment));
         }
+        addAll(ids, embeddings, embedded);
+        return ids;
     }
 
     @Override
     public void remove(String id) {
-        try {
-            vectorStore.deleteChunk(kbId, Long.parseLong(id));
-        } catch (Exception e) {
-            log.warn("删除分块失败 chunkId={}: {}", id, e.getMessage());
-        }
+        delegate.remove(id);
     }
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ids.forEach(this::remove);
+        delegate.removeAll(ids);
     }
 
     @Override
-    public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
-        throw new UnsupportedOperationException("内置向量库暂不支持按 Filter 批量删除");
+    public void removeAll(Filter filter) {
+        delegate.removeAll(filter);
     }
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        try {
-            int maxResults = request.maxResults() > 0
-                    ? request.maxResults()
-                    : properties.getSearch().getDefaultTopK();
-            double alpha = properties.getSearch().getHybridAlpha();
-            float[] vector = request.queryEmbedding().vector();
+        return search(request, null);
+    }
 
-            List<SearchHit> hits = vectorStore.hybridSearch(kbId, "", vector, maxResults, alpha);
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request, String docType) {
+        int maxResults = request.maxResults() > 0
+                ? request.maxResults()
+                : properties.getSearch().getDefaultTopK();
+        Filter filter = kbFilter();
+        if (docType != null && !docType.isBlank()) {
+            filter = Filter.and(filter, metadataKey(META_DOC_TYPE).isEqualTo(docType));
+        }
+        EmbeddingSearchRequest scoped = EmbeddingSearchRequest.builder()
+                .queryEmbedding(request.queryEmbedding())
+                .query(request.query())
+                .maxResults(maxResults)
+                .minScore(request.minScore())
+                .filter(filter)
+                .build();
+        return delegate.search(scoped);
+    }
 
-            List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
-            for (SearchHit hit : hits) {
-                Metadata metadata = Metadata.from(Map.of(
-                        META_KB_ID, hit.getKbId(),
-                        META_DOC_ID, hit.getDocumentId(),
-                        META_CHUNK_ID, hit.getChunkId(),
-                        META_TITLE, hit.getTitle() != null ? hit.getTitle() : ""
-                ));
-                TextSegment segment = TextSegment.from(hit.getContent(), metadata);
-                matches.add(new EmbeddingMatch<>(hit.getScore(), String.valueOf(hit.getChunkId()), null, segment));
-            }
-            return new EmbeddingSearchResult<>(matches);
-        } catch (Exception e) {
-            throw new RuntimeException("向量检索失败", e);
+    private Filter kbFilter() {
+        return metadataKey(META_KB_ID).isEqualTo(kbId);
+    }
+
+    private TextSegment withKbMetadata(TextSegment segment) {
+        Metadata metadata = segment.metadata() != null
+                ? segment.metadata().copy()
+                : new Metadata();
+        metadata.put(META_KB_ID, kbId);
+        ensureRequiredMetadata(metadata);
+        return TextSegment.from(segment.text(), metadata);
+    }
+
+    private void ensureKbMetadata(TextSegment segment) {
+        Metadata metadata = segment.metadata();
+        if (metadata == null) {
+            throw new IllegalArgumentException("TextSegment 需包含元数据");
+        }
+        metadata.put(META_KB_ID, kbId);
+        ensureRequiredMetadata(metadata);
+    }
+
+    private void ensureRequiredMetadata(Metadata metadata) {
+        if (metadata.getLong(META_DOC_ID) == null || metadata.getLong(META_CHUNK_ID) == null) {
+            throw new IllegalArgumentException("TextSegment 元数据需包含 docId 与 chunkId");
         }
     }
 
-    private VectorChunk toVectorChunk(Embedding embedding, TextSegment textSegment) {
-        Metadata metadata = textSegment.metadata();
-        Long docId = metadata.getLong(META_DOC_ID);
-        Long chunkId = metadata.getLong(META_CHUNK_ID);
-        String title = metadata.getString(META_TITLE);
-        if (docId == null || chunkId == null) {
-            throw new IllegalArgumentException("TextSegment 元数据需包含 docId 与 chunkId");
-        }
-        VectorChunk chunk = new VectorChunk();
-        chunk.setDocId(docId);
-        chunk.setChunkId(chunkId);
-        chunk.setTitle(title != null ? title : "");
-        chunk.setContent(textSegment.text());
-        chunk.setVector(embedding.vector());
-        return chunk;
+    private String resolveId(TextSegment segment) {
+        ensureKbMetadata(segment);
+        return UUID.randomUUID().toString();
     }
 
     public Long kbId() {
         return kbId;
+    }
+
+    public static SearchHitMapper.Hit fromMatch(EmbeddingMatch<TextSegment> match, Long kbId) {
+        TextSegment segment = match.embedded();
+        Metadata metadata = segment.metadata();
+        SearchHitMapper.Hit hit = new SearchHitMapper.Hit();
+        hit.setKbId(kbId);
+        hit.setChunkId(metadata.getLong(META_CHUNK_ID));
+        hit.setDocumentId(metadata.getLong(META_DOC_ID));
+        hit.setTitle(metadata.getString(META_TITLE));
+        hit.setDocType(metadata.getString(META_DOC_TYPE));
+        hit.setDocNo(metadata.getString(META_DOC_NO));
+        hit.setSection(metadata.getString(META_SECTION));
+        hit.setContent(segment.text());
+        hit.setScore(match.score());
+        return hit;
     }
 }

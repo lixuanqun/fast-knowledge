@@ -6,10 +6,13 @@ export interface SearchHit {
   documentTitle: string
   content: string
   score: number
+  section?: string
+  docType?: string
+  docNo?: string
 }
 
-export function search(kbId: number, query: string, topK?: number, alpha?: number) {
-  return request.post<any, { data: SearchHit[] }>('/search', { kbId, query, topK, alpha })
+export function search(kbId: number, query: string, topK?: number, docType?: string) {
+  return request.post<any, { data: SearchHit[] }>('/search', { kbId, query, topK, docType })
 }
 
 export function qa(kbId: number, question: string) {

@@ -1,26 +1,24 @@
 spring:
-  datasource:
-    url: jdbc:sqlite:file:memdb1?mode=memory&cache=shared&enable_load_extension=true
-    driver-class-name: org.sqlite.JDBC
   sql:
     init:
       mode: always
-      schema-locations: classpath:db/schema-sqlite.sql
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      schema-locations: classpath:db/schema-postgres.sql
 
 knowledge:
   cache:
-    provider: caffeine
+    provider: redis
   embedding:
     provider: hash
   vector:
-    provider: sqlite-vec
+    provider: pgvector
   storage:
-    provider: local
-    upload-dir: ./target/test-uploads
+    provider: minio
+    minio:
+      endpoint: http://localhost:9000
+      bucket: fast-knowledge
+      access-key: minioadmin
+      secret-key: minioadmin
+      prefix: knowledge/
   llm:
     provider: ollama
-    allow-external: true
+    allow-external: false

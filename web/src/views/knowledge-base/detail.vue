@@ -1,15 +1,23 @@
 <template>
   <div class="page-container">
-    <PageHeader :title="kb?.name || '知识库详情'" show-back>
+    <PageHeader
+      :title="kb?.name || '知识库详情'"
+      :subtitle="kb?.description"
+      show-back
+    >
       <template #actions>
-        <el-button :loading="rebuildMutation.isPending.value" @click="handleRebuild">重建索引</el-button>
+        <el-button :loading="rebuildMutation.isPending.value" @click="handleRebuild">
+          <el-icon class="btn-icon"><Refresh /></el-icon>
+          重建索引
+        </el-button>
         <el-upload
           :show-file-list="false"
-          :http-request="handleUpload"
           accept=".pdf,.docx,.txt,.md,.pptx,.xlsx,.html"
           style="display:inline-block"
+          :auto-upload="false"
+          :on-change="onHeaderUploadPick"
         >
-          <el-button type="primary" :loading="uploadMutation.isPending.value">
+          <el-button type="primary">
             <el-icon class="btn-icon"><Upload /></el-icon>
             上传文档
           </el-button>
@@ -19,45 +27,40 @@
 
     <el-skeleton v-if="pageLoading" animated>
       <template #template>
-        <el-skeleton-item variant="rect" style="height:96px;margin-bottom:16px;border-radius:10px" />
         <el-skeleton-item variant="rect" style="height:360px;border-radius:10px" />
       </template>
     </el-skeleton>
 
     <template v-else>
-      <KbInfoHeader
-        v-if="kb"
-        :name="kb.name"
-        :description="kb.description"
-        :visibility="kb.visibility"
-        :document-count="docs.length"
-        :search-top-k="kb.searchTopK"
-        :search-alpha="kb.searchAlpha"
-      />
-
       <el-card class="detail-card fk-card" shadow="never">
         <el-tabs v-model="tab">
           <el-tab-pane label="文档" name="docs">
             <el-table v-if="docs.length" :data="pagedDocs" stripe>
               <el-table-column prop="title" label="标题" min-width="160">
                 <template #default="{ row }">
-                  <el-link type="primary" @click="openPreview(docRow(row))">{{ row.title }}</el-link>
+                  <el-link type="primary" @click="openPreview(row as KbDocument)">{{ row.title }}</el-link>
                 </template>
               </el-table-column>
               <el-table-column prop="fileName" label="文件名" show-overflow-tooltip />
-              <el-table-column prop="fileType" label="类型" width="80" />
+              <el-table-column prop="docType" label="类型" width="90" show-overflow-tooltip />
+              <el-table-column prop="docNo" label="文号" width="120" show-overflow-tooltip />
+              <el-table-column prop="fileType" label="格式" width="72" />
               <el-table-column label="大小" width="100">
                 <template #default="{ row }">{{ formatFileSize(row.fileSize) }}</template>
               </el-table-column>
-              <el-table-column label="索引状态" width="160">
+              <el-table-column label="索引状态" width="120">
                 <template #default="{ row }">
-                  <IndexStatusTag :status="row.indexStatus" :chunk-count="row.chunkCount" />
+                  <IndexStatusTag :status="row.indexStatus" />
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right">
+              <el-table-column label="分块" width="80" align="center">
+                <template #default="{ row }">{{ row.chunkCount ?? 0 }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="240" fixed="right">
                 <template #default="{ row }">
-                  <el-button link type="primary" @click="openPreview(docRow(row))">预览</el-button>
-                  <el-button link @click="handleReindex(row.id)">重新索引</el-button>
+                  <el-button link type="primary" @click="openPreview(row as KbDocument)">预览</el-button>
+                  <el-button link type="primary" @click="openMetadata(row as KbDocument)">元数据</el-button>
+                  <el-button link type="primary" @click="handleReindex(row.id)">重新索引</el-button>
                   <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
                 </template>
               </el-table-column>
@@ -76,23 +79,23 @@
             <EmptyState v-else variant="docs">
               <el-upload
                 :show-file-list="false"
-                :http-request="handleUpload"
                 accept=".pdf,.docx,.txt,.md,.pptx,.xlsx,.html"
+                :auto-upload="false"
+                :on-change="onHeaderUploadPick"
               >
-                <el-button type="primary">上传第一份文档</el-button>
+                <el-button type="primary">
+                  <el-icon class="btn-icon"><Upload /></el-icon>
+                  上传第一份文档
+                </el-button>
               </el-upload>
             </EmptyState>
           </el-tab-pane>
 
           <el-tab-pane label="成员" name="members">
             <div class="tab-section">
-              <div class="tab-section__header">
-                <span class="tab-section__title">成员管理</span>
-                <el-button link type="primary" @click="showPermissionHelp">了解成员权限</el-button>
-              </div>
               <el-form inline class="member-form">
-                <el-input v-model="memberForm.username" placeholder="请输入用户名" style="width:180px" />
-                <el-select v-model="memberForm.permission" style="width:120px">
+                <el-input v-model="memberForm.username" placeholder="用户名" style="width:180px" :prefix-icon="User" />
+                <el-select v-model="memberForm.permission" style="width:160px" placeholder="只读/编辑/管理">
                   <el-option label="只读" value="READ" />
                   <el-option label="编辑" value="WRITE" />
                   <el-option label="管理" value="ADMIN" />
@@ -117,6 +120,31 @@
                 </el-table-column>
               </el-table>
               <EmptyState v-else variant="members" />
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="Wiki" name="wiki">
+            <div v-loading="wikiLoading" class="tab-section">
+              <p class="tab-section__hint">文档索引完成后自动编译为 Wiki 页（可在配置中关闭自动发布）</p>
+              <el-table v-if="wikiPages.length" :data="wikiPages" stripe>
+                <el-table-column prop="title" label="标题" min-width="180">
+                  <template #default="{ row }">
+                    <el-link type="primary" @click="openWikiPage(row as WikiPage)">{{ row.title }}</el-link>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="slug" label="Slug" width="160" show-overflow-tooltip />
+                <el-table-column label="状态" width="100">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="row.status === 'PUBLISHED' ? 'success' : 'info'">
+                      {{ row.status === 'PUBLISHED' ? '已发布' : row.status }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="更新时间" width="180">
+                  <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
+                </el-table-column>
+              </el-table>
+              <EmptyState v-else variant="docs" description="暂无 Wiki 页面，上传文档并完成索引后将自动生成" />
             </div>
           </el-tab-pane>
 
@@ -146,19 +174,9 @@
 
               <h3 class="tab-section__title section-gap">检索配置</h3>
               <el-form label-width="130px" class="settings-form">
-                <el-form-item label="混合检索权重 α">
-                  <el-slider
-                    v-model="settingsForm.searchAlpha"
-                    :min="0"
-                    :max="1"
-                    :step="0.1"
-                    show-input
-                  />
-                  <div class="form-tip">越大越偏向向量语义，越小越偏向关键词</div>
-                </el-form-item>
                 <el-form-item label="检索 Top K">
                   <el-input-number v-model="settingsForm.searchTopK" :min="1" :max="20" />
-                  <div class="form-tip">检索时返回的最大文档数量，支持 1–20</div>
+                  <div class="form-tip">检索与 RAG 返回的最大片段数（1–20）</div>
                 </el-form-item>
                 <el-form-item>
                   <el-button type="primary" :loading="updateKbMutation.isPending.value" @click="saveSettings">
@@ -198,20 +216,114 @@
       </el-card>
     </template>
 
-    <DocumentPreviewDrawer v-model:visible="previewVisible" :kb-id="kbId" :doc-id="previewDocId" />
+    <DocumentPreviewDrawer
+      v-model:visible="previewVisible"
+      :kb-id="kbId"
+      :doc-id="previewDocId"
+      :highlight-chunk-id="previewChunkId"
+    />
+
+    <el-dialog v-model="uploadDialogVisible" title="上传文档" width="520px" destroy-on-close>
+      <el-form label-width="96px">
+        <el-form-item label="文件" required>
+          <el-upload
+            :auto-upload="false"
+            :limit="1"
+            :on-change="onUploadFileChange"
+            :on-remove="() => (pendingFile = undefined)"
+            accept=".pdf,.docx,.txt,.md,.pptx,.xlsx,.html"
+          >
+            <el-button type="primary">选择文件</el-button>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="文档类型">
+          <el-select v-model="uploadMeta.docType" clearable placeholder="制度/工艺/设备..." style="width:100%">
+            <el-option label="制度" value="制度" />
+            <el-option label="工艺" value="工艺" />
+            <el-option label="设备" value="设备" />
+            <el-option label="标准" value="标准" />
+            <el-option label="其他" value="其他" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文号">
+          <el-input v-model="uploadMeta.docNo" placeholder="如 Q/SY 001-2024" />
+        </el-form-item>
+        <el-form-item label="生效日期">
+          <el-date-picker v-model="uploadMeta.effectiveDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="失效日期">
+          <el-date-picker v-model="uploadMeta.expireDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="部门">
+          <el-input v-model="uploadMeta.department" />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-input v-model="uploadMeta.tags" placeholder="逗号分隔" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="uploadDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="uploadMutation.isPending.value" @click="confirmUpload">
+          上传
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="metadataDialogVisible" title="编辑文档元数据" width="520px" destroy-on-close>
+      <el-form label-width="96px">
+        <el-form-item label="文档类型">
+          <el-select v-model="metadataForm.docType" clearable style="width:100%">
+            <el-option label="制度" value="制度" />
+            <el-option label="工艺" value="工艺" />
+            <el-option label="设备" value="设备" />
+            <el-option label="标准" value="标准" />
+            <el-option label="其他" value="其他" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文号">
+          <el-input v-model="metadataForm.docNo" />
+        </el-form-item>
+        <el-form-item label="生效日期">
+          <el-date-picker v-model="metadataForm.effectiveDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="失效日期">
+          <el-date-picker v-model="metadataForm.expireDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="部门">
+          <el-input v-model="metadataForm.department" />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-input v-model="metadataForm.tags" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="metadataDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="metadataMutation.isPending.value" @click="saveMetadata">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="wikiDialogVisible" :title="activeWiki?.title || 'Wiki'" width="720px" destroy-on-close>
+      <el-tag v-if="activeWiki" size="small" class="wiki-status-tag">{{ activeWiki.status }}</el-tag>
+      <MarkdownBody v-if="activeWiki" :content="activeWiki.contentMd" />
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import type { KbDocument } from '@/api'
+import type { KbDocument, WikiPage } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
-import KbInfoHeader from '@/components/design/KbInfoHeader.vue'
 import IndexStatusTag from '@/components/IndexStatusTag.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import MarkdownBody from '@/components/MarkdownBody.vue'
 import { DocumentPreviewDrawer } from '@/components/async'
-import { formatFileSize, permissionLabel } from '@/utils/format'
+import { formatDateTime, formatFileSize, permissionLabel } from '@/utils/format'
+import { useQuery } from '@tanstack/vue-query'
+import { listWikiPages } from '@/api/wiki'
+import { queryKeys } from '@/lib/query-keys'
 import {
   useAddKbMemberMutation,
   useDeleteDocumentMutation,
@@ -223,100 +335,196 @@ import {
   useReindexDocumentMutation,
   useRemoveKbMemberMutation,
   useRetryIndexTaskMutation,
+  useUpdateDocumentMetadataMutation,
   useUpdateKbMutation,
   useUploadDocumentMutation
 } from '@/composables/queries/useKbDetail'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Upload } from '@element-plus/icons-vue'
+import type { UploadFile } from 'element-plus'
+import { Plus, Refresh, Upload, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
-const kbId = Number(route.params.id)
-
+const kbId = computed(() => Number(route.params.id))
 const tab = ref('docs')
 const docPage = ref(1)
 const docPageSize = ref(10)
-
-onMounted(() => {
-  const q = route.query.tab
-  if (typeof q === 'string' && ['docs', 'members', 'settings', 'tasks'].includes(q)) {
-    tab.value = q
-  }
-})
-
 const previewVisible = ref(false)
 const previewDocId = ref<number>()
-const memberForm = reactive({ username: '', permission: 'READ' })
-const settingsForm = reactive({
-  name: '',
-  description: '',
-  visibility: 'PRIVATE',
-  searchAlpha: 0.6,
-  searchTopK: 8
+const previewChunkId = ref<number>()
+const uploadDialogVisible = ref(false)
+const metadataDialogVisible = ref(false)
+const wikiDialogVisible = ref(false)
+const pendingFile = ref<File>()
+const editingDocId = ref<number>()
+const activeWiki = ref<WikiPage>()
+
+const uploadMeta = reactive({
+  docType: '',
+  docNo: '',
+  effectiveDate: '',
+  expireDate: '',
+  department: '',
+  tags: ''
+})
+
+const metadataForm = reactive({
+  docType: '',
+  docNo: '',
+  effectiveDate: '',
+  expireDate: '',
+  department: '',
+  tags: ''
 })
 
 const { data: kb, isLoading: kbLoading } = useKbQuery(kbId)
 const { data: docsData, isLoading: docsLoading } = useKbDocumentsQuery(kbId)
-const { data: membersData, isLoading: membersLoading } = useKbMembersQuery(kbId)
-const { data: failedTasksData, isLoading: tasksLoading } = useKbFailedTasksQuery(kbId)
+const { data: membersData } = useKbMembersQuery(kbId)
+const { data: failedTasksData } = useKbFailedTasksQuery(kbId)
 
-const updateKbMutation = useUpdateKbMutation(kbId)
 const uploadMutation = useUploadDocumentMutation(kbId)
-const deleteDocMutation = useDeleteDocumentMutation(kbId)
+const metadataMutation = useUpdateDocumentMetadataMutation(kbId)
+const deleteMutation = useDeleteDocumentMutation(kbId)
 const reindexMutation = useReindexDocumentMutation(kbId)
+const rebuildMutation = useRebuildKbIndexMutation(kbId)
+const retryMutation = useRetryIndexTaskMutation(kbId)
+const updateKbMutation = useUpdateKbMutation(kbId)
 const addMemberMutation = useAddKbMemberMutation(kbId)
 const removeMemberMutation = useRemoveKbMemberMutation(kbId)
-const retryMutation = useRetryIndexTaskMutation(kbId)
-const rebuildMutation = useRebuildKbIndexMutation(kbId)
+
+const { data: wikiData, isLoading: wikiLoading } = useQuery({
+  queryKey: computed(() => queryKeys.wiki.pages(kbId.value)),
+  queryFn: async () => {
+    const res = await listWikiPages(kbId.value)
+    return (res.data || []) as WikiPage[]
+  },
+  enabled: computed(() => tab.value === 'wiki' && kbId.value > 0)
+})
 
 const docs = computed(() => docsData.value || [])
+const members = computed(() => membersData.value || [])
+const wikiPages = computed(() => wikiData.value || [])
+const failedTasks = computed(() => failedTasksData.value || [])
+const pageLoading = computed(() => kbLoading.value || docsLoading.value)
+
 const pagedDocs = computed(() => {
   const start = (docPage.value - 1) * docPageSize.value
   return docs.value.slice(start, start + docPageSize.value)
 })
-const members = computed(() => membersData.value || [])
-const failedTasks = computed(() => failedTasksData.value || [])
-const pageLoading = computed(
-  () => kbLoading.value || docsLoading.value || membersLoading.value || tasksLoading.value
-)
+
+const settingsForm = reactive({
+  name: '',
+  description: '',
+  visibility: 'PRIVATE',
+  searchTopK: 8
+})
+
+const memberForm = reactive({
+  username: '',
+  permission: 'READ'
+})
 
 watch(
   kb,
-  data => {
-    if (!data) return
-    settingsForm.name = data.name
-    settingsForm.description = data.description || ''
-    settingsForm.visibility = data.visibility
-    settingsForm.searchAlpha = data.searchAlpha
-    settingsForm.searchTopK = data.searchTopK
+  val => {
+    if (!val) return
+    settingsForm.name = val.name
+    settingsForm.description = val.description || ''
+    settingsForm.visibility = val.visibility
+    settingsForm.searchTopK = val.searchTopK
   },
   { immediate: true }
 )
 
-function showPermissionHelp() {
-  ElMessageBox.alert(
-    '只读：可查看与检索文档；编辑：可上传与管理文档；管理：可修改知识库设置与成员。',
-    '成员权限说明',
-    { confirmButtonText: '知道了' }
-  )
+onMounted(() => {
+  const q = route.query.tab as string
+  if (q) tab.value = q
+})
+
+function openPreview(doc: KbDocument, chunkId?: number) {
+  previewDocId.value = doc.id
+  previewChunkId.value = chunkId
+  previewVisible.value = true
 }
 
-async function saveSettings() {
-  if (!settingsForm.name.trim()) {
-    ElMessage.warning('名称不能为空')
+function resetUploadMeta() {
+  uploadMeta.docType = ''
+  uploadMeta.docNo = ''
+  uploadMeta.effectiveDate = ''
+  uploadMeta.expireDate = ''
+  uploadMeta.department = ''
+  uploadMeta.tags = ''
+}
+
+function onHeaderUploadPick(file: UploadFile) {
+  pendingFile.value = file.raw
+  resetUploadMeta()
+  uploadDialogVisible.value = true
+}
+
+function onUploadFileChange(file: UploadFile) {
+  pendingFile.value = file.raw
+}
+
+async function confirmUpload() {
+  if (!pendingFile.value) {
+    ElMessage.warning('请选择文件')
     return
   }
   try {
-    await updateKbMutation.mutateAsync({ ...settingsForm })
-    ElMessage.success('设置已保存')
+    await uploadMutation.mutateAsync({
+      file: pendingFile.value,
+      metadata: {
+        docType: uploadMeta.docType || undefined,
+        docNo: uploadMeta.docNo || undefined,
+        effectiveDate: uploadMeta.effectiveDate || undefined,
+        expireDate: uploadMeta.expireDate || undefined,
+        department: uploadMeta.department || undefined,
+        tags: uploadMeta.tags || undefined
+      }
+    })
+    uploadDialogVisible.value = false
+    pendingFile.value = undefined
+    ElMessage.success('上传成功，正在索引')
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
 }
 
-async function handleUpload(opt: { file: File }) {
+function openMetadata(doc: KbDocument) {
+  editingDocId.value = doc.id
+  metadataForm.docType = doc.docType || ''
+  metadataForm.docNo = doc.docNo || ''
+  metadataForm.effectiveDate = doc.effectiveDate || ''
+  metadataForm.expireDate = doc.expireDate || ''
+  metadataForm.department = doc.department || ''
+  metadataForm.tags = doc.tags || ''
+  metadataDialogVisible.value = true
+}
+
+async function saveMetadata() {
+  if (!editingDocId.value) return
   try {
-    await uploadMutation.mutateAsync(opt.file)
-    ElMessage.success('上传成功，正在后台索引')
+    await metadataMutation.mutateAsync({
+      docId: editingDocId.value,
+      metadata: { ...metadataForm }
+    })
+    metadataDialogVisible.value = false
+    ElMessage.success('元数据已保存')
+  } catch {
+    /* 错误已由 axios 拦截器提示 */
+  }
+}
+
+function openWikiPage(page: WikiPage) {
+  activeWiki.value = page
+  wikiDialogVisible.value = true
+}
+
+async function handleDelete(docId: number) {
+  await ElMessageBox.confirm('确认删除该文档？', '警告', { type: 'warning' })
+  try {
+    await deleteMutation.mutateAsync(docId)
+    ElMessage.success('已删除')
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
@@ -325,49 +533,17 @@ async function handleUpload(opt: { file: File }) {
 async function handleReindex(docId: number) {
   try {
     await reindexMutation.mutateAsync(docId)
-    ElMessage.info('已提交重新索引')
+    ElMessage.success('已提交重新索引')
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
 }
 
-async function handleDelete(docId: number) {
-  await ElMessageBox.confirm('确认删除该文档？', '提示', {
-    type: 'warning',
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    confirmButtonClass: 'el-button--danger'
-  })
+async function handleRebuild() {
+  await ElMessageBox.confirm('确认重建该知识库全部索引？', '提示', { type: 'warning' })
   try {
-    await deleteDocMutation.mutateAsync(docId)
-    ElMessage.success('已删除')
-  } catch {
-    /* 错误已由 axios 拦截器提示 */
-  }
-}
-
-async function handleAddMember() {
-  if (!memberForm.username.trim()) {
-    ElMessage.warning('请输入用户名')
-    return
-  }
-  try {
-    await addMemberMutation.mutateAsync({
-      username: memberForm.username.trim(),
-      permission: memberForm.permission
-    })
-    ElMessage.success('已添加')
-    memberForm.username = ''
-  } catch {
-    /* 错误已由 axios 拦截器提示 */
-  }
-}
-
-async function handleRemoveMember(memberId: number) {
-  await ElMessageBox.confirm('确认移除该成员？', '提示', { type: 'warning' })
-  try {
-    await removeMemberMutation.mutateAsync(memberId)
-    ElMessage.success('已移除')
+    await rebuildMutation.mutateAsync()
+    ElMessage.success('已提交重建任务')
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
@@ -382,23 +558,37 @@ async function handleRetry(documentId: number) {
   }
 }
 
-async function handleRebuild() {
-  await ElMessageBox.confirm('将从分块数据全量重建向量索引，确认？', '重建索引', { type: 'warning' })
+async function saveSettings() {
   try {
-    await rebuildMutation.mutateAsync()
-    ElMessage.success('索引重建已在后台执行，列表将自动刷新')
+    await updateKbMutation.mutateAsync({ ...settingsForm })
+    ElMessage.success('设置已保存')
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
 }
 
-function docRow(row: unknown) {
-  return row as KbDocument
+async function handleAddMember() {
+  if (!memberForm.username.trim()) {
+    ElMessage.warning('请输入用户名')
+    return
+  }
+  try {
+    await addMemberMutation.mutateAsync({ ...memberForm })
+    memberForm.username = ''
+    ElMessage.success('已添加成员')
+  } catch {
+    /* 错误已由 axios 拦截器提示 */
+  }
 }
 
-function openPreview(row: KbDocument) {
-  previewDocId.value = row.id
-  previewVisible.value = true
+async function handleRemoveMember(id: number) {
+  await ElMessageBox.confirm('确认移除该成员？', '提示', { type: 'warning' })
+  try {
+    await removeMemberMutation.mutateAsync(id)
+    ElMessage.success('已移除')
+  } catch {
+    /* 错误已由 axios 拦截器提示 */
+  }
 }
 </script>
 
@@ -409,11 +599,8 @@ function openPreview(row: KbDocument) {
   background: $fk-card-bg;
 }
 
-.tab-section__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+.tab-section {
+  padding: 4px 0;
 }
 
 .tab-section__title {
@@ -424,7 +611,7 @@ function openPreview(row: KbDocument) {
 }
 
 .tab-section__hint {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   font-size: 13px;
   color: $fk-text-secondary;
 }
@@ -435,24 +622,19 @@ function openPreview(row: KbDocument) {
 
 .member-form {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
   flex-wrap: wrap;
-}
-
-.settings-form {
-  max-width: 560px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .form-tip {
   font-size: 12px;
   color: $fk-text-secondary;
   margin-top: 4px;
-  line-height: 1.5;
 }
 
-.tab-badge {
-  margin-left: 6px;
+.btn-icon {
+  margin-right: 4px;
 }
 
 .table-footer {
@@ -461,7 +643,11 @@ function openPreview(row: KbDocument) {
   margin-top: 16px;
 }
 
-.btn-icon {
-  margin-right: 4px;
+.tab-badge {
+  margin-left: 4px;
+}
+
+.wiki-status-tag {
+  margin-bottom: 12px;
 }
 </style>

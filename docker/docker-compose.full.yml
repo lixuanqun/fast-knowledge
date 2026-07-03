@@ -88,7 +88,7 @@ services:
     ports:
       - "8088:8088"
     environment:
-      SPRING_PROFILES_ACTIVE: prod,bundle
+      SPRING_PROFILES_ACTIVE: bundle
       SQL_INIT_MODE: ${SQL_INIT_MODE:-always}
       DB_URL: jdbc:postgresql://postgres:5432/fast_knowledge
       DB_USER: postgres
@@ -102,6 +102,10 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_PREFIX: knowledge/
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-onnx}
+      ONNX_MODEL_PATH: /data/knowledge/models/bge-small-zh-v1.5.onnx
+      ONNX_TOKENIZER_PATH: /data/knowledge/models/tokenizer.json
+      RERANK_ONNX_MODEL_PATH: /data/knowledge/models/bge-reranker-base.onnx
+      RERANK_ONNX_TOKENIZER_PATH: /data/knowledge/models/bge-reranker-tokenizer.json
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       LLM_API_KEY: ${LLM_API_KEY:?请设置 LLM_API_KEY}

@@ -6,6 +6,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: () => import('@/views/login/index.vue'), meta: { public: true } },
+    { path: '/login/callback', component: () => import('@/views/login/callback.vue'), meta: { public: true } },
     { path: '/setup', component: () => import('@/views/setup/index.vue') },
     {
       path: '/',
@@ -15,7 +16,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           component: () => import('@/views/dashboard/index.vue'),
-          meta: { keepAlive: true, title: '概览' }
+          meta: { keepAlive: true, title: '系统概览' }
         },
         {
           path: 'kbs',
@@ -53,9 +54,24 @@ const router = createRouter({
           meta: { keepAlive: true, title: '设置与隐私' }
         },
         {
+          path: 'settings/llm',
+          component: () => import('@/views/settings/llm.vue'),
+          meta: { adminOnly: true, title: '大模型配置' }
+        },
+        {
           path: 'users',
           component: () => import('@/views/users/index.vue'),
           meta: { keepAlive: true, adminOnly: true, title: '用户管理' }
+        },
+        {
+          path: 'audits',
+          component: () => import('@/views/audits/index.vue'),
+          meta: { adminOnly: true, title: '审计日志' }
+        },
+        {
+          path: 'api-keys',
+          component: () => import('@/views/api-keys/index.vue'),
+          meta: { adminOnly: true, title: 'API Key' }
         }
       ]
     }

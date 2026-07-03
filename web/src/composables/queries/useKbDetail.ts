@@ -17,6 +17,8 @@ import {
   retryIndexTask,
   updateKb,
   uploadDocument,
+  updateDocumentMetadata,
+  type DocumentMetadata,
   type KbDocument,
   type KnowledgeBase
 } from '@/api'
@@ -110,12 +112,26 @@ export function useUpdateKbMutation(kbId: MaybeRefOrGetter<number>) {
 export function useUploadDocumentMutation(kbId: MaybeRefOrGetter<number>) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (file: File) => uploadDocument(toValue(kbId), file),
+    mutationFn: ({ file, metadata }: { file: File; metadata?: DocumentMetadata }) =>
+      uploadDocument(toValue(kbId), file, metadata),
     onSuccess: () => {
       const id = toValue(kbId)
       queryClient.invalidateQueries({ queryKey: queryKeys.kbs.documents(id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.kbs.failedTasks(id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats })
+    }
+  })
+}
+
+export function useUpdateDocumentMetadataMutation(kbId: MaybeRefOrGetter<number>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ docId, metadata }: { docId: number; metadata: DocumentMetadata }) =>
+      updateDocumentMetadata(toValue(kbId), docId, metadata),
+    onSuccess: (_data, vars) => {
+      const id = toValue(kbId)
+      queryClient.invalidateQueries({ queryKey: queryKeys.kbs.documents(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.kbs.document(id, vars.docId) })
     }
   })
 }
@@ -200,12 +216,20 @@ export function useDocumentQuery(
 
 export function useDocumentPreviewQuery(
   kbId: MaybeRefOrGetter<number>,
-  docId: MaybeRefOrGetter<number | undefined>
+  docId: MaybeRefOrGetter<number | undefined>,
+  highlightChunkId?: MaybeRefOrGetter<number | undefined>
 ) {
   return useQuery({
-    queryKey: computed(() => queryKeys.kbs.documentPreview(toValue(kbId), toValue(docId) ?? 0)),
+    queryKey: computed(() =>
+      queryKeys.kbs.documentPreview(
+        toValue(kbId),
+        toValue(docId) ?? 0,
+        toValue(highlightChunkId) ?? undefined
+      )
+    ),
     queryFn: async () => {
-      const res = await getDocumentPreview(toValue(kbId), toValue(docId)!)
+      const chunkId = toValue(highlightChunkId)
+      const res = await getDocumentPreview(toValue(kbId), toValue(docId)!, chunkId ?? undefined)
       return res.data
     },
     enabled: computed(() => {

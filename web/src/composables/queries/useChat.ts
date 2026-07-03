@@ -17,10 +17,12 @@ export interface ChatMessageDto {
   sources?: string
 }
 
+import type { SearchHit } from '@/api/search'
+
 export interface ChatMessage {
   role: string
   content: string
-  sources?: Array<{ documentTitle: string; content: string; score?: number }>
+  sources?: SearchHit[]
 }
 
 export function mapChatMessages(data: ChatMessageDto[]): ChatMessage[] {

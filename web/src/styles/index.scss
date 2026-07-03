@@ -1,5 +1,6 @@
 @use './theme.scss';
 @use './design-tokens.scss' as *;
+@use './dark-overrides.scss';
 
 $primary: $fk-primary;
 $primary-hover: $fk-primary-hover;

@@ -1,87 +1,97 @@
 <template>
   <div class="page-container">
-    <PageHeader title="智能检索" subtitle="混合检索（向量 + 关键词）" />
+    <PageHeader title="智能检索" subtitle="基于 Lucene 混合检索（向量 + 关键词）" />
 
     <el-card class="fk-card search-form-card" shadow="never">
-      <el-form label-width="90px">
-        <el-row :gutter="16">
-          <el-col :xs="24" :sm="8">
-            <el-form-item label="知识库" required>
-              <KbSelect v-model="kbId" width="100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="16">
-            <el-form-item label="关键词" required>
-              <el-input
-                v-model="query"
-                placeholder="输入检索内容"
-                clearable
-                @keyup.enter="handleSearch"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :xs="24" :sm="8">
-            <el-form-item label="返回条数">
-              <el-input-number v-model="topK" :min="1" :max="30" style="width:100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="16">
-            <el-form-item label=" ">
-              <div class="form-actions">
-                <el-button :loading="loading" type="primary" @click="handleSearch">
-                  <el-icon class="btn-icon"><Search /></el-icon>
-                  检索
-                </el-button>
-                <el-button @click="handleReset">
-                  <el-icon class="btn-icon"><Refresh /></el-icon>
-                  重置
-                </el-button>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
+      <el-form label-position="top" class="search-form">
+        <div class="search-form__row">
+          <el-form-item label="知识库" required class="search-form__item">
+            <KbSelect v-model="kbId" width="100%" />
+          </el-form-item>
+          <el-form-item label="关键词" required class="search-form__item search-form__item--grow">
+            <el-input
+              v-model="query"
+              placeholder="输入检索内容"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="返回条数" class="search-form__item search-form__item--narrow">
+            <el-input-number v-model="topK" :min="1" :max="30" style="width:100%" />
+          </el-form-item>
+          <el-form-item label="文档类型" class="search-form__item">
+            <el-select v-model="docType" clearable placeholder="全部" style="width:100%">
+              <el-option label="制度" value="制度" />
+              <el-option label="工艺" value="工艺" />
+              <el-option label="设备" value="设备" />
+              <el-option label="标准" value="标准" />
+              <el-option label="其他" value="其他" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label=" " class="search-form__item search-form__item--btn">
+            <el-button :loading="loading" type="primary" @click="handleSearch">检索</el-button>
+          </el-form-item>
+        </div>
       </el-form>
     </el-card>
 
-    <el-card class="fk-card result-card" shadow="never">
-      <template #header>
-        <div class="result-header">
-          <span class="result-title">检索结果</span>
-          <span v-if="loading" class="result-status is-loading">搜索中...</span>
-          <span v-else-if="searched" class="result-status">
-            共找到 {{ hits.length }} 条相关片段
-          </span>
-        </div>
-      </template>
-
-      <div v-if="loading" class="result-loading">
+    <template v-if="loading">
+      <div class="result-loading">
         <el-skeleton :rows="5" animated />
         <p class="loading-hint">
           <el-icon class="is-loading"><Loading /></el-icon>
           搜索中，请稍候...
         </p>
       </div>
+    </template>
 
-      <template v-else-if="searched">
-        <el-card v-for="(hit, i) in hits" :key="i" class="fk-card hit-card" shadow="never">
-          <div class="hit-card__header">
-            <div class="hit-card__title">
-              <el-icon><Document /></el-icon>
-              <strong>{{ hit.documentTitle }}</strong>
-            </div>
-            <el-tag size="small" type="warning" effect="plain">
-              得分 {{ hit.score.toFixed(3) }}
-            </el-tag>
+    <template v-else-if="searched">
+      <p v-if="hits.length" class="result-summary">共找到 {{ hits.length }} 条相关片段</p>
+      <el-card v-for="(hit, i) in pagedHits" :key="i" class="fk-card hit-card" shadow="never">
+        <div class="hit-card__header">
+          <div class="hit-card__title">
+            <el-icon><Document /></el-icon>
+            <strong>{{ hit.documentTitle }}</strong>
           </div>
-          <p class="hit-card__content">{{ hit.content }}</p>
-        </el-card>
-        <EmptyState v-if="!hits.length" variant="search-empty" />
-      </template>
+          <span class="hit-score">{{ hit.score.toFixed(3) }}</span>
+        </div>
+        <p v-if="hit.section || hit.docNo" class="hit-card__meta">
+          <span v-if="hit.docType">{{ hit.docType }}</span>
+          <span v-if="hit.docNo"> · {{ hit.docNo }}</span>
+          <span v-if="hit.section"> · {{ hit.section }}</span>
+        </p>
+        <p class="hit-card__content">{{ hit.content }}</p>
+        <el-button
+          v-if="kbId && hit.documentId"
+          link
+          type="primary"
+          class="hit-card__link"
+          @click="openHitPreview(hit)"
+        >
+          查看原文
+        </el-button>
+      </el-card>
+      <EmptyState v-if="!hits.length" variant="search-empty" />
+      <div v-if="hits.length > pageSize" class="table-footer">
+        <el-pagination
+          v-model:current-page="page"
+          :page-size="pageSize"
+          :total="hits.length"
+          layout="prev, pager, next"
+          background
+          small
+        />
+      </div>
+    </template>
 
-      <EmptyState v-else variant="search" />
-    </el-card>
+    <EmptyState v-else variant="search" />
+
+    <DocumentPreviewDrawer
+      v-model:visible="previewVisible"
+      :kb-id="kbId!"
+      :doc-id="previewDocId"
+      :highlight-chunk-id="previewChunkId"
+    />
   </div>
 </template>
 
@@ -90,26 +100,30 @@ import { computed, ref } from 'vue'
 import PageHeader from '@/components/PageHeader.vue'
 import KbSelect from '@/components/KbSelect.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import { DocumentPreviewDrawer } from '@/components/async'
 import { useSearchMutation } from '@/composables/queries/useSearch'
+import type { SearchHit } from '@/api/search'
 import { ElMessage } from 'element-plus'
-import { Document, Loading, Refresh, Search } from '@element-plus/icons-vue'
+import { Document, Loading } from '@element-plus/icons-vue'
 
 const kbId = ref<number>()
 const query = ref('')
 const topK = ref(8)
+const docType = ref<string>()
 const searched = ref(false)
+const page = ref(1)
+const pageSize = 10
+const previewVisible = ref(false)
+const previewDocId = ref<number>()
+const previewChunkId = ref<number>()
 
 const searchMutation = useSearchMutation()
 const loading = computed(() => searchMutation.isPending.value)
 const hits = computed(() => searchMutation.data.value || [])
-
-function handleReset() {
-  kbId.value = undefined
-  query.value = ''
-  topK.value = 8
-  searched.value = false
-  searchMutation.reset()
-}
+const pagedHits = computed(() => {
+  const start = (page.value - 1) * pageSize
+  return hits.value.slice(start, start + pageSize)
+})
 
 async function handleSearch() {
   if (!kbId.value) {
@@ -121,15 +135,23 @@ async function handleSearch() {
     return
   }
   searched.value = true
+  page.value = 1
   try {
     await searchMutation.mutateAsync({
       kbId: kbId.value,
       query: query.value.trim(),
-      topK: topK.value
+      topK: topK.value,
+      docType: docType.value || undefined
     })
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
+}
+
+function openHitPreview(hit: SearchHit) {
+  previewDocId.value = hit.documentId
+  previewChunkId.value = hit.chunkId
+  previewVisible.value = true
 }
 </script>
 
@@ -143,30 +165,35 @@ async function handleSearch() {
   margin-bottom: 16px;
 }
 
-.form-actions {
+.search-form__row {
   display: flex;
-  gap: 10px;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
-.result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+.search-form__item {
+  margin-bottom: 0;
+  min-width: 160px;
 }
 
-.result-title {
-  font-weight: 600;
-  color: $fk-text-primary;
+.search-form__item--grow {
+  flex: 1;
+  min-width: 200px;
 }
 
-.result-status {
+.search-form__item--narrow {
+  width: 120px;
+}
+
+.search-form__item--btn {
+  min-width: auto;
+}
+
+.result-summary {
+  margin: 0 0 12px;
   font-size: 13px;
   color: $fk-text-secondary;
-}
-
-.result-status.is-loading {
-  color: $fk-primary;
 }
 
 .result-loading {
@@ -214,18 +241,38 @@ async function handleSearch() {
   flex-shrink: 0;
 }
 
+.hit-score {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: $fk-primary;
+  background: var(--fk-hit-score-bg);
+}
+
+.hit-card__meta {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: $fk-text-secondary;
+}
+
+.hit-card__link {
+  margin-top: 8px;
+  padding: 0;
+}
+
 .hit-card__content {
   margin: 0;
   white-space: pre-wrap;
   color: $fk-text-regular;
   line-height: 1.75;
   font-size: 14px;
-  background: $fk-surface-muted;
-  padding: 12px 14px;
-  border-radius: 8px;
 }
 
-.btn-icon {
-  margin-right: 4px;
+.table-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>

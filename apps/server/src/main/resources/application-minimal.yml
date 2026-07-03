@@ -1,5 +1,5 @@
-# 演示叠加配置：与 standalone 一起使用
-# 启动：mvn spring-boot:run -Dspring-boot.run.profiles=standalone,minimal,bundle
+# 演示叠加配置：使用 hash 伪向量，无需 ONNX 模型
+# 启动：mvn spring-boot:run -Dspring-boot.run.profiles=minimal,bundle
 
 knowledge:
   embedding:

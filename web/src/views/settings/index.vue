@@ -40,7 +40,12 @@
               {{ config.llmAllowExternal ? '允许调用外部 API' : '仅本地模型' }}
             </el-descriptions-item>
           </el-descriptions>
-          <el-skeleton v-else :rows="4" animated />
+          <div v-if="config && isAdmin" class="settings-link">
+            <el-button type="primary" link @click="router.push('/settings/llm')">
+              配置大模型 →
+            </el-button>
+          </div>
+          <el-skeleton v-if="!config" :rows="4" animated />
         </el-card>
       </el-col>
     </el-row>
@@ -65,13 +70,18 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import PageHeader from '@/components/PageHeader.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useConfigStore } from '@/stores/config'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
 
+const router = useRouter()
+const authStore = useAuthStore()
 const configStore = useConfigStore()
 const themeStore = useThemeStore()
 const { config, llmProviders } = storeToRefs(configStore)
+const { isAdmin } = storeToRefs(authStore)
 
 const themeMode = computed({
   get: () => themeStore.mode,
@@ -103,5 +113,9 @@ onMounted(async () => {
   margin: 0 0 0 88px;
   font-size: 12px;
   color: $fk-text-secondary;
+}
+
+.settings-link {
+  margin-top: 12px;
 }
 </style>

@@ -32,6 +32,13 @@
   --fk-table-header-bg: #fafafa;
   --fk-code-bg: #1e1e1e;
   --fk-code-text: #d4d4d4;
+  --fk-illus-fill: #ecf5ff;
+  --fk-illus-stroke: #b3d8ff;
+  --fk-illus-muted-fill: #f5f7fa;
+  --fk-illus-muted-stroke: #e4e7ed;
+  --fk-chat-user-bg: var(--fk-primary);
+  --fk-chat-user-text: #fff;
+  --fk-hit-score-bg: var(--fk-primary-light);
   color-scheme: light;
 }
 
@@ -66,5 +73,12 @@
   --fk-table-header-bg: #21262d;
   --fk-code-bg: #0d1117;
   --fk-code-text: #e6edf3;
+  --fk-illus-fill: rgba(64, 158, 255, 0.12);
+  --fk-illus-stroke: #388bfd66;
+  --fk-illus-muted-fill: #21262d;
+  --fk-illus-muted-stroke: #30363d;
+  --fk-chat-user-bg: #1f6feb;
+  --fk-chat-user-text: #e6edf3;
+  --fk-hit-score-bg: rgba(64, 158, 255, 0.18);
   color-scheme: dark;
 }

@@ -43,6 +43,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function applySession(data: LoginResult) {
+    token.value = data.token
+    user.value = data
+    setToken(data.token)
+    setUser(data)
+  }
+
   return {
     token,
     user,
@@ -52,6 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     clearSession,
-    clearMustChangePassword
+    clearMustChangePassword,
+    applySession
   }
 })
