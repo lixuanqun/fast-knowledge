@@ -11,6 +11,7 @@ public class UserVO {
     private String displayName;
     private String role;
     private Integer status;
+    private Boolean mustChangePassword;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

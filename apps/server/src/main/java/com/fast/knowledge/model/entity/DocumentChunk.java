@@ -18,6 +18,7 @@ public class DocumentChunk {
     private Long documentId;
     private Integer chunkIndex;
     private String content;
+    private String sectionTitle;
     private Integer tokenCount;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

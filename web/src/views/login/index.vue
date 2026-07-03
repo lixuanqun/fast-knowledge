@@ -4,21 +4,19 @@
     <el-card class="login-card" shadow="never">
       <div class="login-brand">
         <h1 class="brand-title">Fast Knowledge 快速知识库</h1>
-        <p class="brand-desc">高效管理知识，让信息触手可及</p>
+        <p class="brand-desc">面向中小企业的开源私有化知识库</p>
       </div>
-      <el-divider class="brand-divider" />
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
         size="large"
-        label-position="top"
         @submit.prevent="handleLogin"
       >
-        <el-form-item label="用户名" prop="username" required>
-          <el-input v-model="form.username" placeholder="请输入用户名" :prefix-icon="User" />
+        <el-form-item prop="username">
+          <el-input v-model="form.username" placeholder="admin" :prefix-icon="User" />
         </el-form-item>
-        <el-form-item label="密码" prop="password" required>
+        <el-form-item prop="password">
           <el-input
             v-model="form.password"
             type="password"
@@ -28,37 +26,43 @@
             @keyup.enter="handleLogin"
           />
         </el-form-item>
-        <div class="login-options">
-          <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-        </div>
         <el-button class="login-btn" type="primary" :loading="loading" @click="handleLogin">
           登录
         </el-button>
+        <el-button
+          v-if="ldapEnabled"
+          class="login-btn alt"
+          :loading="ldapLoading"
+          @click="handleLdapLogin"
+        >
+          LDAP 登录
+        </el-button>
+        <el-button v-if="oidcEnabled" class="login-btn alt" @click="handleOidcLogin">
+          企业 SSO 登录
+        </el-button>
       </el-form>
-      <p class="hint">
-        提示：默认用户名为 <span class="hint-strong">admin</span>，默认密码为
-        <span class="hint-strong">admin123</span>
-      </p>
+      <p class="hint">默认账号 admin / admin123（首次登录须修改密码）</p>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useConfigStore } from '@/stores/config'
 import { initTheme } from '@/stores/theme'
 import { prefetchAfterLogin, prefetchMainLayout, prefetchView } from '@/router/prefetch'
 import LoginHero from '@/components/design/LoginHero.vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Lock, User } from '@element-plus/icons-vue'
-
-const REMEMBER_KEY = 'fk-remember-username'
+import { getOidcAuthorizeUrl, ldapLogin } from '@/api/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const configStore = useConfigStore()
 const loading = ref(false)
-const rememberMe = ref(false)
+const ldapLoading = ref(false)
 const formRef = ref<FormInstance>()
 const form = reactive({ username: '', password: '' })
 const rules: FormRules = {
@@ -66,19 +70,18 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
-onMounted(() => {
+const ldapEnabled = computed(() => !!configStore.config?.ldapEnabled)
+const oidcEnabled = computed(() => !!configStore.config?.oidcEnabled)
+
+onMounted(async () => {
   initTheme()
-  const saved = localStorage.getItem(REMEMBER_KEY)
-  if (saved) {
-    form.username = saved
-    rememberMe.value = true
-  }
   prefetchMainLayout()
   prefetchView('/dashboard')
-})
-
-watch(rememberMe, checked => {
-  if (!checked) localStorage.removeItem(REMEMBER_KEY)
+  try {
+    await configStore.fetchConfig()
+  } catch {
+    /* 登录页允许离线展示 */
+  }
 })
 
 async function handleLogin() {
@@ -86,11 +89,6 @@ async function handleLogin() {
   if (!valid) return
   loading.value = true
   try {
-    if (rememberMe.value) {
-      localStorage.setItem(REMEMBER_KEY, form.username)
-    } else {
-      localStorage.removeItem(REMEMBER_KEY)
-    }
     const data = await authStore.login(form.username, form.password)
     const target = data.mustChangePassword ? '/setup' : '/dashboard'
     prefetchAfterLogin(target)
@@ -101,6 +99,34 @@ async function handleLogin() {
     ElMessage.error(message)
   } finally {
     loading.value = false
+  }
+}
+
+async function handleLdapLogin() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+  ldapLoading.value = true
+  try {
+    const res = await ldapLogin(form.username, form.password)
+    const data = res.data
+    authStore.applySession(data)
+    const target = data.mustChangePassword ? '/setup' : '/dashboard'
+    prefetchAfterLogin(target)
+    ElMessage.success('LDAP 登录成功')
+    router.push(target)
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : 'LDAP 登录失败')
+  } finally {
+    ldapLoading.value = false
+  }
+}
+
+async function handleOidcLogin() {
+  try {
+    const res = await getOidcAuthorizeUrl()
+    window.location.href = res.data.authorizationUrl
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '无法启动 SSO')
   }
 }
 </script>
@@ -123,13 +149,17 @@ async function handleLogin() {
   border-radius: $fk-card-radius;
   border: 1px solid $fk-border;
   box-shadow: $fk-card-shadow;
-  padding: 12px 16px 8px;
+  padding: 28px 32px 24px;
   background: $fk-card-bg;
+
+  :deep(.el-input__wrapper) {
+    background: $fk-surface-muted;
+  }
 }
 
 .login-brand {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
 }
 
 .brand-title {
@@ -146,34 +176,21 @@ async function handleLogin() {
   font-size: 14px;
 }
 
-.brand-divider {
-  margin: 16px 0 20px;
-  border-color: $fk-border;
-}
-
-.login-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
 .login-btn {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 4px;
   height: 42px;
   font-size: 15px;
+
+  &.alt {
+    margin-top: 10px;
+  }
 }
 
 .hint {
   color: $fk-text-secondary;
   font-size: 12px;
   text-align: center;
-  margin: 18px 0 8px;
-}
-
-.hint-strong {
-  color: $fk-primary;
-  font-weight: 600;
+  margin: 18px 0 0;
 }
 </style>

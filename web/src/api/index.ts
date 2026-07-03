@@ -11,6 +11,8 @@ export * from './qa'
 export * from './writer'
 export * from './chat'
 export * from './sse'
+export * from './api-keys'
+export * from './wiki'
 
 // backward-compatible type re-exports
 export type { KbUser } from './users'

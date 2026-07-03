@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/vue-query'
 import { ask } from '@/api'
+import type { SearchHit } from '@/api/search'
 
 export interface QaResult {
   answer: string
-  sources?: Array<{ documentTitle: string; content: string; score?: number }>
+  sources?: SearchHit[]
 }
 
 export function useAskMutation() {

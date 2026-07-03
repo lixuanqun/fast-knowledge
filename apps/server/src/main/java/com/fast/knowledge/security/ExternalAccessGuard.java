@@ -25,7 +25,11 @@ public class ExternalAccessGuard {
     }
 
     public void validateLlmEndpoint(String baseUrl) {
-        validateHttpEndpoint(baseUrl, "大模型");
+        validateHttpEndpoint(baseUrl, properties.getLlm().isAllowExternal(), "大模型");
+    }
+
+    public void validateLlmEndpoint(String baseUrl, boolean allowExternal) {
+        validateHttpEndpoint(baseUrl, allowExternal, "大模型");
     }
 
     public void validateEmbeddingEndpoint(String baseUrl) {

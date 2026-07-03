@@ -1,9 +1,8 @@
 <template>
   <div class="page-header">
     <div class="page-header__main">
-      <el-button v-if="showBack" link class="back-btn" @click="goBack">
+      <el-button v-if="showBack" class="back-btn" @click="goBack">
         <el-icon><ArrowLeft /></el-icon>
-        返回
       </el-button>
       <div>
         <h2 class="page-header__title">{{ title }}</h2>
@@ -45,7 +44,7 @@ function goBack() {
 .page-header__main {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
 }
 
 .page-header__title {
@@ -68,7 +67,18 @@ function goBack() {
 }
 
 .back-btn {
-  margin-top: 4px;
-  padding-left: 0;
+  margin-top: 2px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid $fk-border;
+  border-radius: 8px;
+  background: $fk-card-bg;
+  color: $fk-text-regular;
+}
+
+.back-btn:hover {
+  border-color: $fk-primary;
+  color: $fk-primary;
 }
 </style>

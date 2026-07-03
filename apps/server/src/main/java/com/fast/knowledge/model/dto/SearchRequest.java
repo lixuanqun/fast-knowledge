@@ -11,5 +11,9 @@ public class SearchRequest {
     @NotBlank(message = "检索关键词不能为空")
     private String query;
     private Integer topK;
+    /** 按文档业务类型过滤（POLICY/PROCESS 等） */
+    private String docType;
+    /** @deprecated HYBRID RRF 不使用，请求体忽略 */
+    @Deprecated
     private Double alpha;
 }

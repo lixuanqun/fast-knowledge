@@ -1,8 +1,20 @@
 # 大模型配置（模型中立）
 
-Fast Knowledge 通过 **OpenAI 兼容 API** 对接各大模型厂商，设置 `LLM_PROVIDER` 即可使用预设，也可用环境变量覆盖 `baseUrl` / `apiKey` / `model`。
+Fast Knowledge 采用**平台中立**的 OpenAI 兼容 API 对接各大模型，契合 **Privacy by Default**：可完全使用本地 Ollama，也可在允许外连时接入云端 API（`LLM_ALLOW_EXTERNAL`）。产品定位见 [产品说明.md](../产品说明.md)。
 
-## 快速配置
+通过 **OpenAI 兼容 API** 对接各大模型厂商，设置 `LLM_PROVIDER` 即可使用预设，也可用环境变量覆盖 `baseUrl` / `apiKey` / `model`。
+
+## 管理界面配置（推荐）
+
+管理员登录后访问 **大模型配置**（`/settings/llm`），可在 UI 中选择提供商、填写 API Key 与模型，保存后**立即生效**（写入 `kb_system_config`，优先于环境变量）。
+
+- `GET /api/system/llm-config` — 查看当前配置（API Key 掩码显示）
+- `PUT /api/system/llm-config` — 保存并热刷新
+- `POST /api/system/llm-config/test` — 测试连通性
+
+配置优先级：**数据库（UI 保存）> 环境变量 > 预设默认值**。
+
+## 快速配置（环境变量）
 
 ```yaml
 knowledge:
@@ -32,7 +44,7 @@ LLM_MODEL=deepseek-chat
 | `openai` | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | 国际 OpenAI |
 | `custom` | 自定义 | 需设置 `LLM_BASE_URL` | 需设置 `LLM_MODEL` | 任意兼容端点 |
 
-查询预设列表 API：`GET /api/system/llm-providers`（无需登录）
+查询预设列表 API：`GET /api/system/llm-providers`（无需登录；含 `custom` 自定义项）
 
 ## 配置示例
 
@@ -90,22 +102,42 @@ LLM_ALLOW_EXTERNAL=false
 
 ## Embedding 与 LLM 分离
 
-向量化与对话可独立配置：
+向量化、重排序与对话可独立配置：
 
 ```env
-EMBEDDING_PROVIDER=onnx          # 本地向量
-LLM_PROVIDER=dashscope         # 云端对话
+EMBEDDING_PROVIDER=onnx
+RERANK_ENABLED=true
+RERANK_PROVIDER=onnx
+LLM_PROVIDER=dashscope
 ```
 
 或全部本地：
 
 ```env
-EMBEDDING_PROVIDER=ollama
-EMBEDDING_MODEL=nomic-embed-text
+EMBEDDING_PROVIDER=onnx
+RERANK_ENABLED=true
+RERANK_PROVIDER=onnx
 LLM_PROVIDER=ollama
 LLM_MODEL=qwen2.5:7b
 LLM_ALLOW_EXTERNAL=false
 ```
+
+## Reranker（检索重排序）
+
+```env
+RERANK_ENABLED=true
+RERANK_PROVIDER=onnx
+RERANK_ONNX_MODEL_PATH=./data/models/bge-reranker-base.onnx
+RERANK_ONNX_TOKENIZER_PATH=./data/models/bge-reranker-tokenizer.json
+```
+
+| provider | 说明 |
+|----------|------|
+| `onnx` | 本地 Cross-Encoder，推荐内网部署 |
+| `cohere` | 需 `COHERE_API_KEY` |
+| `jina` | 需 `JINA_API_KEY` |
+
+模型准备见 [data/models/README.md](../../data/models/README.md)。
 
 ## Docker Compose 示例
 

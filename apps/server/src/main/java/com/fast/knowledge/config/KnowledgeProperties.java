@@ -19,23 +19,68 @@ public class KnowledgeProperties {
     private Llm llm = new Llm();
     private Cors cors = new Cors();
     private Setup setup = new Setup();
+    private Auth auth = new Auth();
+    private Wiki wiki = new Wiki();
 
     @Data
-    public static class Vector {
-        /** sqlite-vec | pgvector */
-        private String provider = "sqlite-vec";
-        private SqliteVec sqliteVec = new SqliteVec();
+    public static class Wiki {
+        private boolean enabled = true;
+        /** false 时 Wiki 页保持 DRAFT，需管理员审核 */
+        private boolean autoPublish = false;
     }
 
     @Data
-    public static class SqliteVec {
-        /** sqlite-vec 扩展库路径；留空则从 classpath/native 自动解压 */
-        private String extensionPath = "";
+    public static class Auth {
+        private Ldap ldap = new Ldap();
+        private Oidc oidc = new Oidc();
+    }
+
+    @Data
+    public static class Ldap {
+        private boolean enabled = false;
+        private String url = "";
+        private String baseDn = "";
+        /** 如 uid={0},ou=people,dc=example,dc=com */
+        private String userDnPattern = "";
+        private String userSearchBase = "";
+        /** 如 (uid={0}) */
+        private String userSearchFilter = "";
+    }
+
+    @Data
+    public static class Oidc {
+        private boolean enabled = false;
+        private String issuerUri = "";
+        private String clientId = "";
+        private String clientSecret = "";
+        /** 后端回调地址，如 http://localhost:8088/api/auth/oidc/callback */
+        private String redirectUri = "";
+        /** 登录成功后跳转前端，如 http://localhost:8088/login/callback */
+        private String frontendRedirectUri = "";
+        private String scope = "openid profile email";
+    }
+
+    @Data
+    public static class Vector {
+        private String provider = "pgvector";
+        private PgVector pgvector = new PgVector();
+    }
+
+    @Data
+    public static class PgVector {
+        private String host = "localhost";
+        private int port = 5432;
+        private String database = "fast_knowledge";
+        private String user = "postgres";
+        private String password = "postgres";
+        private String table = "kb_embeddings";
+        private String searchMode = "HYBRID";
+        private int rrfK = 60;
     }
 
     @Data
     public static class Cache {
-        private String provider = "caffeine";
+        private String provider = "redis";
     }
 
     @Data
@@ -56,9 +101,7 @@ public class KnowledgeProperties {
 
     @Data
     public static class Storage {
-        /** local | minio */
-        private String provider = "local";
-        private String uploadDir = "./data/uploads";
+        private String provider = "minio";
         private Minio minio = new Minio();
     }
 
@@ -93,8 +136,27 @@ public class KnowledgeProperties {
     @Data
     public static class Search {
         private int defaultTopK = 8;
-        private double hybridAlpha = 0.6;
         private int cacheTtlMinutes = 5;
+        private Rerank rerank = new Rerank();
+    }
+
+    @Data
+    public static class Rerank {
+        /** 是否启用检索重排序 */
+        private boolean enabled = false;
+        /** cohere | jina | onnx */
+        private String provider = "cohere";
+        /** 初召回倍数：先取 topK * multiplier，再 rerank 截断 */
+        private int candidateMultiplier = 3;
+        /** 可选最低分过滤 */
+        private Double minScore;
+        private String cohereApiKey = "";
+        private String cohereModel = "rerank-multilingual-v3.0";
+        private String jinaApiKey = "";
+        private String jinaModel = "jina-reranker-v2-base-multilingual";
+        private String onnxModelPath = "./data/models/bge-reranker-base.onnx";
+        private String onnxTokenizerPath = "./data/models/bge-reranker-tokenizer.json";
+        private int onnxMaxSeqLen = 512;
     }
 
     @Data

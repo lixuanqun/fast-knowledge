@@ -56,7 +56,7 @@ const loading = ref(false)
 const formRef = ref<FormInstance>()
 
 const form = reactive({
-  instanceName: 'Fast Knowledge',
+  instanceName: 'Acme 知识库',
   newPassword: '',
   confirmPassword: ''
 })

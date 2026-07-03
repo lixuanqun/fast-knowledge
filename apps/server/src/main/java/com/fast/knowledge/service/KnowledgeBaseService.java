@@ -10,7 +10,7 @@ import com.fast.knowledge.model.dto.KnowledgeBaseRequest;
 import com.fast.knowledge.model.entity.KbMember;
 import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.security.UserContext;
-import com.fast.knowledge.vector.VectorStore;
+import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +23,7 @@ public class KnowledgeBaseService {
     private final DocumentMapper documentMapper;
     private final DocumentChunkMapper documentChunkMapper;
     private final KbMemberMapper kbMemberMapper;
-    private final VectorStore vectorStore;
+    private final KbVectorIndexService vectorIndexService;
     private final KnowledgeProperties properties;
     private final AuditLogService auditLogService;
     private final WorkspaceService workspaceService;
@@ -33,7 +33,7 @@ public class KnowledgeBaseService {
                                 DocumentMapper documentMapper,
                                 DocumentChunkMapper documentChunkMapper,
                                 KbMemberMapper kbMemberMapper,
-                                VectorStore vectorStore,
+                                KbVectorIndexService vectorIndexService,
                                 KnowledgeProperties properties,
                                 AuditLogService auditLogService,
                                 WorkspaceService workspaceService,
@@ -42,7 +42,7 @@ public class KnowledgeBaseService {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.kbMemberMapper = kbMemberMapper;
-        this.vectorStore = vectorStore;
+        this.vectorIndexService = vectorIndexService;
         this.properties = properties;
         this.auditLogService = auditLogService;
         this.workspaceService = workspaceService;
@@ -73,8 +73,7 @@ public class KnowledgeBaseService {
         kb.setWorkspaceId(workspace.getId());
         kb.setOwnerId(UserContext.currentUserId());
         kb.setVisibility(request.getVisibility() != null ? request.getVisibility() : "PRIVATE");
-        kb.setSearchAlpha(request.getSearchAlpha() != null ? request.getSearchAlpha()
-                : properties.getSearch().getHybridAlpha());
+        kb.setSearchAlpha(request.getSearchAlpha() != null ? request.getSearchAlpha() : 0.6);
         kb.setSearchTopK(request.getSearchTopK() != null ? request.getSearchTopK()
                 : properties.getSearch().getDefaultTopK());
         kb.setStatus(1);
@@ -114,11 +113,7 @@ public class KnowledgeBaseService {
         documentChunkMapper.deleteByKbId(id);
         documentMapper.deleteByKbId(id);
         kbMemberMapper.deleteByKbId(id);
-        try {
-            vectorStore.deleteKb(id);
-        } catch (java.io.IOException e) {
-            throw new BusinessException("删除索引失败: " + e.getMessage());
-        }
+        vectorIndexService.deleteKb(id);
         knowledgeBaseMapper.deleteById(id);
         searchCacheService.invalidateForKb(id);
         auditLogService.log("DELETE_KB", "KB", id, kb.getName());

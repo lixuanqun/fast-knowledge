@@ -6,166 +6,165 @@
 [![Java](https://img.shields.io/badge/Java-21-orange)](apps/server/)
 [![Vue](https://img.shields.io/badge/Vue-3.5-brightgreen)](web/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](apps/server/)
+[![LangChain4j](https://img.shields.io/badge/LangChain4j-1.17-blueviolet)](apps/server/)
 
-面向**中小企业**的开源私有化知识库：**单机开箱即用、集群可扩展、数据本地可控**。
+**面向中小企业的开源私有化知识库** — 单实例部署、数据本地可控、**LLM 中立**、Docker 一键启动。
 
-> 详细产品说明见 [docs/产品说明.md](docs/产品说明.md) · 架构与配置见 [docs/fast_knowledge.md](docs/fast_knowledge.md)
+[产品说明](docs/产品说明.md) · [功能特性清单](docs/产品说明.md#二功能特性清单) · [v1.0.0 版本范围](docs/releases/v1.0.0.md) · [技术架构](docs/fast_knowledge.md) · [API 文档](docs/api.md)
+
+---
+
+## 这是什么？
+
+Fast Knowledge 帮助中小企业在**自己的服务器**上搭建一套知识库 + RAG 问答系统：
+
+- **不是**多租户 SaaS — 每家企业独立部署一套（Single Instance）
+- **默认**文档、向量、对话留在本地（Privacy by Default）
+- **兼容**任意 OpenAI 协议大模型 — 管理员可在 UI 切换提供商，无需改代码
+- **基于** LangChain4j + PostgreSQL/pgvector 混合检索，Docker Compose 即可拉起全栈
+
+---
+
+## 特性一览
+
+| 类别 | 能力 |
+|------|------|
+| **部署** | Docker / 单 Jar / K8s · `install.sh` & `install.ps1` 一键全栈 · GHCR 镜像 |
+| **知识库** | 工作区 · PUBLIC/PRIVATE · 成员 ACL（READ/WRITE/ADMIN） |
+| **文档** | PDF/DOCX/TXT/MD/PPTX/XLSX/HTML · 异步索引 · 分块预览 · 重建索引 |
+| **检索** | PgVector **HYBRID**（向量+全文 RRF）· 可选 ONNX/Cohere/Jina Rerank |
+| **AI** | 智能检索 · RAG 问答 · 多轮流式对话 · AI 写文档（均附来源引用） |
+| **LLM** | **中立配置**：Ollama / DeepSeek / 智谱 / 百炼 / 火山 / OpenAI / 自定义 · UI 保存热生效 |
+| **安全** | JWT · 首次安装向导 · 用户管理 · 审计日志 · 可禁止外连 LLM |
+| **Embedding** | 默认 ONNX 本地 `bge-small-zh-v1.5`（可换 Ollama / hash 演示） |
+
+完整功能表见 [docs/产品说明.md#二功能特性清单](docs/产品说明.md#二功能特性清单)。
 
 ---
 
 ## 产品定位
 
-Fast Knowledge 专为「每家企业独立部署一套」的轻量知识管理场景设计，而非多租户 SaaS 平台。
-
 | 维度 | 说明 |
 |------|------|
-| **目标用户** | 中小企业、团队、部门级知识管理 |
-| **数据规模** | 千级文档、数十用户 |
-| **隐私优先** | 文档、向量、对话默认留在本地；LLM 调用外部 API |
-| **部署形态** | 单机单 Jar（Linux 开箱即用）或 Docker/K8s 集群 |
-| **数据底座** | 单机 SQLite+sqlite-vec · 集群 PostgreSQL+pgvector |
+| 目标用户 | 中小企业、团队、部门 |
+| 部署模式 | 单实例私有化，非多租户 SaaS |
+| 数据规模 | 万级文档、数百用户 |
+| 隐私 | Privacy by Default |
+| AI | LLM 中立 + 本地 Embedding/Rerank 可选 |
+
+**设计原则**：Privacy by Default · Single Instance · Unified Stack · Docker First · LangChain4j Native
+
+**适用**：制度手册检索、FAQ 问答、研发文档沉淀、内网合规部署。  
+**不适用**：十万级文档/千人并发搜索平台、多租户 SaaS 运营。
 
 ---
 
-## 核心能力
-
-### 知识管理
-
-- 工作区 + 知识库 CRUD，支持 **PUBLIC / PRIVATE** 可见性
-- 知识库级成员 ACL（**READ / WRITE / ADMIN**）
-- 多格式文档上传：**PDF、DOCX、TXT、MD、PPTX、XLSX、HTML**（Tika 解析）
-- 异步索引、分块预览、单文档重建、整库重建
-
-### 智能检索与 AI
-
-- **混合检索**：向量 + 全文，加权融合（alpha 可配）
-- **智能问答**：RAG 单轮问答，附引用来源
-- **智能对话**：多轮 RAG + SSE 流式输出，会话持久化
-- **智能写文档**：按主题/大纲生成 Markdown，可引用知识库并直接入库
-
-### 安全与运维
-
-- JWT 认证、首次安装向导（强制改密）、用户管理
-- 运营概览：文档/索引统计、待处理任务、审计日志
-- 启动时自动初始化表结构，无需手动执行 SQL
-
-### 部署模式
-
-| 模式 | 业务+向量库 | 缓存 | 文件 | 适用 |
-|------|------------|------|------|------|
-| **单机 standalone** | SQLite + sqlite-vec | Caffeine | 本地磁盘 | Linux 服务器开箱即用 |
-| **集群 prod** | PostgreSQL + pgvector | Redis | MinIO | Docker / K8s 多副本 |
-
----
-
-## 技术栈
-
-**后端** Java 21 · Spring Boot 3.5 · LangChain4j · MyBatis Plus · Tika  
-**前端** Vue 3 · Vite 6 · TypeScript · Element Plus  
-**单机数据** SQLite · sqlite-vec · Caffeine  
-**集群数据** PostgreSQL · pgvector · Redis · MinIO
-
----
-
-## Monorepo 结构
+## 架构概览
 
 ```
-fast-knowledge/
-├── pom.xml                     # Maven 父工程
-├── apps/server/                # Spring Boot 服务端
-├── web/                        # Vue 3 前端
-├── docker/                     # Dockerfile、Compose
-├── data/models/                # ONNX 模型（运行时挂载）
-├── docs/
-└── scripts/                    # dev / build / install
+Vue 3 ──► Spring Boot API (JWT)
+              │
+   PostgreSQL + pgvector (HYBRID) · Redis · MinIO
+              │
+        LangChain4j — 摄入 / 检索 / RAG / 对话 / Rerank
+              │
+        LLM (OpenAI 兼容) ← 管理员 UI 配置，热刷新
 ```
 
-**构建：**
-
-```bash
-mvn -pl apps/server -am clean package -DskipTests -Pbundle   # 单 Jar（含前端）
-mvn -pl apps/server -am test                                  # 后端测试
-```
+| 链路 | 组件 |
+|------|------|
+| 摄入 | `KbDocumentSplitter` → `KbEmbeddingIngestor` → `PgVectorEmbeddingStore` |
+| 检索 | `SearchService` → HYBRID → 可选 `SearchRerankService` |
+| 问答/对话 | `RagService` / `KbChatAssistant` + `DbChatMemoryStore` |
+| LLM | `LlmModelRegistry` — UI 保存后立即生效 |
 
 ---
 
 ## 快速启动
 
-### 方式 A：单机（推荐试用）
+### Docker 全栈（推荐体验）
 
 ```bash
-mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=standalone,bundle
+./scripts/install.sh          # Linux/macOS
+# .\scripts\install.ps1       # Windows
 ```
 
-访问 http://localhost:8088 ，默认 **admin / admin123**。
+访问 http://localhost:8088 · 账号 `admin` / `admin123`
 
-无需 MySQL、Redis 或 Docker。
-
-### 方式 B：Docker 集群
-
-```bash
-./scripts/install.sh
-# 或：cd docker && docker compose -f docker-compose.full.yml up -d --build
-```
-
-需配置 `JWT_SECRET`、`LLM_API_KEY` 等，见 [docker/.env.example](docker/.env.example)。
-
-### 方式 C：本地开发
+### 本地开发
 
 ```powershell
-scripts/dev.ps1    # standalone 后端 + Vite 前端
+.\scripts\dev.ps1
+# 后端 http://localhost:8088/api · 前端 http://localhost:5174
 ```
 
-- 前端：http://localhost:5174
-- API：http://localhost:8088/api
+### 更多
 
-集群开发：`cd docker; docker compose up -d`，复制 `application-local.example.yml` 后以 `prod,local,bundle` 启动。
+| 场景 | 说明 |
+|------|------|
+| [Docker 部署](docs/deployment/docker.md) | 环境变量、备份、FAQ |
+| [K8s](k8s/README.md) | Secret、依赖、Ingress |
+| [LLM 配置](docs/deployment/llm-providers.md) | 预设提供商与管理界面 |
+| [ONNX 模型](data/models/README.md) | Embedding / Reranker 文件 |
+| 演示模式 | `-Dspring-boot.run.profiles=minimal,bundle`（免 ONNX） |
+| 预构建镜像 | `docker pull ghcr.io/lixuanqun/fast-knowledge:latest` |
+
+```bash
+mvn -pl apps/server -am clean package -DskipTests -Pbundle   # 构建单 Jar
+```
 
 ---
 
-## 环境变量
+## 技术栈
 
-| 变量 | 单机 | 集群 |
-|------|------|------|
-| `SQLITE_DB_PATH` | SQLite 文件路径 | — |
-| `SQLITE_VEC_EXTENSION` | sqlite-vec 扩展路径 | — |
-| `DB_URL` / `DB_USER` / `DB_PASSWORD` | — | PostgreSQL |
-| `REDIS_HOST` 等 | — | Redis |
-| `MINIO_ENDPOINT` / `MINIO_BUCKET` 等 | — | MinIO 对象存储 |
-| `LLM_BASE_URL` / `LLM_API_KEY` | 外部 LLM API | 同左 |
-| `JWT_SECRET` | 可选（有默认） | **必须** |
+Java 21 · Spring Boot 3.5 · LangChain4j 1.17 · Vue 3 · Vite 6 · PostgreSQL + pgvector · Redis · MinIO
+
+---
+
+## 仓库结构
+
+```
+apps/server/   Spring Boot + LangChain4j
+web/           Vue 3 管理界面
+docker/        Dockerfile & Compose
+k8s/           Kubernetes 清单
+docs/          产品说明、API、架构、部署
+scripts/       dev / build / install
+```
 
 ---
 
 ## Web 功能入口
 
-| 页面 | 路径 |
+| 页面 | 路径 | 权限 |
+|------|------|------|
+| 概览 / 知识库 / 检索 / 问答 / 对话 / 写文档 | `/dashboard` … `/writer` | 登录 |
+| 设置与隐私 | `/settings` | 登录 |
+| **大模型配置** | `/settings/llm` | 管理员 |
+| 用户管理 | `/users` | 管理员 |
+
+---
+
+## 文档导航
+
+| 读者 | 文档 |
 |------|------|
-| 概览 | `/dashboard` |
-| 知识库 | `/kbs` |
-| 智能检索 | `/search` |
-| 智能问答 | `/qa` |
-| 智能对话 | `/chat` |
-| 智能写文档 | `/writer` |
-| 用户管理 | `/users` |
+| 产品 / 功能清单 | [docs/产品说明.md](docs/产品说明.md) |
+| 开发者 / API | [docs/api.md](docs/api.md) |
+| 架构 | [docs/fast_knowledge.md](docs/fast_knowledge.md) |
+| 运维 | [docs/deployment/docker.md](docs/deployment/docker.md) |
+| GitHub 展示 | [.github/ABOUT.md](.github/ABOUT.md) |
 
 ---
 
 ## 许可证
 
-**AGPL-3.0 + 商业双许可** — 详见 [LICENSE](LICENSE) 与 [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md)。
-
-**Topics**：`knowledge-base` · `rag` · `semantic-search` · `self-hosted` · `spring-boot` · `vue3` · `sqlite` · `pgvector` · `docker`
+**AGPL-3.0 + 商业双许可** — [LICENSE](LICENSE) · [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md)
 
 ---
 
 ## CI / CD
 
-| 工作流 | 说明 |
-|--------|------|
-| **CI** | `mvn test`、前端构建、Docker 镜像校验 |
-| **CD** | 推送 GHCR 镜像，`v*` 标签创建 Release |
+CI：单元测试 + 前端构建 + Docker 构建校验 · CD：推送 `ghcr.io` 镜像
 
-```bash
-docker pull ghcr.io/lixuanqun/fast-knowledge:latest
-```
+维护者可运行 `.\scripts\set-github-metadata.ps1` 同步 GitHub 仓库描述与 Topics。

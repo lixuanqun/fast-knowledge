@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { DocumentMetadata } from './documents'
 
 export interface KnowledgeBase {
   id: number
@@ -7,7 +8,8 @@ export interface KnowledgeBase {
   workspaceId?: number
   ownerId: number
   visibility: string
-  searchAlpha: number
+  /** @deprecated HYBRID RRF 不使用，保留 API 兼容 */
+  searchAlpha?: number
   searchTopK: number
 }
 
@@ -20,6 +22,12 @@ export interface KbDocument {
   fileSize: number
   indexStatus: string
   chunkCount: number
+  docType?: string
+  docNo?: string
+  effectiveDate?: string
+  expireDate?: string
+  department?: string
+  tags?: string
 }
 
 export function listKbs() {
@@ -46,9 +54,15 @@ export function listDocuments(kbId: number) {
   return request.get<any, { data: KbDocument[] }>(`/kbs/${kbId}/documents`)
 }
 
-export function uploadDocument(kbId: number, file: File) {
+export function uploadDocument(kbId: number, file: File, metadata?: DocumentMetadata) {
   const form = new FormData()
   form.append('file', file)
+  if (metadata?.docType) form.append('docType', metadata.docType)
+  if (metadata?.docNo) form.append('docNo', metadata.docNo)
+  if (metadata?.effectiveDate) form.append('effectiveDate', metadata.effectiveDate)
+  if (metadata?.expireDate) form.append('expireDate', metadata.expireDate)
+  if (metadata?.department) form.append('department', metadata.department)
+  if (metadata?.tags) form.append('tags', metadata.tags)
   return request.post(`/kbs/${kbId}/documents/upload`, form)
 }
 

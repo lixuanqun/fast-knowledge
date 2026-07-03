@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fast-knowledge
+  labels:
+    app: fast-knowledge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fast-knowledge
+  template:
+    metadata:
+      labels:
+        app: fast-knowledge
+    spec:
+      containers:
+        - name: server
+          image: fast-knowledge-server:latest
+          ports:
+            - containerPort: 8088
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: bundle
+            - name: SQL_INIT_MODE
+              value: "never"
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: db-url
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: db-password
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: MINIO_ENDPOINT
+              value: http://minio:9000
+            - name: MINIO_BUCKET
+              value: fast-knowledge
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: minio-access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: minio-secret-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: jwt-secret
+            - name: LLM_PROVIDER
+              value: openai
+            - name: LLM_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: llm-base-url
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fast-knowledge-secrets
+                  key: llm-api-key
+            - name: LLM_MODEL
+              value: gpt-4o-mini
+            - name: ONNX_MODEL_PATH
+              value: /data/knowledge/models/bge-small-zh-v1.5.onnx
+            - name: ONNX_TOKENIZER_PATH
+              value: /data/knowledge/models/tokenizer.json
+            - name: RERANK_ONNX_MODEL_PATH
+              value: /data/knowledge/models/bge-reranker-base.onnx
+            - name: RERANK_ONNX_TOKENIZER_PATH
+              value: /data/knowledge/models/bge-reranker-tokenizer.json
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8088
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8088
+            initialDelaySeconds: 60
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fast-knowledge
+spec:
+  selector:
+    app: fast-knowledge
+  ports:
+    - port: 8088
+      targetPort: 8088

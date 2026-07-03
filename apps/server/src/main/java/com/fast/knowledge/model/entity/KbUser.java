@@ -19,7 +19,11 @@ public class KbUser {
     private String displayName;
     private String role;
     private Integer status;
-    private Boolean mustChangePassword;
+    private Integer mustChangePassword;
+    /** LOCAL | LDAP | OIDC */
+    private String authSource;
+    /** IdP 侧唯一标识 */
+    private String externalId;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     @TableField(fill = FieldFill.INSERT_UPDATE)

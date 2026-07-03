@@ -32,23 +32,23 @@ public class SearchCacheService {
         this.cacheTtl = Duration.ofMinutes(Math.max(1, minutes));
     }
 
-    public Optional<List<SearchHitVO>> get(Long kbId, String query, int topK, double alpha) {
-        return cacheProvider.get(buildKey(kbId, query, topK, alpha))
+    public Optional<List<SearchHitVO>> get(Long kbId, String query, int topK, boolean rerank, String docType) {
+        return cacheProvider.get(buildKey(kbId, query, topK, rerank, docType))
                 .flatMap(json -> {
                     try {
                         return Optional.of(objectMapper.readValue(json, HIT_LIST_TYPE));
                     } catch (JsonProcessingException e) {
-                        cacheProvider.delete(buildKey(kbId, query, topK, alpha));
+                        cacheProvider.delete(buildKey(kbId, query, topK, rerank, docType));
                         return Optional.empty();
                     }
                 });
     }
 
-    public void put(Long kbId, String query, int topK, double alpha, List<SearchHitVO> hits) {
+    public void put(Long kbId, String query, int topK, boolean rerank, String docType, List<SearchHitVO> hits) {
         try {
-            cacheProvider.set(buildKey(kbId, query, topK, alpha), objectMapper.writeValueAsString(hits), cacheTtl);
+            cacheProvider.set(buildKey(kbId, query, topK, rerank, docType),
+                    objectMapper.writeValueAsString(hits), cacheTtl);
         } catch (JsonProcessingException ignored) {
-            // 序列化失败则不缓存，不影响主流程
         }
     }
 
@@ -58,11 +58,11 @@ public class SearchCacheService {
         }
     }
 
-    String buildKey(Long kbId, String query, int topK, double alpha) {
-        return SEARCH_PREFIX + kbId + ":" + digestQuery(query, topK, alpha);
+    String buildKey(Long kbId, String query, int topK, boolean rerank, String docType) {
+        return SEARCH_PREFIX + kbId + ":" + digestQuery(query, topK, rerank, docType);
     }
 
-    private static String digestQuery(String query, int topK, double alpha) {
-        return Integer.toHexString(Objects.hash(query, topK, alpha));
+    private static String digestQuery(String query, int topK, boolean rerank, String docType) {
+        return Integer.toHexString(Objects.hash(query, topK, rerank, docType));
     }
 }

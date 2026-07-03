@@ -9,6 +9,10 @@ export interface SystemConfig {
   llmProviderName?: string
   llmModel: string
   llmAllowExternal: boolean
+  rerankEnabled?: boolean
+  rerankProvider?: string
+  ldapEnabled?: boolean
+  oidcEnabled?: boolean
 }
 
 export interface LlmProviderPreset {

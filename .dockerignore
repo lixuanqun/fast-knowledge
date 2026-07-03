@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+.github
+
+# Build outputs
+**/target/
+**/node_modules/
+web/dist/
+
+# IDE & local config
+.idea/
+.vscode/
+*.iml
+.env
+.env.*
+!/.env.example
+docker/.env
+**/application-local.yml
+
+# OS & logs
+.DS_Store
+Thumbs.db
+*.log
+
+# Test & coverage
+**/coverage/
+**/.nyc_output/
+
+# Documentation & misc (not needed in image)
+docs/
+*.md
+!apps/server/**/README.md
+
+# Data (models mounted at runtime, not baked into image)
+data/models/*.onnx
+data/models/*.json
+
+# K8s & scripts (not part of app image)
+k8s/
+scripts/
+
+# Cursor / plans
+.cursor/

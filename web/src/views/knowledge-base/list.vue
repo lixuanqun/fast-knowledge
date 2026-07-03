@@ -18,14 +18,6 @@
           style="max-width:360px"
           :prefix-icon="Search"
         />
-        <el-select
-          v-model="workspaceFilter"
-          placeholder="按工作区筛选"
-          clearable
-          style="width:200px"
-        >
-          <el-option v-for="ws in workspaces" :key="ws.id" :label="ws.name" :value="ws.id" />
-        </el-select>
       </div>
 
       <el-table v-loading="isLoading" :data="pagedKbs" stripe>
@@ -42,17 +34,22 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="TopK" width="80" prop="searchTopK" align="center" />
+        <el-table-column label="检索 Top K" width="100" prop="searchTopK" align="center" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="$router.push(`/kbs/${row.id}`)">查看</el-button>
             <el-button link type="primary" @click="goSettings(row.id)">编辑</el-button>
+            <el-button link type="primary" @click="$router.push(`/kbs/${row.id}`)">文档</el-button>
             <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <EmptyState v-if="!isLoading && !filteredKbs.length" description="暂无知识库，点击右上角新建" />
+      <EmptyState v-if="!isLoading && !filteredKbs.length" variant="kbs">
+        <el-button type="primary" @click="openCreate">
+          <el-icon class="btn-icon"><Plus /></el-icon>
+          新建知识库
+        </el-button>
+      </EmptyState>
 
       <div v-if="filteredKbs.length" class="table-footer">
         <el-pagination
@@ -89,19 +86,15 @@
         </el-form-item>
         <el-form-item label="可见性" prop="visibility" required>
           <el-radio-group v-model="form.visibility">
-            <el-radio value="PUBLIC">公开</el-radio>
-            <el-radio value="PRIVATE">私有</el-radio>
+            <el-radio value="PRIVATE">私有（仅自己可见）</el-radio>
+            <el-radio value="PUBLIC">公开（所有用户可见）</el-radio>
           </el-radio-group>
-        </el-form-item>
-        <el-form-item label="TopK" prop="searchTopK" required>
-          <el-input-number v-model="form.searchTopK" :min="1" :max="20" style="width:100%" />
-          <div class="form-tip">检索时返回的最大文档数量，支持 1–20 的整数</div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showDialog = false">取消</el-button>
         <el-button type="primary" :loading="createMutation.isPending.value" @click="handleCreate">
-          确认
+          确定
         </el-button>
       </template>
     </el-dialog>
@@ -115,18 +108,15 @@ import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { visibilityLabel } from '@/utils/format'
 import { useCreateKbMutation, useDeleteKbMutation, useKbsQuery } from '@/composables/queries/useKbs'
-import { useWorkspacesQuery } from '@/composables/queries/useWorkspaces'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const { data: kbs, isLoading } = useKbsQuery()
-const { data: workspaces } = useWorkspacesQuery()
 const createMutation = useCreateKbMutation()
 const deleteMutation = useDeleteKbMutation()
 
 const keyword = ref('')
-const workspaceFilter = ref<number | undefined>()
 const page = ref(1)
 const pageSize = ref(10)
 const showDialog = ref(false)
@@ -134,20 +124,15 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   name: '',
   description: '',
-  visibility: 'PRIVATE',
-  searchTopK: 8
+  visibility: 'PUBLIC'
 })
 const rules: FormRules = {
-  name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
-  searchTopK: [{ required: true, message: '请设置 TopK', trigger: 'change' }]
+  name: [{ required: true, message: '请输入名称', trigger: 'blur' }]
 }
 
 const filteredKbs = computed(() => {
-  let result = kbs.value || []
-  if (workspaceFilter.value != null) {
-    result = result.filter(k => k.workspaceId === workspaceFilter.value)
-  }
   const kw = keyword.value.trim().toLowerCase()
+  const result = kbs.value || []
   if (!kw) return result
   return result.filter(
     k => k.name.toLowerCase().includes(kw) || (k.description || '').toLowerCase().includes(kw)
@@ -159,7 +144,7 @@ const pagedKbs = computed(() => {
   return filteredKbs.value.slice(start, start + pageSize.value)
 })
 
-watch([keyword, workspaceFilter], () => {
+watch(keyword, () => {
   page.value = 1
 })
 
@@ -170,8 +155,7 @@ function goSettings(id: number) {
 function openCreate() {
   form.name = ''
   form.description = ''
-  form.visibility = 'PRIVATE'
-  form.searchTopK = 8
+  form.visibility = 'PUBLIC'
   showDialog.value = true
 }
 
@@ -179,7 +163,7 @@ async function handleCreate() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   try {
-    await createMutation.mutateAsync({ ...form })
+    await createMutation.mutateAsync({ ...form, searchTopK: 8 })
     ElMessage.success('创建成功')
     showDialog.value = false
   } catch {
@@ -211,17 +195,7 @@ async function handleDelete(id: number) {
 }
 
 .filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
   margin-bottom: 16px;
-}
-
-.form-tip {
-  font-size: 12px;
-  color: $fk-text-secondary;
-  margin-top: 4px;
-  line-height: 1.5;
 }
 
 .btn-icon {

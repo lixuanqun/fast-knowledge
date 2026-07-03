@@ -3,6 +3,7 @@ package com.fast.knowledge.llm;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.security.ExternalAccessGuard;
+import com.fast.knowledge.service.LlmSettingsService;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -15,44 +16,65 @@ public class LlmConfigResolver {
 
     private final KnowledgeProperties properties;
     private final ExternalAccessGuard externalAccessGuard;
+    private final LlmSettingsService llmSettingsService;
 
-    public LlmConfigResolver(KnowledgeProperties properties, ExternalAccessGuard externalAccessGuard) {
+    public LlmConfigResolver(KnowledgeProperties properties,
+                             ExternalAccessGuard externalAccessGuard,
+                             LlmSettingsService llmSettingsService) {
         this.properties = properties;
         this.externalAccessGuard = externalAccessGuard;
+        this.llmSettingsService = llmSettingsService;
     }
 
     public ResolvedLlmConfig resolve() {
-        KnowledgeProperties.Llm llm = properties.getLlm();
-        LlmProvider preset = LlmProvider.fromId(llm.getProvider());
+        return resolve(llmSettingsService.getEffectiveLlm());
+    }
 
-        String baseUrl = firstNonBlank(llm.getBaseUrl(), preset.getDefaultBaseUrl());
-        String apiKey = firstNonBlank(llm.getApiKey(), preset.getDefaultApiKeyPlaceholder());
-        String model = firstNonBlank(llm.getModel(), preset.getDefaultModel());
+    public ResolvedLlmConfig resolve(EffectiveLlmSettings effective) {
+        LlmProvider preset = LlmProvider.fromId(effective.getProvider());
+
+        String baseUrl = firstNonBlank(effective.getBaseUrl(), preset.getDefaultBaseUrl());
+        String apiKey = firstNonBlank(effective.getApiKey(), preset.getDefaultApiKeyPlaceholder());
+        String model = firstNonBlank(effective.getModel(), preset.getDefaultModel());
 
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new BusinessException("LLM baseUrl 未配置，请设置 knowledge.llm.provider 或 LLM_BASE_URL");
+            throw new BusinessException("LLM baseUrl 未配置，请设置 provider 或 LLM_BASE_URL");
         }
         if (model == null || model.isBlank()) {
             throw new BusinessException("LLM model 未配置，请设置 LLM_MODEL（火山引擎需填 Endpoint ID）");
         }
 
         baseUrl = normalizeBaseUrl(baseUrl);
-        externalAccessGuard.validateLlmEndpoint(baseUrl);
+        externalAccessGuard.validateLlmEndpoint(baseUrl, effective.isAllowExternal());
 
         return ResolvedLlmConfig.builder()
                 .provider(preset)
                 .baseUrl(baseUrl)
                 .apiKey(apiKey != null ? apiKey : "")
                 .model(model)
-                .maxTokens(llm.getMaxTokens())
-                .temperature(llm.getTemperature())
-                .allowExternal(llm.isAllowExternal())
+                .maxTokens(effective.getMaxTokens())
+                .temperature(effective.getTemperature())
+                .allowExternal(effective.isAllowExternal())
                 .build();
+    }
+
+    public ResolvedLlmConfig resolveFromRequest(String provider, String baseUrl, String apiKey, String model,
+                                                boolean allowExternal) {
+        String resolvedKey = llmSettingsService.resolveApiKeyForSave(apiKey);
+        EffectiveLlmSettings effective = EffectiveLlmSettings.builder()
+                .provider(provider)
+                .baseUrl(baseUrl)
+                .apiKey(resolvedKey)
+                .model(model)
+                .allowExternal(allowExternal)
+                .maxTokens(properties.getLlm().getMaxTokens())
+                .temperature(properties.getLlm().getTemperature())
+                .build();
+        return resolve(effective);
     }
 
     public List<Map<String, Object>> listProviderPresets() {
         return Arrays.stream(LlmProvider.values())
-                .filter(p -> p != LlmProvider.CUSTOM)
                 .map(p -> {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("id", p.getId());
@@ -74,6 +96,7 @@ public class LlmConfigResolver {
             case VOLCENGINE -> "https://console.volcengine.com/ark — model 填推理接入点 ID";
             case OPENAI -> "https://platform.openai.com/api-keys";
             case OLLAMA -> "本地无需 API Key，可填 ollama";
+            case CUSTOM -> "填写 OpenAI 兼容 API 的 baseUrl 与 model";
             default -> "";
         };
     }

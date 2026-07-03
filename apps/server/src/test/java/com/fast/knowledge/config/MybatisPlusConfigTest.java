@@ -2,24 +2,26 @@ package com.fast.knowledge.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Path;
-import java.sql.DriverManager;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class MybatisPlusConfigTest {
 
-    @TempDir
-    Path tempDir;
-
     @Test
-    void resolveDbType_detectsSqlite() throws Exception {
-        String url = "jdbc:sqlite:" + tempDir.resolve("test.db");
-        try (var conn = DriverManager.getConnection(url);
-             var ds = new org.springframework.jdbc.datasource.SingleConnectionDataSource(conn, true)) {
-            assertEquals(DbType.SQLITE, MybatisPlusConfig.resolveDbType(ds));
-        }
+    void resolveDbType_detectsPostgresql() throws Exception {
+        DataSource ds = mock(DataSource.class);
+        Connection conn = mock(Connection.class);
+        DatabaseMetaData meta = mock(DatabaseMetaData.class);
+        when(ds.getConnection()).thenReturn(conn);
+        when(conn.getMetaData()).thenReturn(meta);
+        when(meta.getURL()).thenReturn("jdbc:postgresql://localhost:5432/fast_knowledge");
+
+        assertEquals(DbType.POSTGRE_SQL, MybatisPlusConfig.resolveDbType(ds));
     }
 }

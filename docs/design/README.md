@@ -1,5 +1,7 @@
 # Fast Knowledge UI 设计稿
 
+面向**中小企业私有化知识库**的管理界面设计（单实例、非 SaaS）。产品定位见 [产品说明.md](../产品说明.md)。
+
 浅色主题 36 张（`design-*.png`）+ 暗色主题 16 张（`dark-*.png`），1440×900 桌面端高保真稿。
 
 ---
@@ -32,7 +34,7 @@
 | 文件 | 页面 |
 |------|------|
 | [design-09-logout-setup.png](./design-09-logout-setup.png) | 退出确认 + 安装向导（合集） |
-| [design-15-setup-standalone.png](./design-15-setup-standalone.png) | 首次安装向导（独立页） |
+| [design-15-setup-standalone.png](./design-15-setup-standalone.png) | 首次安装向导（独立页；文件名 legacy，与部署模式无关） |
 | [design-16-change-password.png](./design-16-change-password.png) | 修改密码弹窗 |
 | [design-22-non-admin-layout.png](./design-22-non-admin-layout.png) | 普通用户侧边栏（无用户管理） |
 

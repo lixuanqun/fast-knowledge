@@ -7,7 +7,7 @@ import java.nio.LongBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-final class OnnxTensorUtils {
+public final class OnnxTensorUtils {
 
     private OnnxTensorUtils() {
     }
@@ -35,7 +35,7 @@ final class OnnxTensorUtils {
         return mask;
     }
 
-    static Map<String, OnnxTensor> buildInputs(OrtEnvironment env, long[] inputIds, long[] attentionMask) throws Exception {
+    public static Map<String, OnnxTensor> buildInputs(OrtEnvironment env, long[] inputIds, long[] attentionMask) throws Exception {
         Map<String, OnnxTensor> inputs = new HashMap<>();
         inputs.put("input_ids", OnnxTensor.createTensor(env, LongBuffer.wrap(inputIds), new long[]{1, inputIds.length}));
         inputs.put("attention_mask", OnnxTensor.createTensor(env, LongBuffer.wrap(attentionMask), new long[]{1, attentionMask.length}));

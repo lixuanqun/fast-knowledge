@@ -6,13 +6,15 @@ export function useSearchMutation() {
     mutationFn: async ({
       kbId,
       query,
-      topK
+      topK,
+      docType
     }: {
       kbId: number
       query: string
       topK?: number
+      docType?: string
     }) => {
-      const res = await search(kbId, query, topK)
+      const res = await search(kbId, query, topK, docType)
       return (res.data || []) as SearchHit[]
     }
   })

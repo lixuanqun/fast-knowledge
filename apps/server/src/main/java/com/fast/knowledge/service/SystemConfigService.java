@@ -1,7 +1,9 @@
 package com.fast.knowledge.service;
 
 import com.fast.knowledge.config.KnowledgeProperties;
-import com.fast.knowledge.llm.LlmProvider;
+import com.fast.knowledge.llm.EffectiveLlmSettings;
+import com.fast.knowledge.llm.LlmConfigResolver;
+import com.fast.knowledge.llm.ResolvedLlmConfig;
 import com.fast.knowledge.mapper.SystemConfigMapper;
 import org.springframework.stereotype.Service;
 
@@ -16,10 +18,17 @@ public class SystemConfigService {
 
     private final SystemConfigMapper systemConfigMapper;
     private final KnowledgeProperties properties;
+    private final LlmSettingsService llmSettingsService;
+    private final LlmConfigResolver llmConfigResolver;
 
-    public SystemConfigService(SystemConfigMapper systemConfigMapper, KnowledgeProperties properties) {
+    public SystemConfigService(SystemConfigMapper systemConfigMapper,
+                               KnowledgeProperties properties,
+                               LlmSettingsService llmSettingsService,
+                               LlmConfigResolver llmConfigResolver) {
         this.systemConfigMapper = systemConfigMapper;
         this.properties = properties;
+        this.llmSettingsService = llmSettingsService;
+        this.llmConfigResolver = llmConfigResolver;
     }
 
     public boolean isSetupComplete() {
@@ -45,10 +54,17 @@ public class SystemConfigService {
         config.put("setupComplete", isSetupComplete());
         config.put("vectorProvider", properties.getVector().getProvider());
         config.put("embeddingProvider", properties.getEmbedding().getProvider());
-        config.put("llmProvider", properties.getLlm().getProvider());
-        config.put("llmProviderName", LlmProvider.fromId(properties.getLlm().getProvider()).getDisplayName());
-        config.put("llmModel", properties.getLlm().getModel());
-        config.put("llmAllowExternal", properties.getLlm().isAllowExternal());
+
+        EffectiveLlmSettings effective = llmSettingsService.getEffectiveLlm();
+        ResolvedLlmConfig resolved = llmConfigResolver.resolve(effective);
+        config.put("llmProvider", effective.getProvider());
+        config.put("llmProviderName", resolved.getProvider().getDisplayName());
+        config.put("llmModel", resolved.getModel());
+        config.put("llmAllowExternal", effective.isAllowExternal());
+        config.put("rerankEnabled", properties.getSearch().getRerank().isEnabled());
+        config.put("rerankProvider", properties.getSearch().getRerank().getProvider());
+        config.put("ldapEnabled", properties.getAuth().getLdap().isEnabled());
+        config.put("oidcEnabled", properties.getAuth().getOidc().isEnabled());
         return config;
     }
 }

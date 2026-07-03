@@ -2,12 +2,10 @@
   <el-card shadow="hover" class="stat-card" :class="tone">
     <div class="stat-card__body">
       <div class="stat-card__icon" :class="`is-${tone}`">
-        <el-icon :size="22"><component :is="icon" /></el-icon>
+        <el-icon :size="24"><component :is="icon" /></el-icon>
       </div>
-      <div class="stat-card__content">
-        <div class="stat-card__value">{{ value }}</div>
-        <div class="stat-card__label">{{ label }}</div>
-      </div>
+      <div class="stat-card__value">{{ value }}</div>
+      <div class="stat-card__label">{{ label }}</div>
     </div>
   </el-card>
 </template>
@@ -32,18 +30,20 @@ defineProps<{
 
 .stat-card__body {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  text-align: center;
+  padding: 8px 4px;
 }
 
 .stat-card__icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  margin-bottom: 10px;
 }
 
 .stat-card__icon.is-primary {
@@ -86,7 +86,7 @@ defineProps<{
 }
 
 .stat-card__label {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 13px;
   color: $fk-text-secondary;
 }

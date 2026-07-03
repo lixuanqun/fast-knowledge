@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -25,6 +26,12 @@ public class KbDocument {
     private Integer chunkCount;
     private Integer enabled;
     private Long createdBy;
+    private String docType;
+    private String docNo;
+    private LocalDate effectiveDate;
+    private LocalDate expireDate;
+    private String department;
+    private String tags;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     @TableField(fill = FieldFill.INSERT_UPDATE)

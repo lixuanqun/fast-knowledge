@@ -1,20 +1,19 @@
 package com.fast.knowledge.service;
 
 import com.fast.knowledge.common.BusinessException;
-import com.fast.knowledge.storage.StorageProvider;
-import com.fast.knowledge.embedding.EmbeddingProvider;
-import com.fast.knowledge.langchain4j.KbEmbeddingStore;
-import com.fast.knowledge.langchain4j.KbEmbeddingStoreFactory;
+import com.fast.knowledge.langchain4j.ingest.KbDocumentSplitter;
+import com.fast.knowledge.langchain4j.ingest.KbEmbeddingIngestor;
+import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.mapper.IndexTaskMapper;
 import com.fast.knowledge.model.entity.DocumentChunk;
 import com.fast.knowledge.model.entity.IndexTask;
 import com.fast.knowledge.model.entity.KbDocument;
-import com.fast.knowledge.vector.VectorStore;
+import com.fast.knowledge.storage.StorageProvider;
 import lombok.extern.slf4j.Slf4j;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -39,34 +38,40 @@ public class DocumentIngestService {
     private final DocumentChunkMapper documentChunkMapper;
     private final IndexTaskMapper indexTaskMapper;
     private final ChunkService chunkService;
-    private final EmbeddingProvider embeddingProvider;
-    private final KbEmbeddingStoreFactory kbEmbeddingStoreFactory;
-    private final VectorStore vectorStore;
+    private final KbDocumentSplitter documentSplitter;
+    private final KbEmbeddingIngestor embeddingIngestor;
+    private final KbVectorIndexService vectorIndexService;
     private final StorageProvider storageProvider;
     private final com.fast.knowledge.cache.CacheProvider cacheProvider;
     private final SearchCacheService searchCacheService;
+    private final com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory kbChatAssistantFactory;
+    private final WikiCompileService wikiCompileService;
     private final Tika tika = new Tika();
 
     public DocumentIngestService(DocumentMapper documentMapper,
                                  DocumentChunkMapper documentChunkMapper,
                                  IndexTaskMapper indexTaskMapper,
                                  ChunkService chunkService,
-                                 EmbeddingProvider embeddingProvider,
-                                 KbEmbeddingStoreFactory kbEmbeddingStoreFactory,
-                                 VectorStore vectorStore,
+                                 KbDocumentSplitter documentSplitter,
+                                 KbEmbeddingIngestor embeddingIngestor,
+                                 KbVectorIndexService vectorIndexService,
                                  StorageProvider storageProvider,
                                  com.fast.knowledge.cache.CacheProvider cacheProvider,
-                                 SearchCacheService searchCacheService) {
+                                 SearchCacheService searchCacheService,
+                                 com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory kbChatAssistantFactory,
+                                 WikiCompileService wikiCompileService) {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
         this.chunkService = chunkService;
-        this.embeddingProvider = embeddingProvider;
-        this.kbEmbeddingStoreFactory = kbEmbeddingStoreFactory;
-        this.vectorStore = vectorStore;
+        this.documentSplitter = documentSplitter;
+        this.embeddingIngestor = embeddingIngestor;
+        this.vectorIndexService = vectorIndexService;
         this.storageProvider = storageProvider;
         this.cacheProvider = cacheProvider;
         this.searchCacheService = searchCacheService;
+        this.kbChatAssistantFactory = kbChatAssistantFactory;
+        this.wikiCompileService = wikiCompileService;
     }
 
     @Async("indexExecutor")
@@ -124,39 +129,32 @@ public class DocumentIngestService {
         documentMapper.updateById(doc);
         try {
             String text = extractText(doc);
-            List<String> parts = chunkService.split(text);
+            Metadata docMetadata = Metadata.from(Map.of(
+                    "kbId", doc.getKbId(),
+                    "docId", documentId,
+                    "title", doc.getTitle() != null ? doc.getTitle() : ""
+            ));
+            List<TextSegment> splitSegments = documentSplitter.split(Document.from(text, docMetadata));
+
             documentChunkMapper.deleteByDocumentId(documentId);
-            vectorStore.deleteByDocument(doc.getKbId(), documentId);
+            vectorIndexService.deleteByDocument(doc.getKbId(), documentId);
 
             List<DocumentChunk> chunks = new ArrayList<>();
-            for (int i = 0; i < parts.size(); i++) {
+            for (int i = 0; i < splitSegments.size(); i++) {
+                String content = splitSegments.get(i).text();
                 DocumentChunk chunk = new DocumentChunk();
                 chunk.setKbId(doc.getKbId());
                 chunk.setDocumentId(documentId);
                 chunk.setChunkIndex(i);
-                chunk.setContent(parts.get(i));
-                chunk.setTokenCount(chunkService.countTokens(parts.get(i)));
+                chunk.setContent(content);
+                chunk.setSectionTitle(chunkService.extractSectionTitle(content));
+                chunk.setTokenCount(chunkService.countTokens(content));
                 chunks.add(chunk);
             }
             if (!chunks.isEmpty()) {
                 documentChunkMapper.batchInsert(chunks);
                 List<DocumentChunk> saved = documentChunkMapper.findByDocumentId(documentId);
-                List<String> texts = saved.stream().map(DocumentChunk::getContent).toList();
-                List<float[]> vectors = embeddingProvider.embedBatch(texts);
-                KbEmbeddingStore embeddingStore = kbEmbeddingStoreFactory.getStore(doc.getKbId());
-                List<Embedding> embeddings = new ArrayList<>(saved.size());
-                List<TextSegment> segments = new ArrayList<>(saved.size());
-                for (int i = 0; i < saved.size(); i++) {
-                    DocumentChunk chunk = saved.get(i);
-                    Metadata metadata = Metadata.from(Map.of(
-                            KbEmbeddingStore.META_DOC_ID, documentId,
-                            KbEmbeddingStore.META_CHUNK_ID, chunk.getId(),
-                            KbEmbeddingStore.META_TITLE, doc.getTitle()
-                    ));
-                    segments.add(TextSegment.from(chunk.getContent(), metadata));
-                    embeddings.add(Embedding.from(vectors.get(i)));
-                }
-                embeddingStore.addAll(embeddings, segments);
+                embeddingIngestor.embedChunks(doc, saved);
                 doc.setChunkCount(saved.size());
             } else {
                 doc.setChunkCount(0);
@@ -164,6 +162,8 @@ public class DocumentIngestService {
             doc.setIndexStatus("INDEXED");
             doc.setIndexError(null);
             searchCacheService.invalidateForKb(doc.getKbId());
+            kbChatAssistantFactory.evict(doc.getKbId());
+            wikiCompileService.scheduleCompile(doc.getId());
             if (task != null) {
                 task.setStatus("DONE");
                 indexTaskMapper.updateById(task);

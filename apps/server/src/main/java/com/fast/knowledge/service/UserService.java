@@ -59,7 +59,7 @@ public class UserService {
                 ? request.getDisplayName() : request.getUsername());
         user.setRole(normalizeRole(request.getRole()));
         user.setStatus(1);
-        user.setMustChangePassword(false);
+        user.setMustChangePassword(0);
         userMapper.insert(user);
         auditLogService.log("CREATE_USER", "USER", user.getId(), user.getUsername());
         return toVO(userMapper.selectById(user.getId()));
@@ -155,6 +155,7 @@ public class UserService {
         vo.setDisplayName(user.getDisplayName());
         vo.setRole(user.getRole());
         vo.setStatus(user.getStatus());
+        vo.setMustChangePassword(Integer.valueOf(1).equals(user.getMustChangePassword()));
         vo.setCreatedAt(user.getCreatedAt());
         vo.setUpdatedAt(user.getUpdatedAt());
         return vo;

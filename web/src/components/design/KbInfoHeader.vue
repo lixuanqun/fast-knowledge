@@ -17,7 +17,7 @@
           <span class="meta-sep">·</span>
           <span>检索 Top K：{{ searchTopK }}</span>
           <span class="meta-sep">·</span>
-          <span>混合权重 α：{{ searchAlpha }}</span>
+          <span>混合检索：PgVector HYBRID</span>
         </div>
       </div>
     </div>
@@ -34,7 +34,6 @@ defineProps<{
   visibility: string
   documentCount: number
   searchTopK: number
-  searchAlpha: number
 }>()
 </script>
 

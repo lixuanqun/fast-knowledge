@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Component
-@ConditionalOnProperty(name = "knowledge.storage.provider", havingValue = "minio")
+@ConditionalOnProperty(name = "knowledge.storage.provider", havingValue = "minio", matchIfMissing = true)
 public class MinioStorageProvider implements StorageProvider {
 
     private static final Set<String> BLOCKED_EXTENSIONS = Set.of("exe", "bat", "cmd", "sh", "ps1", "dll", "so");
@@ -53,10 +53,9 @@ public class MinioStorageProvider implements StorageProvider {
                 .serviceConfiguration(s3Configuration)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(minio.getAccessKey(), minio.getSecretKey())));
-        if (minio.getRegion() != null && !minio.getRegion().isBlank()) {
-            builder.region(Region.of(minio.getRegion()));
-        }
-        this.s3Client = builder.build();
+        String region = (minio.getRegion() != null && !minio.getRegion().isBlank())
+                ? minio.getRegion() : "us-east-1";
+        this.s3Client = builder.region(Region.of(region)).build();
     }
 
     @Override

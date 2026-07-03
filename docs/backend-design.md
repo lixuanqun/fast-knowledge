@@ -1,9 +1,24 @@
 # Fast Knowledge — 后端设计与开发指南
 
-> **版本**：v1.0  
-> **更新日期**：2026-07-02  
+> **版本**：v1.3  
+> **更新日期**：2026-07-03  
 > **接口契约**：[api.md](./api.md)（前后端唯一 API 标准，发生冲突时以该文档为准）  
 > **产品需求**：[产品说明.md](./产品说明.md)
+
+---
+
+## 0. 产品定位（开发视角）
+
+后端服务于 **中小企业私有化知识库** 场景：单实例、每企一套、万级文档 / 数百用户规模。实现须符合 [产品说明.md](./产品说明.md) 中的四条设计原则：
+
+| 原则 | 后端体现 |
+|------|----------|
+| **Privacy by Default** | 数据落 PostgreSQL + MinIO；Embedding/Rerank 支持 ONNX 本地；`LLM_ALLOW_EXTERNAL` 控制 LLM 外连 |
+| **Single Instance** | 无多租户隔离层；工作区 + 知识库 ACL 做权限边界 |
+| **Unified Stack** | 业务表与 `kb_embeddings` 同库；LangChain4j 统一摄入/检索/RAG |
+| **Docker First** | 依赖 PG/Redis/MinIO；开发与生产同一 env 契约 |
+
+新功能与接口变更前，先对照产品说明中的**适用/不适用场景**，避免向 SaaS 平台或十万级以上搜索平台方向蔓延。
 
 ---
 
@@ -16,7 +31,7 @@
         ↓
 ② 设计数据结构（Entity / DTO / VO）
         ↓
-③ 设计表结构（`db/schema-sqlite.sql` / `db/schema-postgres.sql`）
+③ 设计表结构（`db/schema-postgres.sql`）
         ↓
 ④ 分层实现（Controller → Service → Mapper）
         ↓
@@ -30,7 +45,7 @@
 | 接口契约优先 | 所有 Controller 路径、请求/响应字段以 [api.md](./api.md) 为准 |
 | 统一响应 | 非 SSE 接口返回 `ApiResponse<T>`，成功 `code=0` |
 | 禁止 Mock | 后端提供真实持久化与业务逻辑，前端直接调用 |
-| Schema 版本化 | 表结构变更同步更新 `schema-sqlite.sql` 与 `schema-postgres.sql`，禁止手改生产库 |
+| Schema 版本化 | 表结构变更同步更新 `schema-postgres.sql`，禁止手改生产库 |
 | 权限分层 | 系统角色（ADMIN）在 Controller 注解；知识库 ACL 在 Service 层校验 |
 
 ### 1.2 代码分层
@@ -44,12 +59,17 @@ apps/server/src/main/java/com/fast/knowledge/
 │   ├── entity/     # @TableName / @TableId 实体，与表一一对应
 │   ├── dto/        # 请求入参（Request Body / 查询参数封装）
 │   └── vo/         # 响应出参（与 api.md 中 TypeScript 类型对齐）
-├── security/       # JWT 认证、UserContext
+├── security/       # JWT 认证、UserContext、ExternalAccessGuard
+├── langchain4j/    # LangChain4j：向量库、摄入、检索、RAG、对话、Rerank
+├── embedding/      # ONNX / Ollama / Hash EmbeddingProvider
+├── storage/        # MinioStorageProvider
+├── cache/          # RedisCacheProvider
+├── llm/            # LlmConfigResolver、提供商预设
 ├── common/         # ApiResponse、BusinessException、全局异常处理
 └── config/         # Spring 配置、MybatisPlusConfig、MetaObjectHandler
 
 apps/server/src/main/resources/
-└── db/             # schema-sqlite.sql / schema-postgres.sql
+└── db/             # schema-postgres.sql
 ```
 
 **MyBatis Plus 约定**：
@@ -69,7 +89,7 @@ apps/server/src/main/resources/
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
 | 用户登录 | POST /auth/login | 校验账号密码，签发 JWT，返回 `LoginVO` |
-| 用户注销 | POST /auth/logout | Token 加入黑名单（Redis/Caffeine） |
+| 用户注销 | POST /auth/logout | Token 加入黑名单（Redis） |
 | 首次安装 | POST /auth/setup | 修改管理员密码、设置实例名、标记 `setupComplete` |
 | 当前用户 | GET /users/me | 从 JWT 解析用户，返回 `UserVO`（不含密码） |
 | 自助改密 | POST /users/change-password | 校验旧密码后更新 |
@@ -93,7 +113,7 @@ apps/server/src/main/resources/
 
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
-| 公开配置 | GET /system/config | 实例名、安装状态、向量/Embedding/LLM 提供方（只读） |
+| 公开配置 | GET /system/config | 实例名、安装状态、向量/Embedding/LLM/Rerank 提供方（只读） |
 | LLM 预设 | GET /system/llm-providers | 返回支持的 LLM 提供商列表 |
 
 **说明**：运行时 AI 配置通过 `application.yml` / 环境变量注入，**无写入 API**。
@@ -116,7 +136,7 @@ apps/server/src/main/resources/
 | 列表/详情 | GET /kbs, GET /kbs/{id} | owner + member + PUBLIC 可见性过滤 |
 | CRUD | POST/PUT/DELETE /kbs | 创建时写入 workspaceId、ownerId；删除级联文档/分块/向量/成员 |
 | 成员管理 | /kbs/{kbId}/members | READ/WRITE/ADMIN 三级 ACL |
-| 检索参数 | searchAlpha, searchTopK | 知识库级覆盖全局默认 |
+| 检索参数 | searchTopK | 每库 topK；`searchAlpha` 字段保留但 HYBRID RRF 不使用 |
 
 **权限矩阵**：
 
@@ -133,7 +153,7 @@ apps/server/src/main/resources/
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
 | 文档列表/详情 | GET documents | 按 kbId 查询 |
-| 上传 | POST upload | multipart，存本地/MinIO，创建 `PENDING` 索引任务 |
+| 上传 | POST upload | multipart，存 MinIO，创建 `PENDING` 索引任务 |
 | 预览/分块 | GET preview, GET chunks | 解析文件内容 / 返回 chunk 列表 |
 | 删除/重建 | DELETE, POST reindex | 删文件 + DB + 向量；重建触发 IndexTask |
 | 索引任务 | /index-tasks/* | 异步消费：PENDING → INDEXING → INDEXED/FAILED |
@@ -150,10 +170,10 @@ PENDING → INDEXING → INDEXED
 
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
-| 混合检索 | POST /search | 向量 + 全文混合，alpha 加权 |
-| RAG 问答 | POST /qa | 检索 → LLM 生成，返回 answer + sources |
-| 流式对话 | POST /chat/messages/stream | SSE 多轮，自动创建会话，持久化消息 |
-| 智能写作 | POST /writer/generate | SSE 生成 Markdown |
+| 混合检索 | POST /search | PgVector HYBRID + 可选 `SearchRerankService` |
+| RAG 问答 | POST /qa | 单次检索 + `ChatModel` 生成（sources 与上下文一致） |
+| 流式对话 | POST /chat/messages/stream | `KbChatAssistant` + `DbChatMemoryStore` + SSE |
+| 智能写作 | POST /writer/generate | `RagService.buildContext` + `StreamingChatModel` SSE |
 | 保存文档 | POST /writer/save | 文本写入知识库并触发索引 |
 
 ### 2.8 运营概览
@@ -239,10 +259,11 @@ PENDING → INDEXING → INDEXED
 
 ## 4. 表结构设计
 
-Schema 基线脚本：
+Schema 基线脚本：`apps/server/src/main/resources/db/schema-postgres.sql`
 
-- 单机：`apps/server/src/main/resources/db/schema-sqlite.sql`
-- 集群：`apps/server/src/main/resources/db/schema-postgres.sql`
+向量表 `kb_embeddings` 由 LangChain4j `PgVectorEmbeddingStore` 自动创建，不在业务 schema 中维护。
+
+> **PostgreSQL 类型约定**（与 `schema-postgres.sql` 一致）：状态/布尔字段用 `SMALLINT`（0/1），时间用 `TIMESTAMP`（映射 Java `LocalDateTime`），结构化字段用 `JSONB`。
 
 ### 4.1 ER 关系图
 
@@ -254,7 +275,7 @@ kb_user ─────────┬──────── kb_workspace (own
                  │              ├── kb_kb_member (user_id)
                  │              ├── kb_document (kb_id)
                  │              │       └── kb_document_chunk (document_id)
-                 │              └── kb_vector_chunk（与业务库同引擎）
+                 │              └── kb_embeddings（LangChain4j 向量表）
                  │
                  ├──────── kb_chat_session (user_id, kb_id)
                  │              └── kb_chat_message (session_id)
@@ -276,10 +297,10 @@ kb_system_config (KV 存储，实例配置)
 | password | VARCHAR(128) | — | BCrypt，不对外暴露 |
 | display_name | VARCHAR(64) | displayName | 显示名 |
 | role | VARCHAR(32) | role | ADMIN / USER |
-| status | TINYINT | status | 1=启用, 0=禁用 |
-| must_change_password | TINYINT | mustChangePassword | 首次改密标记 |
-| created_at | DATETIME | createdAt | |
-| updated_at | DATETIME | updatedAt | |
+| status | SMALLINT | status | 1=启用, 0=禁用 |
+| must_change_password | SMALLINT | mustChangePassword | 首次改密标记 |
+| created_at | TIMESTAMP | createdAt | |
+| updated_at | TIMESTAMP | updatedAt | |
 
 #### kb_workspace
 
@@ -288,8 +309,8 @@ kb_system_config (KV 存储，实例配置)
 | id | BIGINT PK | id | |
 | name | VARCHAR(128) | name | 默认「默认工作区」 |
 | owner_id | BIGINT | ownerId | FK → kb_user.id |
-| settings | JSON | — | 预留扩展 |
-| created_at / updated_at | DATETIME | createdAt / updatedAt | |
+| settings | JSONB | — | 预留扩展 |
+| created_at / updated_at | TIMESTAMP | createdAt / updatedAt | |
 
 #### kb_knowledge_base
 
@@ -301,10 +322,10 @@ kb_system_config (KV 存储，实例配置)
 | description | VARCHAR(512) | description | |
 | owner_id | BIGINT | ownerId | |
 | visibility | VARCHAR(32) | visibility | PRIVATE / PUBLIC |
-| search_alpha | DOUBLE | searchAlpha | 默认 0.6 |
+| search_alpha | DOUBLE | searchAlpha | **已废弃**，默认 0.6，RRF 不使用 |
 | search_top_k | INT | searchTopK | 默认 8 |
-| status | TINYINT | status | 1=正常 |
-| created_at / updated_at | DATETIME | createdAt / updatedAt | |
+| status | SMALLINT | status | 1=正常 |
+| created_at / updated_at | TIMESTAMP | createdAt / updatedAt | |
 
 #### kb_kb_member
 
@@ -314,7 +335,7 @@ kb_system_config (KV 存储，实例配置)
 | kb_id | BIGINT | kbId | UK(kb_id, user_id) |
 | user_id | BIGINT | userId | |
 | permission | VARCHAR(32) | permission | READ / WRITE / ADMIN |
-| created_at | DATETIME | createdAt | |
+| created_at | TIMESTAMP | createdAt | |
 | — | — | username, displayName | 联表 kb_user 查询 |
 
 #### kb_document
@@ -331,9 +352,9 @@ kb_system_config (KV 存储，实例配置)
 | index_status | VARCHAR(32) | indexStatus | PENDING/INDEXING/INDEXED/FAILED |
 | index_error | VARCHAR(512) | indexError | 失败原因 |
 | chunk_count | INT | chunkCount | |
-| enabled | TINYINT | enabled | 1=参与检索 |
+| enabled | SMALLINT | enabled | 1=参与检索 |
 | created_by | BIGINT | createdBy | |
-| created_at / updated_at | DATETIME | createdAt / updatedAt | |
+| created_at / updated_at | TIMESTAMP | createdAt / updatedAt | |
 
 #### kb_document_chunk
 
@@ -356,8 +377,8 @@ kb_system_config (KV 存储，实例配置)
 | retry_count | INT | retryCount | |
 | error_msg | VARCHAR(512) | errorMsg | |
 | locked_by | VARCHAR(64) | lockedBy | 分布式锁持有者 |
-| locked_at | DATETIME | lockedAt | |
-| created_at / updated_at | DATETIME | createdAt / updatedAt | |
+| locked_at | TIMESTAMP | lockedAt | |
+| created_at / updated_at | TIMESTAMP | createdAt / updatedAt | |
 
 #### kb_chat_session
 
@@ -367,7 +388,7 @@ kb_system_config (KV 存储，实例配置)
 | user_id | BIGINT | userId | |
 | kb_id | BIGINT | kbId | 可空 |
 | title | VARCHAR(256) | title | 默认「新对话」 |
-| created_at / updated_at | DATETIME | createdAt / updatedAt | |
+| created_at / updated_at | TIMESTAMP | createdAt / updatedAt | |
 
 #### kb_chat_message
 
@@ -377,8 +398,8 @@ kb_system_config (KV 存储，实例配置)
 | session_id | BIGINT | sessionId | |
 | role | VARCHAR(16) | role | user/assistant/system |
 | content | TEXT | content | |
-| sources | JSON | sources | SearchHit[] 序列化字符串 |
-| created_at | DATETIME | createdAt | |
+| sources | JSONB | sources | SearchHit[] 序列化 |
+| created_at | TIMESTAMP | createdAt | |
 
 #### kb_audit_log
 
@@ -390,7 +411,7 @@ kb_system_config (KV 存储，实例配置)
 | target_type | VARCHAR(64) | targetType | KB, DOCUMENT 等 |
 | target_id | BIGINT | targetId | |
 | detail | VARCHAR(1024) | detail | |
-| created_at | DATETIME | createdAt | |
+| created_at | TIMESTAMP | createdAt | |
 
 #### kb_system_config
 
@@ -398,7 +419,17 @@ kb_system_config (KV 存储，实例配置)
 |------|------|----------|------|
 | config_key | VARCHAR(64) PK | — | instance_name, setup_complete |
 | config_value | VARCHAR(1024) | — | |
-| updated_at | DATETIME | — | |
+| updated_at | TIMESTAMP | — | |
+
+#### kb_embeddings（LangChain4j 自动维护）
+
+由 `PgVectorEmbeddingStore` 在首次摄入时建表，字段以 LangChain4j 1.17 为准。实现约定：
+
+| 要点 | 说明 |
+|------|------|
+| 主键 ID | 须为 **UUID** 字符串；`KbEmbeddingIngestor`、`KbEmbeddingStore.resolveId()` 使用 `UUID.randomUUID()` |
+| 业务关联 | 通过 embedding metadata（如 `document_id`、`chunk_index`）对应 `kb_document_chunk` |
+| 检索模式 | `HYBRID`（向量 + 全文 RRF），见 `knowledge.vector.pgvector.search-mode` |
 
 ### 4.3 表结构变更规范
 
@@ -406,7 +437,7 @@ kb_system_config (KV 存储，实例配置)
 
 1. 在本文档 §4 补充字段说明与 API 映射
 2. 在 [api.md](./api.md) 补充/更新 TypeScript 类型
-3. 更新 `schema-sqlite.sql` / `schema-postgres.sql` 或新增增量 SQL 脚本
+3. 更新 `schema-postgres.sql` 或新增增量 SQL 脚本
 4. 同步更新 `model.entity` 与 Mapper XML
 5. 运行集成测试验证迁移
 
@@ -474,7 +505,7 @@ kb_system_config (KV 存储，实例配置)
 ### 阶段三：表结构（③）
 
 - [ ] 评估是否需要新表或改表
-- [ ] 更新 `schema-sqlite.sql` / `schema-postgres.sql`
+- [ ] 更新 `schema-postgres.sql`
 - [ ] 更新本文档 §4 表结构说明
 - [ ] 本地执行迁移验证
 
@@ -536,6 +567,7 @@ checkKbAdminPermission(kb);   // 管理：owner / KB ADMIN member / 系统 ADMIN
 - Controller 返回 `SseEmitter`，`produces = TEXT_EVENT_STREAM_VALUE`
 - 不走 `ApiResponse` 包装
 - 事件约定：`message`（文本片段）→ `event:done` → `event:error`
+- `ChatService.chatStream`：在**请求线程**捕获 `UserContext.currentUserId()`；异步 SSE 回调中不得再读 `UserContext`（线程池无用户上下文）。`resolveSession(request, userId)` 须显式传入 `userId`，否则自动建会话时 `user_id` 为空
 
 ### 7.4 审计日志
 
@@ -549,6 +581,24 @@ checkKbAdminPermission(kb);   // 管理：owner / KB ADMIN member / 系统 ADMIN
 | UPLOAD_DOC | 上传文档 |
 | DELETE_DOC | 删除文档 |
 
+### 7.5 LangChain4j RAG 管道
+
+```
+DocumentIngestService
+  → KbDocumentSplitter → document_chunk（业务表）
+  → KbEmbeddingIngestor → PgVectorEmbeddingStore（kb_embeddings，HYBRID）
+
+SearchService / KbHybridContentRetriever
+  → KbEmbeddingStore.search()
+  → [可选] SearchRerankService（ONNX / Cohere / Jina）
+
+RagService.ask → 单次 searchService.search + ChatModel（与 sources 一致）
+ChatService.chatStream → KbChatAssistant（CompressingQueryTransformer + DbChatMemoryStore）
+WriterService → RagService.buildContext + StreamingChatModel（手写 prompt）
+```
+
+索引变更后须调用 `KbAssistantFactory.evict(kbId)` 与 `KbChatAssistantFactory.evict(kbId)` 清理缓存的 Assistant 实例。
+
 ---
 
 ## 8. 文档索引
@@ -559,6 +609,7 @@ checkKbAdminPermission(kb);   // 管理：owner / KB ADMIN member / 系统 ADMIN
 | [backend-design.md](./backend-design.md) | 本文档：后端设计流程、数据结构、表结构 |
 | [产品说明.md](./产品说明.md) | 产品功能与业务规则 |
 | [fast_knowledge.md](./fast_knowledge.md) | 技术架构、部署、AI 配置 |
+| [README.md](./README.md) | 文档索引 |
 | [design/README.md](./design/README.md) | UI 设计稿 |
 
 ---
@@ -570,3 +621,4 @@ checkKbAdminPermission(kb);   // 管理：owner / KB ADMIN member / 系统 ADMIN
 | v1.0 | 2026-07-02 | 初始版本：需求梳理、数据结构、表结构、实现映射 |
 | v1.1 | 2026-07-02 | 对齐 api.md：KB ADMIN 权限、路径校验、DTO 校验、审计日志 |
 | v1.2 | 2026-07-02 | 补充 6 个集成测试类（ACL/校验/用户管理），修复 AccessDenied 403 响应 |
+| v1.3 | 2026-07-03 | LangChain4j 重构：更新分层、检索/RAG 实现映射；`searchAlpha` 标注废弃；新增 §7.5 |

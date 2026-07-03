@@ -30,13 +30,6 @@
           <p class="aside-note__sub">当前为普通用户视图</p>
         </div>
       </div>
-      <div v-if="user" class="aside-user">
-        <div class="aside-user__avatar">{{ userInitial }}</div>
-        <div class="aside-user__info">
-          <p class="aside-user__name">{{ user.displayName || user.username }}</p>
-          <p class="aside-user__role">{{ roleLabel }}</p>
-        </div>
-      </div>
     </el-aside>
     <el-container class="main-shell">
       <el-header class="header">
@@ -47,9 +40,10 @@
               <el-icon><component :is="themeIcon" /></el-icon>
             </el-button>
           </el-tooltip>
-          <el-tag size="small" type="info" effect="plain">{{ user?.displayName || user?.username }}</el-tag>
+          <span v-if="user" class="header-user">{{ user.displayName || user.username }}</span>
           <el-tag v-if="user?.role" size="small" effect="plain">{{ roleLabel }}</el-tag>
           <el-button type="primary" link @click="pwdDialog?.open()">改密</el-button>
+          <span v-if="!isAdmin" class="header-sep">|</span>
           <el-button type="primary" link @click="handleLogout">退出</el-button>
         </div>
       </el-header>
@@ -63,7 +57,6 @@
           </transition>
         </router-view>
       </el-main>
-      <footer class="layout-footer">© {{ year }} Fast Knowledge. All rights reserved.</footer>
     </el-container>
     <ChangePasswordDialog ref="pwdDialog" />
   </el-container>
@@ -86,10 +79,12 @@ import {
   ChatDotRound,
   EditPen,
   User,
-  Setting,
   Lock,
   Moon,
-  Sunny
+  Sunny,
+  Cpu,
+  Document,
+  Key
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
@@ -103,7 +98,6 @@ const { instanceName } = storeToRefs(configStore)
 const { resolvedTheme } = storeToRefs(themeStore)
 const pwdDialog = ref<{ open: () => void }>()
 
-const year = new Date().getFullYear()
 const menuBg = 'var(--fk-sidebar-bg)'
 const menuText = 'var(--fk-text-regular)'
 const menuActive = 'var(--fk-primary)'
@@ -115,8 +109,10 @@ const menuItems = [
   { path: '/qa', label: '智能问答', icon: QuestionFilled },
   { path: '/chat', label: '智能对话', icon: ChatDotRound },
   { path: '/writer', label: '智能写文档', icon: EditPen },
-  { path: '/settings', label: '设置与隐私', icon: Setting },
-  { path: '/users', label: '用户管理', icon: User, adminOnly: true }
+  { path: '/settings/llm', label: '大模型配置', icon: Cpu, adminOnly: true },
+  { path: '/users', label: '用户管理', icon: User, adminOnly: true },
+  { path: '/api-keys', label: 'API Key', icon: Key, adminOnly: true },
+  { path: '/audits', label: '审计日志', icon: Document, adminOnly: true }
 ]
 
 const visibleMenus = computed(() => menuItems.filter(m => !m.adminOnly || isAdmin.value))
@@ -124,11 +120,6 @@ const visibleMenus = computed(() => menuItems.filter(m => !m.adminOnly || isAdmi
 const roleLabel = computed(() => {
   const map: Record<string, string> = { ADMIN: '管理员', USER: '普通用户' }
   return map[user.value?.role || ''] || user.value?.role
-})
-
-const userInitial = computed(() => {
-  const name = user.value?.displayName || user.value?.username || '?'
-  return name.slice(0, 1).toUpperCase()
 })
 
 const themeIcon = computed(() => (resolvedTheme.value === 'dark' ? Sunny : Moon))
@@ -240,6 +231,16 @@ async function handleLogout() {
   gap: 10px;
 }
 
+.header-user {
+  font-size: 14px;
+  color: $fk-text-primary;
+}
+
+.header-sep {
+  color: $fk-border;
+  font-size: 12px;
+}
+
 .theme-btn {
   border-color: $fk-border;
   background: $fk-surface-muted;
@@ -250,15 +251,6 @@ async function handleLogout() {
   background: $fk-page-bg;
   padding: 0;
   overflow: auto;
-}
-
-.layout-footer {
-  text-align: center;
-  font-size: 12px;
-  color: $fk-text-secondary;
-  padding: 12px;
-  border-top: 1px solid $fk-border;
-  background: $fk-header-bg;
 }
 
 .aside-note {
@@ -287,44 +279,6 @@ async function handleLogout() {
 .aside-note .el-icon {
   color: $fk-primary;
   margin-top: 2px;
-}
-
-.aside-user {
-  margin: 8px 12px 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid $fk-border;
-  background: $fk-surface-muted;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.aside-user__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: $fk-primary;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.aside-user__name {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: $fk-text-primary;
-}
-
-.aside-user__role {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: $fk-text-secondary;
 }
 
 .page-fade-enter-active,

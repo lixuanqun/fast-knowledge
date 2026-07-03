@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Component
-@ConditionalOnProperty(name = "knowledge.cache.provider", havingValue = "redis")
+@ConditionalOnProperty(name = "knowledge.cache.provider", havingValue = "redis", matchIfMissing = true)
 public class RedisCacheProvider implements CacheProvider {
 
     private static final int SCAN_BATCH_SIZE = 256;
