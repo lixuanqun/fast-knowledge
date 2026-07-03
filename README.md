@@ -90,11 +90,54 @@
 
 ---
 
-## 界面一览
+## 界面预览
 
-登录后可使用：知识库管理 · 智能检索 · 智能问答 · 多轮对话 · AI 写文档
+高保真 UI 设计稿（1440×900 桌面端）。完整浅色 / 暗色共 52 张见 **[设计稿目录](docs/design/README.md)**。
 
-管理员额外拥有：用户管理 · 审计日志 · API Key · 大模型配置
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/design/design-02-dashboard.png" alt="系统概览" width="100%" />
+      <br /><sub><b>系统概览</b> — 知识库与索引状态一览</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/design/design-03-knowledge-base.png" alt="知识库管理" width="100%" />
+      <br /><sub><b>知识库管理</b> — 创建、权限与文档入口</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/design/design-04-search.png" alt="智能检索" width="100%" />
+      <br /><sub><b>智能检索</b> — 混合检索，按类型筛选</sub>
+    </td>
+    <td align="center">
+      <img src="docs/design/design-31-qa-sources-expanded.png" alt="智能问答" width="100%" />
+      <br /><sub><b>智能问答</b> — RAG 回答 + 引用来源展开</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/design/design-06-chat.png" alt="智能对话" width="100%" />
+      <br /><sub><b>智能对话</b> — 多轮 RAG，历史会话</sub>
+    </td>
+    <td align="center">
+      <img src="docs/design/design-14-doc-preview-drawer.png" alt="文档预览" width="100%" />
+      <br /><sub><b>文档预览</b> — 分块列表与引用定位</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/design/design-07-kb-detail.png" alt="知识库详情" width="88%" />
+  <br /><sub><b>知识库详情</b> — 文档元数据、上传、索引与 Wiki</sub>
+</p>
+
+<p align="center">
+  <sub>亦支持暗色主题 · 示例见 <a href="docs/design/dark-02-dashboard.png">暗色概览</a> · <a href="docs/design/dark-05-qa.png">暗色问答</a></sub>
+</p>
+
+**功能入口**：知识库 · 智能检索 · 智能问答 · 多轮对话 · AI 写文档  
+**管理员**：用户管理 · 审计日志 · API Key · 大模型配置
 
 ```
 概览 → 知识库 → 上传文档 → 检索 / 问答 / 对话
