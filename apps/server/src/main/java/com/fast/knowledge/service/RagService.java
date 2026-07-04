@@ -1,82 +1,37 @@
 package com.fast.knowledge.service;
 
-import com.fast.knowledge.audit.AuditActions;
-import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.model.dto.QaRequest;
-import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.vo.QaResponseVO;
 import com.fast.knowledge.model.vo.RagContextVO;
-import com.fast.knowledge.model.vo.SearchHitVO;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+/**
+ * RAG 问答服务接口。
+ */
+public interface RagService {
 
-@Service
-public class RagService {
+    /**
+     * 单次 RAG 问答：检索 + 拼接上下文 + LLM 生成回答。
+     *
+     * @param request 问答请求（含知识库 ID 与问题）
+     * @return 问答响应（含回答文本与引用来源）
+     */
+    QaResponseVO ask(QaRequest request) throws Exception;
 
-    private static final String QA_SYSTEM_PROMPT = """
-            你是 Fast Knowledge 快速知识库助手。请仅根据提供的参考资料回答问题。
-            若参考资料不足以回答，请明确说明「知识库中未找到相关内容」，不要编造。
-            回答请使用简体中文，条理清晰。""";
+    /**
+     * 检索指定知识库并组装结构化上下文。
+     *
+     * @param kbId  知识库 ID
+     * @param query 查询文本
+     * @return 包含格式化上下文与来源列表的上下文对象
+     */
+    RagContextVO retrieve(Long kbId, String query) throws Exception;
 
-    private final SearchService searchService;
-    private final ChatModel chatModel;
-    private final AuditLogService auditLogService;
-
-    public RagService(SearchService searchService, ChatModel chatModel, AuditLogService auditLogService) {
-        this.searchService = searchService;
-        this.chatModel = chatModel;
-        this.auditLogService = auditLogService;
-    }
-
-    public QaResponseVO ask(QaRequest request) throws Exception {
-        if (request.getKbId() == null || request.getQuestion() == null || request.getQuestion().isBlank()) {
-            throw new BusinessException("参数不完整");
-        }
-
-        RagContextVO rag = retrieve(request.getKbId(), request.getQuestion());
-        String userPrompt = rag.getContext().isBlank()
-                ? "问题：" + request.getQuestion()
-                : "参考资料：\n" + rag.getContext() + "\n\n问题：" + request.getQuestion();
-        String answer = chatModel.chat(SystemMessage.from(QA_SYSTEM_PROMPT), UserMessage.from(userPrompt))
-                .aiMessage()
-                .text();
-
-        QaResponseVO vo = new QaResponseVO();
-        vo.setAnswer(answer);
-        vo.setSources(rag.getSources());
-        auditLogService.log(AuditActions.QA, "KB", request.getKbId(),
-                "question=" + truncate(request.getQuestion(), 200));
-        return vo;
-    }
-
-    public RagContextVO retrieve(Long kbId, String query) throws Exception {
-        SearchRequest searchRequest = new SearchRequest();
-        searchRequest.setKbId(kbId);
-        searchRequest.setQuery(query);
-        List<SearchHitVO> hits = searchService.search(searchRequest);
-        String context = formatHits(hits);
-        return new RagContextVO(context, hits);
-    }
-
-    public String buildContext(Long kbId, String query) throws Exception {
-        return retrieve(kbId, query).getContext();
-    }
-
-    private String formatHits(List<SearchHitVO> hits) {
-        return hits.stream()
-                .map(h -> "【" + h.getDocumentTitle() + "】\n" + h.getContent())
-                .collect(Collectors.joining("\n\n"));
-    }
-
-    private static String truncate(String value, int max) {
-        if (value == null) {
-            return null;
-        }
-        return value.length() <= max ? value : value.substring(0, max);
-    }
+    /**
+     * 构建拼接后的纯文本上下文（用于下游对话或写作）。
+     *
+     * @param kbId  知识库 ID
+     * @param query 查询文本
+     * @return 拼接后的参考资料文本
+     */
+    String buildContext(Long kbId, String query) throws Exception;
 }

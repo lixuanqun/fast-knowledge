@@ -1,6 +1,7 @@
 package com.fast.knowledge.service;
 
 import com.fast.knowledge.common.BusinessException;
+import com.fast.knowledge.common.SseEmitterHelper;
 import com.fast.knowledge.model.dto.WriterRequest;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -11,7 +12,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executor;
 
@@ -34,7 +34,7 @@ public class WriterService {
         if (request.getTopic() == null || request.getTopic().isBlank()) {
             throw new BusinessException("请填写文档主题");
         }
-        SseEmitter emitter = new SseEmitter(180000L);
+        SseEmitter emitter = SseEmitterHelper.create(SseEmitterHelper.TIMEOUT_LONG);
         chatExecutor.execute(() -> {
             try {
                 String context = "";
@@ -57,38 +57,22 @@ public class WriterService {
                 streamingChatModel.chat(messages, new StreamingChatResponseHandler() {
                     @Override
                     public void onPartialResponse(String partialResponse) {
-                        try {
-                            emitter.send(SseEmitter.event().data(partialResponse));
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
+                        SseEmitterHelper.sendData(emitter, partialResponse);
                     }
 
                     @Override
                     public void onCompleteResponse(ChatResponse response) {
-                        try {
-                            emitter.send(SseEmitter.event().name("done").data("[DONE]"));
-                            emitter.complete();
-                        } catch (IOException e) {
-                            emitter.completeWithError(e);
-                        }
+                        SseEmitterHelper.sendNamed(emitter, "done", "[DONE]");
+                        emitter.complete();
                     }
 
                     @Override
                     public void onError(Throwable error) {
-                        try {
-                            emitter.send(SseEmitter.event().name("error").data(error.getMessage()));
-                        } catch (IOException ignored) {
-                        }
-                        emitter.completeWithError(error);
+                        SseEmitterHelper.sendError(emitter, error.getMessage());
                     }
                 });
             } catch (Exception e) {
-                try {
-                    emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
-                } catch (IOException ignored) {
-                }
-                emitter.completeWithError(e);
+                SseEmitterHelper.sendError(emitter, e.getMessage());
             }
         });
         return emitter;

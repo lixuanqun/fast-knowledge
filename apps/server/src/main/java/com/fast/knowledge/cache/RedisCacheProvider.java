@@ -69,4 +69,13 @@ public class RedisCacheProvider implements CacheProvider {
             return null;
         });
     }
+
+    @Override
+    public int increment(String key, Duration ttl) {
+        Long value = redisTemplate.opsForValue().increment(key);
+        if (value != null && value == 1) {
+            redisTemplate.expire(key, ttl.toMillis(), TimeUnit.MILLISECONDS);
+        }
+        return value != null ? value.intValue() : 0;
+    }
 }
