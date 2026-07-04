@@ -1,6 +1,6 @@
 ﻿# Fast Knowledge
 
-**面向国企与制造业的 Java 私有化知识库** — 把制度、工艺、设备文档变成可检索、可问答、可审计的企业知识资产。
+**面向中小企业的 Java 私有化知识库** — 把制度、工艺、设备文档变成可检索、可问答、可审计的企业知识资产。
 
 [![CI](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml/badge.svg)](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
@@ -78,15 +78,42 @@
 
 ---
 
-## 和通用知识库产品有什么不同
+## 竞品对比
 
-| | 通用 Agent 平台 | Fast Knowledge |
-|--|----------------|----------------|
-| 定位 | 智能体、工作流、工具编排 | **知识库专用** |
-| 技术栈 | 多为 Python | **Java 21 + Spring Boot** |
-| 集成方式 | iframe / SDK 为主 | **REST + API Key** |
-| 合规叙事 | 通用私有化 | **审计导出 + 不出域验收清单 + 离线包** |
-| 垂直场景 | 通用 | **文号、文档类型、引用溯源** |
+四个主流的开源知识库产品，定位与应用场景各有侧重：
+
+| | Fast Knowledge | WeKnora | MaxKB | RAGFlow |
+|--|---------------|---------|-------|---------|
+| **定位** | 中小企业私有化知识库 | 企业级 RAG + Agent + Wiki 平台 | 低代码知识库问答系统 | 深度文档理解 RAG 引擎 |
+| **技术栈** | **Java 21 + Spring Boot** | Go + Gin | Python + Django | Python |
+| **AI 框架** | LangChain4j | 自研 Pipeline | LangChain | 自研 DeepDoc |
+| **向量库** | pgvector | 8 种可插拔 | pgvector / FAISS / Milvus | ES + Infinity |
+| **许可协议** | AGPL v3 + 商业双许可 | MIT | MIT | Apache 2.0 |
+| **部署形态** | **单实例·每企一套** | 多租户 SaaS | 单机到集群 | 容器化私有部署 |
+| **Agent / 工作流** | ❌ 不做通用 Agent | ✅ ReAct + MCP | ✅ DAG 工作流编排 | ✅ 多 Agent 协作 |
+| **多模态** | ❌ | 图片 OCR | 图片/音视频 | ✅ 深度文档理解 |
+| **知识图谱** | ❌ | ✅ GraphRAG | 部分支持 | ✅ GraphRAG |
+| **IM 渠道** | REST API 集成 | 企微/飞书/钉钉等 7 种 | 基础集成 | 飞书/Discord/Telegram |
+| **合规特色** | **审计导出 + 不出域 + 离线包** | RBAC 多租户 | 国密加密 | 基础权限 |
+| **交付受众** | Java 栈·国企·制造·合同验收 | Python/Go 栈·通用企业 | Python 栈·低代码用户 | Python 栈·文档密集型 |
+
+### 为什么选 Fast Knowledge
+
+| 你的情况 | 推荐理由 |
+|----------|----------|
+| 团队是 **Java/Spring Boot** 技术栈 | 唯一 Java 知识库产品，无需引入 Python/Go 运维负担 |
+| 客户要求 **数据不出域、行为可审计** | 纯内网模式 + 全链路审计 CSV 导出 + 离线交付包，直接满足合规验收 |
+| 面向 **国企/制造业/合同交付** | 文号、文档类型、章节引用溯源——内置制造场景字段，不需二次开发 |
+| 要 **REST API 集成** 到 OA/MES/门户 | API Key + 标准 REST 接口，不是 iframe 嵌入 |
+| 不需要 Agent 工作流 | 不做通用 Agent 平台，降低复杂度与交付风险 |
+
+### 什么时候选其他产品
+
+| 你的需求 | 推荐产品 |
+|----------|----------|
+| 要可视化编排 Agent + MCP 工具 + 多模态 | [WeKnora](https://github.com/Tencent/WeKnora) — Go 技术栈，功能最全 |
+| 要低代码拖拽 + 工作流 + 快速 Demo | [MaxKB](https://github.com/1Panel-dev/MaxKB) — Python 技术栈，开箱即用 |
+| 要极致文档解析 + GraphRAG + 深度检索 | [RAGFlow](https://github.com/infiniflow/ragflow) — Python 技术栈，文档理解最强 |
 
 ---
 
