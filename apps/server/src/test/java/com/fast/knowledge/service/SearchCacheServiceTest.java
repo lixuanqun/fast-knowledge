@@ -26,7 +26,10 @@ class SearchCacheServiceTest {
     void setUp() {
         cacheProvider = new InMemoryCacheProvider();
         KnowledgeProperties properties = new KnowledgeProperties();
-        searchCacheService = new SearchCacheService(cacheProvider, new ObjectMapper(), properties);
+        // Use a simple no-op MetricsService since the test doesn't need real metrics
+        MetricsService metricsService = new MetricsService(
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+        searchCacheService = new SearchCacheService(cacheProvider, new ObjectMapper(), metricsService, properties);
     }
 
     @Test
