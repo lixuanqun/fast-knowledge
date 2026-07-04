@@ -30,34 +30,22 @@ class SearchCacheServiceTest {
     }
 
     @Test
-    void invalidateForKb_removesOnlyMatchingKbKeys() {
+    void invalidateForKb_incrementsVersionAndClearsOldKeys() {
+        long v1 = searchCacheService.getVersion(1L);
         searchCacheService.put(1L, "hello", 8, false, null, List.of(new SearchHitVO()));
         searchCacheService.put(2L, "hello", 8, false, null, List.of(new SearchHitVO()));
 
-        String kb1Key = searchCacheService.buildKey(1L, "hello", 8, false, null);
-        String kb2Key = searchCacheService.buildKey(2L, "hello", 8, false, null);
-        assertTrue(cacheProvider.get(kb1Key).isPresent());
-        assertTrue(cacheProvider.get(kb2Key).isPresent());
+        assertTrue(searchCacheService.get(1L, "hello", 8, false, null).isPresent());
+        assertTrue(searchCacheService.get(2L, "hello", 8, false, null).isPresent());
 
         searchCacheService.invalidateForKb(1L);
 
-        assertTrue(cacheProvider.get(kb1Key).isEmpty());
-        assertTrue(cacheProvider.get(kb2Key).isPresent());
-    }
-
-    @Test
-    void buildKey_isStableForSameInput() {
-        String key1 = searchCacheService.buildKey(3L, "query", 5, false, null);
-        String key2 = searchCacheService.buildKey(3L, "query", 5, false, null);
-        assertEquals(key1, key2);
-        assertTrue(key1.startsWith("kb:search:3:"));
-    }
-
-    @Test
-    void buildKey_differsWhenRerankFlagChanges() {
-        String withoutRerank = searchCacheService.buildKey(3L, "query", 5, false, null);
-        String withRerank = searchCacheService.buildKey(3L, "query", 5, true, null);
-        assertNotEquals(withoutRerank, withRerank);
+        long v2 = searchCacheService.getVersion(1L);
+        assertNotEquals(v1, v2, "invalidate should increment version");
+        // Old version cache should be unreachable
+        assertTrue(searchCacheService.get(1L, "hello", 8, false, null).isEmpty(),
+                "stale cache should be cleanable");
+        assertTrue(searchCacheService.get(2L, "hello", 8, false, null).isPresent());
     }
 
     @Test
@@ -72,25 +60,33 @@ class SearchCacheServiceTest {
         assertEquals("test", cached.getFirst().getContent());
     }
 
+    @Test
+    void cacheStats_tracksHitsAndMisses() {
+        searchCacheService.get(99L, "never-cached", 8, false, null);
+        SearchCacheService.CacheStats stats = searchCacheService.stats();
+        assertTrue(stats.misses() > 0, "miss should be tracked");
+    }
+
+    @SuppressWarnings("unchecked")
     private static final class InMemoryCacheProvider implements CacheProvider {
-        private final Map<String, String> store = new ConcurrentHashMap<>();
-        private final Map<String, Long> expiry = new ConcurrentHashMap<>();
+        private final Map<String, Object> store = new ConcurrentHashMap<>();
 
         @Override
         public Optional<String> get(String key) {
-            Long exp = expiry.get(key);
-            if (exp != null && System.currentTimeMillis() > exp) {
-                store.remove(key);
-                expiry.remove(key);
-                return Optional.empty();
+            Object val = store.get(key);
+            if (val instanceof ExpiringValue ev) {
+                if (System.currentTimeMillis() > ev.expiresAt) {
+                    store.remove(key);
+                    return Optional.empty();
+                }
+                return Optional.ofNullable(ev.value);
             }
-            return Optional.ofNullable(store.get(key));
+            return Optional.ofNullable((String) val);
         }
 
         @Override
         public void set(String key, String value, Duration ttl) {
-            store.put(key, value);
-            expiry.put(key, System.currentTimeMillis() + ttl.toMillis());
+            store.put(key, new ExpiringValue(value, System.currentTimeMillis() + ttl.toMillis()));
         }
 
         @Override
@@ -105,13 +101,28 @@ class SearchCacheServiceTest {
         @Override
         public void delete(String key) {
             store.remove(key);
-            expiry.remove(key);
         }
 
         @Override
         public void deleteByPrefix(String prefix) {
             store.keySet().removeIf(k -> k.startsWith(prefix));
-            expiry.keySet().removeIf(k -> k.startsWith(prefix));
         }
+
+        @Override
+        public int increment(String key, Duration ttl) {
+            Object existing = store.get(key);
+            long current = 0;
+            if (existing instanceof String s) {
+                try {
+                    current = Long.parseLong(s);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            long next = current + 1;
+            store.put(key, String.valueOf(next));
+            return (int) next;
+        }
+
+        private record ExpiringValue(String value, long expiresAt) {}
     }
 }
