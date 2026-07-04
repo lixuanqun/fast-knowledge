@@ -3,6 +3,7 @@ package com.fast.knowledge.controller;
 import com.fast.knowledge.common.ApiResponse;
 import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.vo.SearchHitVO;
+import com.fast.knowledge.security.RateLimit;
 import com.fast.knowledge.service.SearchService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,7 @@ public class SearchController {
     }
 
     @PostMapping
+    @RateLimit(maxRequests = 30, windowSeconds = 60)
     public ApiResponse<List<SearchHitVO>> search(@Valid @RequestBody SearchRequest request) throws Exception {
         return ApiResponse.ok(searchService.search(request));
     }

@@ -21,6 +21,9 @@ public class KnowledgeProperties {
     private Setup setup = new Setup();
     private Auth auth = new Auth();
     private Wiki wiki = new Wiki();
+    private Chat chat = new Chat();
+    private QueryRewrite queryRewrite = new QueryRewrite();
+    private Index index = new Index();
 
     @Data
     public static class Wiki {
@@ -157,6 +160,28 @@ public class KnowledgeProperties {
         private String onnxModelPath = "./data/models/bge-reranker-base.onnx";
         private String onnxTokenizerPath = "./data/models/bge-reranker-tokenizer.json";
         private int onnxMaxSeqLen = 512;
+    }
+
+    @Data
+    public static class Chat {
+        /** LangChain4j MessageWindowChatMemory 窗口大小（条） */
+        private int memoryWindow = 10;
+    }
+
+    @Data
+    public static class QueryRewrite {
+        /** 是否启用查询改写 */
+        private boolean enabled = true;
+        /** 用于改写的对话历史轮数 */
+        private int historyRounds = 5;
+    }
+
+    @Data
+    public static class Index {
+        /** 是否启用 Redis Pub/Sub 事件驱动索引（关闭则回退轮询） */
+        private boolean pubsubEnabled = true;
+        /** 最大重试次数 */
+        private int maxRetry = 3;
     }
 
     @Data

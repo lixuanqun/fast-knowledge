@@ -5,6 +5,7 @@ import com.fast.knowledge.model.dto.ChatMessageRequest;
 import com.fast.knowledge.model.dto.CreateSessionRequest;
 import com.fast.knowledge.model.entity.ChatMessage;
 import com.fast.knowledge.model.entity.ChatSession;
+import com.fast.knowledge.security.RateLimit;
 import com.fast.knowledge.service.ChatService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -44,6 +45,7 @@ public class ChatController {
         return ApiResponse.ok();
     }
 
+    @RateLimit(maxRequests = 15, windowSeconds = 60)
     @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@Valid @RequestBody ChatMessageRequest request) {
         return chatService.chatStream(request);

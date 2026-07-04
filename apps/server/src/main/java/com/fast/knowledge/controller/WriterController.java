@@ -3,6 +3,7 @@ package com.fast.knowledge.controller;
 import com.fast.knowledge.model.dto.SaveDocumentRequest;
 import com.fast.knowledge.model.dto.WriterRequest;
 import com.fast.knowledge.model.entity.KbDocument;
+import com.fast.knowledge.security.RateLimit;
 import com.fast.knowledge.service.DocumentService;
 import com.fast.knowledge.service.WriterService;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ public class WriterController {
         this.documentService = documentService;
     }
 
+    @RateLimit(maxRequests = 10, windowSeconds = 60)
     @PostMapping(value = "/generate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter generate(@Valid @RequestBody WriterRequest request) {
         return writerService.generate(request);
