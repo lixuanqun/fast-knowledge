@@ -116,6 +116,7 @@ public class ChatServiceImpl implements ChatService {
         Long userId = UserContext.currentUserId();
 
         chatExecutor.execute(() -> {
+            long startTime = System.currentTimeMillis();
             try {
                 ChatSession session = resolveSession(request, userId);
                 Long kbId = request.getKbId() != null ? request.getKbId() : session.getKbId();
@@ -132,6 +133,7 @@ public class ChatServiceImpl implements ChatService {
                 metricsService.countQueryRewrite(wasRewritten);
 
                 final List<SearchHitVO> sources = new ArrayList<>();
+                final java.util.concurrent.atomic.AtomicBoolean firstTokenRecorded = new java.util.concurrent.atomic.AtomicBoolean(false);
                 TokenStream tokenStream = kbChatAssistantFactory.stream(
                         kbId, activeSession.getId(), rewrittenMessage);
 
@@ -139,6 +141,10 @@ public class ChatServiceImpl implements ChatService {
                         .onRetrieved((List<Content> contents) -> sources.addAll(RetrievedContentMapper.toSearchHits(contents)))
                         .onPartialResponse(partial -> {
                             try {
+                                if (firstTokenRecorded.compareAndSet(false, true)) {
+                                    long latency = System.currentTimeMillis() - startTime;
+                                    metricsService.recordFirstTokenLatency(latency);
+                                }
                                 emitter.send(SseEmitter.event().data(partial));
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
