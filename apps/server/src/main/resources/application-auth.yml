@@ -1,0 +1,23 @@
+# 认证与安全配置：JWT、CORS、LDAP、OIDC
+knowledge:
+  jwt:
+    secret: ${JWT_SECRET:fast-knowledge-jwt-secret-change-in-production-32chars}
+    expire-seconds: 86400
+  cors:
+    allowed-origins: ${CORS_ORIGINS:*}
+  auth:
+    ldap:
+      enabled: ${LDAP_ENABLED:false}
+      url: ${LDAP_URL:}
+      base-dn: ${LDAP_BASE_DN:}
+      user-dn-pattern: ${LDAP_USER_DN_PATTERN:}
+      user-search-base: ${LDAP_USER_SEARCH_BASE:}
+      user-search-filter: ${LDAP_USER_SEARCH_FILTER:}
+    oidc:
+      enabled: ${OIDC_ENABLED:false}
+      issuer-uri: ${OIDC_ISSUER_URI:}
+      client-id: ${OIDC_CLIENT_ID:}
+      client-secret: ${OIDC_CLIENT_SECRET:}
+      redirect-uri: ${OIDC_REDIRECT_URI:http://localhost:8088/api/v1/auth/oidc/callback}
+      frontend-redirect-uri: ${OIDC_FRONTEND_REDIRECT_URI:http://localhost:8088/login/callback}
+      scope: ${OIDC_SCOPE:openid profile email}

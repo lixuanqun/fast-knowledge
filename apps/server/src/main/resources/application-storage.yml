@@ -1,0 +1,17 @@
+# 文件存储与向量基础设施
+knowledge:
+  storage:
+    provider: minio
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      bucket: ${MINIO_BUCKET:fast-knowledge}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      region: ${MINIO_REGION:us-east-1}
+      prefix: ${MINIO_PREFIX:knowledge/}
+  vector:
+    provider: pgvector
+  cache:
+    provider: redis
+  setup:
+    instance-name: Fast Knowledge

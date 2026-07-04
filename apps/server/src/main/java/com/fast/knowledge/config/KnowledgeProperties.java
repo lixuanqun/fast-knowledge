@@ -21,6 +21,9 @@ public class KnowledgeProperties {
     private Setup setup = new Setup();
     private Auth auth = new Auth();
     private Wiki wiki = new Wiki();
+    private Chat chat = new Chat();
+    private QueryRewrite queryRewrite = new QueryRewrite();
+    private Index index = new Index();
 
     @Data
     public static class Wiki {
@@ -76,11 +79,28 @@ public class KnowledgeProperties {
         private String table = "kb_embeddings";
         private String searchMode = "HYBRID";
         private int rrfK = 60;
+        /** 索引类型: hnsw | ivfflat */
+        private String indexType = "hnsw";
+        /** HNSW 构建参数 m（每层最大连接数，默认 16） */
+        private int hnswM = 16;
+        /** HNSW 构建参数 ef_construction（默认 200） */
+        private int hnswEfConstruction = 200;
     }
 
     @Data
     public static class Cache {
         private String provider = "redis";
+        private L1 l1 = new L1();
+    }
+
+    @Data
+    public static class L1 {
+        /** 是否启用本地 Caffeine L1 缓存 */
+        private boolean enabled = true;
+        /** L1 缓存最大条目数 */
+        private int maxSize = 500;
+        /** L1 缓存 TTL（分钟） */
+        private int ttlMinutes = 2;
     }
 
     @Data
@@ -125,6 +145,8 @@ public class KnowledgeProperties {
         private int onnxBatchSize = 16;
         private String ollamaUrl = "http://localhost:11434";
         private String ollamaModel = "nomic-embed-text";
+        /** 是否缓存 query embedding 结果 */
+        private boolean cacheEnabled = true;
     }
 
     @Data
@@ -157,6 +179,28 @@ public class KnowledgeProperties {
         private String onnxModelPath = "./data/models/bge-reranker-base.onnx";
         private String onnxTokenizerPath = "./data/models/bge-reranker-tokenizer.json";
         private int onnxMaxSeqLen = 512;
+    }
+
+    @Data
+    public static class Chat {
+        /** LangChain4j MessageWindowChatMemory 窗口大小（条） */
+        private int memoryWindow = 10;
+    }
+
+    @Data
+    public static class QueryRewrite {
+        /** 是否启用查询改写 */
+        private boolean enabled = true;
+        /** 用于改写的对话历史轮数 */
+        private int historyRounds = 5;
+    }
+
+    @Data
+    public static class Index {
+        /** 是否启用 Redis Pub/Sub 事件驱动索引（关闭则回退轮询） */
+        private boolean pubsubEnabled = true;
+        /** 最大重试次数 */
+        private int maxRetry = 3;
     }
 
     @Data

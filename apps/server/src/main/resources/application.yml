@@ -1,9 +1,15 @@
 server:
   port: 8088
   servlet:
-    context-path: /api
+    context-path: /api/v1
 
 spring:
+  config:
+    import:
+      - classpath:application-db.yml
+      - classpath:application-ai.yml
+      - classpath:application-auth.yml
+      - classpath:application-storage.yml
   threads:
     virtual:
       enabled: true
@@ -13,21 +19,6 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 55MB
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/fast_knowledge}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-  sql:
-    init:
-      mode: ${SQL_INIT_MODE:always}
-      schema-locations: classpath:db/schema-postgres.sql
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      database: ${REDIS_DB:0}
 
 mybatis-plus:
   configuration:
@@ -36,82 +27,6 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
-
-knowledge:
-  jwt:
-    secret: ${JWT_SECRET:fast-knowledge-jwt-secret-change-in-production-32chars}
-    expire-seconds: 86400
-  storage:
-    provider: minio
-    minio:
-      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-      bucket: ${MINIO_BUCKET:fast-knowledge}
-      access-key: ${MINIO_ACCESS_KEY:minioadmin}
-      secret-key: ${MINIO_SECRET_KEY:minioadmin}
-      region: ${MINIO_REGION:us-east-1}
-      prefix: ${MINIO_PREFIX:knowledge/}
-  vector:
-    provider: pgvector
-  cache:
-    provider: redis
-  embedding:
-    provider: ${EMBEDDING_PROVIDER:onnx}
-    onnx-model-path: ${ONNX_MODEL_PATH:./data/models/bge-small-zh-v1.5.onnx}
-    onnx-tokenizer-path: ${ONNX_TOKENIZER_PATH:./data/models/tokenizer.json}
-    dimension: 512
-    onnx-max-seq-len: 512
-    onnx-batch-size: 16
-    ollama-url: ${OLLAMA_EMBED_URL:http://localhost:11434}
-    ollama-model: ${EMBEDDING_MODEL:nomic-embed-text}
-  chunk:
-    size: 512
-    overlap: 50
-  search:
-    default-top-k: 8
-    cache-ttl-minutes: 5
-    rerank:
-      enabled: ${RERANK_ENABLED:false}
-      provider: ${RERANK_PROVIDER:cohere}
-      candidate-multiplier: ${RERANK_CANDIDATE_MULTIPLIER:3}
-      min-score: ${RERANK_MIN_SCORE:}
-      cohere-api-key: ${COHERE_API_KEY:}
-      cohere-model: ${RERANK_COHERE_MODEL:rerank-multilingual-v3.0}
-      jina-api-key: ${JINA_API_KEY:}
-      jina-model: ${RERANK_JINA_MODEL:jina-reranker-v2-base-multilingual}
-      onnx-model-path: ${RERANK_ONNX_MODEL_PATH:./data/models/bge-reranker-base.onnx}
-      onnx-tokenizer-path: ${RERANK_ONNX_TOKENIZER_PATH:./data/models/bge-reranker-tokenizer.json}
-      onnx-max-seq-len: ${RERANK_ONNX_MAX_SEQ_LEN:512}
-  llm:
-    provider: ${LLM_PROVIDER:ollama}
-    base-url: ${LLM_BASE_URL:}
-    api-key: ${LLM_API_KEY:}
-    model: ${LLM_MODEL:}
-    max-tokens: 4096
-    temperature: 0.3
-    allow-external: ${LLM_ALLOW_EXTERNAL:true}
-  cors:
-    allowed-origins: ${CORS_ORIGINS:*}
-  setup:
-    instance-name: Fast Knowledge
-  auth:
-    ldap:
-      enabled: ${LDAP_ENABLED:false}
-      url: ${LDAP_URL:}
-      base-dn: ${LDAP_BASE_DN:}
-      user-dn-pattern: ${LDAP_USER_DN_PATTERN:}
-      user-search-base: ${LDAP_USER_SEARCH_BASE:}
-      user-search-filter: ${LDAP_USER_SEARCH_FILTER:}
-    oidc:
-      enabled: ${OIDC_ENABLED:false}
-      issuer-uri: ${OIDC_ISSUER_URI:}
-      client-id: ${OIDC_CLIENT_ID:}
-      client-secret: ${OIDC_CLIENT_SECRET:}
-      redirect-uri: ${OIDC_REDIRECT_URI:http://localhost:8088/api/auth/oidc/callback}
-      frontend-redirect-uri: ${OIDC_FRONTEND_REDIRECT_URI:http://localhost:8088/login/callback}
-      scope: ${OIDC_SCOPE:openid profile email}
-  wiki:
-    enabled: ${WIKI_ENABLED:true}
-    auto-publish: ${WIKI_AUTO_PUBLISH:false}
 
 springdoc:
   api-docs:
@@ -123,7 +38,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}

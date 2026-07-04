@@ -15,21 +15,16 @@ import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.DocumentChunkVO;
 import com.fast.knowledge.model.vo.DocumentPreviewVO;
 import com.fast.knowledge.security.UserContext;
-import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 public class DocumentService {
-
-    private static final int PREVIEW_MAX_CHARS = 200_000;
 
     private final DocumentMapper documentMapper;
     private final DocumentChunkMapper documentChunkMapper;
@@ -40,7 +35,8 @@ public class DocumentService {
     private final StorageProvider storageProvider;
     private final AuditLogService auditLogService;
     private final SearchCacheService searchCacheService;
-    private final Tika tika = new Tika();
+    private final TextExtractionService textExtractionService;
+    private final IndexEventPublisher indexEventPublisher;
 
     public DocumentService(DocumentMapper documentMapper,
                            DocumentChunkMapper documentChunkMapper,
@@ -50,7 +46,9 @@ public class DocumentService {
                            KbVectorIndexService vectorIndexService,
                            StorageProvider storageProvider,
                            AuditLogService auditLogService,
-                           SearchCacheService searchCacheService) {
+                           SearchCacheService searchCacheService,
+                           TextExtractionService textExtractionService,
+                           IndexEventPublisher indexEventPublisher) {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
@@ -60,6 +58,8 @@ public class DocumentService {
         this.storageProvider = storageProvider;
         this.auditLogService = auditLogService;
         this.searchCacheService = searchCacheService;
+        this.textExtractionService = textExtractionService;
+        this.indexEventPublisher = indexEventPublisher;
     }
 
     public List<KbDocument> listByKb(Long kbId) {
@@ -84,26 +84,12 @@ public class DocumentService {
         vo.setDocNo(doc.getDocNo());
         vo.setDocType(doc.getDocType());
 
-        String fileType = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
-        String content;
-        try (InputStream in = storageProvider.openInputStream(doc.getFilePath())) {
-            if ("txt".equals(fileType) || "md".equals(fileType)) {
-                content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                vo.setPreviewMode("raw");
-            } else {
-                content = tika.parseToString(in);
-                vo.setPreviewMode("extracted");
-            }
-        }
+        TextExtractionService.ExtractedPreview preview = textExtractionService.extractPreview(doc);
+        vo.setPreviewMode(preview.mode());
+        vo.setContentLength(preview.totalLength());
+        vo.setContent(preview.content());
+        vo.setTruncated(preview.truncated());
 
-        vo.setContentLength(content.length());
-        if (content.length() > PREVIEW_MAX_CHARS) {
-            vo.setContent(content.substring(0, PREVIEW_MAX_CHARS));
-            vo.setTruncated(true);
-        } else {
-            vo.setContent(content);
-            vo.setTruncated(false);
-        }
         if (highlightChunkId != null) {
             documentChunkMapper.findByDocumentId(docId).stream()
                     .filter(c -> c.getId().equals(highlightChunkId))
@@ -203,7 +189,7 @@ public class DocumentService {
         task.setRetryCount(0);
         indexTaskMapper.insert(task);
 
-        documentIngestService.scheduleIndex(doc.getId());
+        dispatchIndex(doc.getId());
         auditLogService.log("UPLOAD_DOC", "DOCUMENT", doc.getId(), doc.getTitle());
         return doc;
     }
@@ -236,7 +222,7 @@ public class DocumentService {
         task.setStatus("PENDING");
         task.setRetryCount(0);
         indexTaskMapper.insert(task);
-        documentIngestService.scheduleIndex(doc.getId());
+        dispatchIndex(doc.getId());
         return doc;
     }
 
@@ -267,7 +253,18 @@ public class DocumentService {
         task.setStatus("PENDING");
         task.setRetryCount(0);
         indexTaskMapper.insert(task);
-        documentIngestService.scheduleIndex(docId);
+        dispatchIndex(docId);
+    }
+
+    /**
+     * Dispatch indexing: use Redis Pub/Sub if enabled, otherwise call directly.
+     */
+    private void dispatchIndex(Long documentId) {
+        if (indexEventPublisher.isEnabled()) {
+            indexEventPublisher.publish(documentId);
+        } else {
+            documentIngestService.scheduleIndex(documentId);
+        }
     }
 
     private String stripExtension(String name) {

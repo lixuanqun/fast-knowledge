@@ -1,5 +1,6 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.mapper.WikiCompileTaskMapper;
@@ -7,19 +8,14 @@ import com.fast.knowledge.mapper.WikiPageMapper;
 import com.fast.knowledge.model.entity.KbDocument;
 import com.fast.knowledge.model.entity.WikiCompileTask;
 import com.fast.knowledge.model.entity.WikiPage;
-import com.fast.knowledge.storage.StorageProvider;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.Tika;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Service
@@ -36,25 +32,34 @@ public class WikiCompileService {
     private final DocumentMapper documentMapper;
     private final WikiPageMapper wikiPageMapper;
     private final WikiCompileTaskMapper wikiCompileTaskMapper;
-    private final StorageProvider storageProvider;
+    private final TextExtractionService textExtractionService;
     private final ChatModel chatModel;
-    private final Tika tika = new Tika();
+    private final AuditLogService auditLogService;
+    /** 注入自身代理以确保 protected @Transactional 方法 AOP 生效 */
+    private WikiCompileService self;
 
     public WikiCompileService(KnowledgeProperties properties,
                               DocumentMapper documentMapper,
                               WikiPageMapper wikiPageMapper,
                               WikiCompileTaskMapper wikiCompileTaskMapper,
-                              StorageProvider storageProvider,
-                              ChatModel chatModel) {
+                              TextExtractionService textExtractionService,
+                              ChatModel chatModel,
+                              AuditLogService auditLogService,
+                              @Lazy WikiCompileService self) {
         this.properties = properties;
         this.documentMapper = documentMapper;
         this.wikiPageMapper = wikiPageMapper;
         this.wikiCompileTaskMapper = wikiCompileTaskMapper;
-        this.storageProvider = storageProvider;
+        this.textExtractionService = textExtractionService;
         this.chatModel = chatModel;
+        this.auditLogService = auditLogService;
+        this.self = self;
     }
 
-    @Async("indexExecutor")
+    /**
+     * 调度编译任务 — 由 IndexTaskProcessor 在索引成功后触发。
+     * 此处仅做任务创建与标记，不等待 LLM 响应。
+     */
     public void scheduleCompile(Long documentId) {
         if (!properties.getWiki().isEnabled()) {
             return;
@@ -98,7 +103,10 @@ public class WikiCompileService {
         }
     }
 
-    @Transactional
+    /**
+     * 编译单文档为 Wiki 页。
+     * LLM 调用（阻塞 I/O）在事务外执行，仅 DB 写入使用短事务。
+     */
     public void compileDocument(Long documentId) throws Exception {
         KbDocument doc = documentMapper.selectById(documentId);
         if (doc == null) {
@@ -106,63 +114,68 @@ public class WikiCompileService {
         }
         WikiCompileTask task = wikiCompileTaskMapper.findByDocumentId(documentId);
         if (task != null) {
-            task.setStatus("COMPILING");
-            wikiCompileTaskMapper.updateById(task);
+            self.updateTaskStatus(task, "COMPILING", null);
         }
         try {
-            String text = extractText(doc);
+            // LLM 调用在事务外 —— 避免长时间持有 DB 连接
+            String text = textExtractionService.extractFullText(doc);
             String sourceHint = buildSourceHint(doc);
-            String userPrompt = sourceHint + "\n\n原文摘录：\n" + truncate(text, 12000);
+            String userPrompt = sourceHint + "\n\n原文摘录：\n" + StringUtils.truncate(text, 12000);
             String contentMd = chatModel.chat(SystemMessage.from(WIKI_SYSTEM), UserMessage.from(userPrompt))
                     .aiMessage()
                     .text();
 
-            String slug = "doc-" + documentId;
-            WikiPage page = wikiPageMapper.findByKbAndSlug(doc.getKbId(), slug);
-            if (page == null) {
-                page = new WikiPage();
-                page.setKbId(doc.getKbId());
-                page.setSlug(slug);
-                page.setTitle(doc.getTitle());
-                page.setContentMd(contentMd);
-                page.setSourceDocIds(String.valueOf(documentId));
-                page.setVersion(1);
-                page.setStatus(properties.getWiki().isAutoPublish() ? "PUBLISHED" : "DRAFT");
-                wikiPageMapper.insert(page);
-            } else {
-                page.setTitle(doc.getTitle());
-                page.setContentMd(contentMd);
-                page.setSourceDocIds(String.valueOf(documentId));
-                page.setVersion(page.getVersion() != null ? page.getVersion() + 1 : 1);
-                if (properties.getWiki().isAutoPublish()) {
-                    page.setStatus("PUBLISHED");
-                }
-                wikiPageMapper.updateById(page);
-            }
-
-            if (task != null) {
-                task.setStatus("DONE");
-                task.setErrorMsg(null);
-                wikiCompileTaskMapper.updateById(task);
-            }
+            // 仅 DB 写入需要事务
+            self.saveWikiResult(doc, documentId, contentMd, task);
+            auditLogService.log("WIKI_COMPILE", "DOCUMENT", documentId, doc.getTitle());
         } catch (Exception e) {
             if (task != null) {
-                task.setStatus("FAILED");
-                task.setErrorMsg(truncate(e.getMessage(), 500));
-                wikiCompileTaskMapper.updateById(task);
+                self.updateTaskStatus(task, "FAILED", StringUtils.truncate(e.getMessage(), 500));
             }
             throw e;
         }
     }
 
-    private String extractText(KbDocument doc) throws Exception {
-        String fileType = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
-        try (InputStream in = storageProvider.openInputStream(doc.getFilePath())) {
-            if ("txt".equals(fileType) || "md".equals(fileType)) {
-                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    /** DB 写入：插入或更新 Wiki 页 + 标记任务完成，在短事务中完成 */
+    @Transactional
+    protected void saveWikiResult(KbDocument doc, Long documentId, String contentMd,
+                                  WikiCompileTask task) {
+        String slug = "doc-" + documentId;
+        WikiPage page = wikiPageMapper.findByKbAndSlug(doc.getKbId(), slug);
+        boolean autoPublish = properties.getWiki().isAutoPublish();
+        if (page == null) {
+            page = new WikiPage();
+            page.setKbId(doc.getKbId());
+            page.setSlug(slug);
+            page.setTitle(doc.getTitle());
+            page.setContentMd(contentMd);
+            page.setSourceDocIds(String.valueOf(documentId));
+            page.setVersion(1);
+            page.setStatus(autoPublish ? "PUBLISHED" : "DRAFT");
+            wikiPageMapper.insert(page);
+        } else {
+            page.setTitle(doc.getTitle());
+            page.setContentMd(contentMd);
+            page.setSourceDocIds(String.valueOf(documentId));
+            page.setVersion(page.getVersion() != null ? page.getVersion() + 1 : 1);
+            if (autoPublish) {
+                page.setStatus("PUBLISHED");
             }
-            return tika.parseToString(in);
+            wikiPageMapper.updateById(page);
         }
+        if (task != null) {
+            task.setStatus("DONE");
+            task.setErrorMsg(null);
+            wikiCompileTaskMapper.updateById(task);
+        }
+    }
+
+    /** 更新任务状态，独立事务 */
+    @Transactional
+    protected void updateTaskStatus(WikiCompileTask task, String status, String errorMsg) {
+        task.setStatus(status);
+        task.setErrorMsg(errorMsg);
+        wikiCompileTaskMapper.updateById(task);
     }
 
     private String buildSourceHint(KbDocument doc) {
@@ -177,12 +190,5 @@ public class WikiCompileService {
             sb.append("，部门：").append(doc.getDepartment());
         }
         return sb.toString();
-    }
-
-    private static String truncate(String text, int max) {
-        if (text == null) {
-            return "";
-        }
-        return text.length() <= max ? text : text.substring(0, max);
     }
 }

@@ -1,5 +1,6 @@
 package com.fast.knowledge.langchain4j.assistant;
 
+import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.langchain4j.memory.DbChatMemoryStore;
 import com.fast.knowledge.langchain4j.retrieval.KbContentRetrieverFactory;
 import com.fast.knowledge.langchain4j.retrieval.KbRetrievalAugmentorFactory;
@@ -15,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class KbChatAssistantFactory {
 
-    private static final int MEMORY_WINDOW = 10;
+    private final int memoryWindow;
 
     private final StreamingChatModel streamingChatModel;
     private final DbChatMemoryStore chatMemoryStore;
@@ -27,11 +28,13 @@ public class KbChatAssistantFactory {
     public KbChatAssistantFactory(StreamingChatModel streamingChatModel,
                                   DbChatMemoryStore chatMemoryStore,
                                   KbRetrievalAugmentorFactory retrievalAugmentorFactory,
-                                  KbContentRetrieverFactory contentRetrieverFactory) {
+                                  KbContentRetrieverFactory contentRetrieverFactory,
+                                  KnowledgeProperties properties) {
         this.streamingChatModel = streamingChatModel;
         this.chatMemoryStore = chatMemoryStore;
         this.retrievalAugmentorFactory = retrievalAugmentorFactory;
         this.contentRetrieverFactory = contentRetrieverFactory;
+        this.memoryWindow = Math.max(1, properties.getChat().getMemoryWindow());
         this.generalAssistant = AiServices.builder(GeneralChatAssistant.class)
                 .streamingChatModel(streamingChatModel)
                 .chatMemoryProvider(this::chatMemory)
@@ -65,7 +68,7 @@ public class KbChatAssistantFactory {
     private MessageWindowChatMemory chatMemory(Object memoryId) {
         return MessageWindowChatMemory.builder()
                 .id(memoryId)
-                .maxMessages(MEMORY_WINDOW)
+                .maxMessages(memoryWindow)
                 .chatMemoryStore(chatMemoryStore)
                 .build();
     }
