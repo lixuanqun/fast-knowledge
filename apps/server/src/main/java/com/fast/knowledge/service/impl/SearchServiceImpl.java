@@ -63,6 +63,7 @@ public class SearchServiceImpl implements SearchService {
         int topK = request.getTopK() != null ? request.getTopK() : kb.getSearchTopK();
         boolean rerank = searchRerankService.isActive();
 
+        // Cache check (L1 + L2)
         var cached = searchCacheService.get(kb.getId(), request.getQuery(), topK, rerank, request.getDocType());
         if (cached.isPresent()) {
             metricsService.countSearch();
@@ -70,25 +71,48 @@ public class SearchServiceImpl implements SearchService {
             return cached.get();
         }
 
-        int fetchK = rerank ? searchRerankService.candidateCount(topK) : topK;
         metricsService.countSearch();
+        int fetchK = rerank ? searchRerankService.candidateCount(topK) : topK;
+
+        // Full search pipeline with segmented timing
         List<SearchHitVO> hits = metricsService.timeSearch(() -> {
-            Embedding queryEmbedding = embeddingModel.embed(request.getQuery()).content();
-            KbEmbeddingStore store = embeddingStoreFactory.getStore(kb.getId());
-            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
-                    .queryEmbedding(queryEmbedding)
-                    .query(request.getQuery())
-                    .maxResults(fetchK)
-                    .build();
-            EmbeddingSearchResult<TextSegment> result = store.search(searchRequest, request.getDocType());
-            List<SearchHitVO> resultHits = result.matches().stream()
-                    .map(match -> SearchHitMapper.fromMatch(match, kb.getId()))
-                    .toList();
+            // Segment 1: Embedding (with cache)
+            Embedding queryEmbedding = metricsService.timeEmbedding(() -> {
+                var cachedVec = searchCacheService.getEmbedding(request.getQuery());
+                if (cachedVec.isPresent()) {
+                    return Embedding.from(cachedVec.get());
+                }
+                Embedding emb = embeddingModel.embed(request.getQuery()).content();
+                float[] vec = new float[emb.vectorAsList().size()];
+                for (int i = 0; i < vec.length; i++) {
+                    vec[i] = emb.vectorAsList().get(i);
+                }
+                searchCacheService.putEmbedding(request.getQuery(), vec);
+                return emb;
+            });
+
+            // Segment 2: Vector search
+            List<SearchHitVO> rawHits = metricsService.timeVectorSearch(() -> {
+                KbEmbeddingStore store = embeddingStoreFactory.getStore(kb.getId());
+                EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                        .queryEmbedding(queryEmbedding)
+                        .query(request.getQuery())
+                        .maxResults(fetchK)
+                        .build();
+                EmbeddingSearchResult<TextSegment> result = store.search(searchRequest, request.getDocType());
+                return result.matches().stream()
+                        .map(match -> SearchHitMapper.fromMatch(match, kb.getId()))
+                        .toList();
+            });
+
+            // Segment 3: Rerank (optional)
             if (rerank) {
-                resultHits = searchRerankService.rerank(request.getQuery(), resultHits, topK);
+                return metricsService.timeRerank(() ->
+                        searchRerankService.rerank(request.getQuery(), rawHits, topK));
             }
-            return resultHits;
+            return rawHits;
         });
+
         metricsService.countSearchHits(hits.size());
 
         searchCacheService.put(kb.getId(), request.getQuery(), topK, rerank, request.getDocType(), hits);
