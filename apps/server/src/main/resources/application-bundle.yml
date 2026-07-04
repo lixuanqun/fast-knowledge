@@ -1,4 +1,4 @@
-# 单 Jar 部署：根路径托管前端静态资源，API 仍挂载在 /api
+# 单 Jar 部署：根路径托管前端静态资源，API 挂载在 /api/v1
 server:
   servlet:
     context-path: /
@@ -6,4 +6,4 @@ server:
 spring:
   mvc:
     servlet:
-      path: /api
+      path: /api/v1

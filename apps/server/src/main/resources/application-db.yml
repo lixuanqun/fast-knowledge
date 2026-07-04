@@ -1,0 +1,17 @@
+# 数据库与缓存基础设施
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fast_knowledge}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:always}
+      schema-locations: classpath:db/schema-postgres.sql
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}

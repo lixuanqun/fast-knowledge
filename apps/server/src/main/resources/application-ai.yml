@@ -1,0 +1,48 @@
+# AI / RAG 相关配置：Embedding、分块、检索、Rerank、LLM、Wiki
+knowledge:
+  embedding:
+    provider: ${EMBEDDING_PROVIDER:onnx}
+    onnx-model-path: ${ONNX_MODEL_PATH:./data/models/bge-small-zh-v1.5.onnx}
+    onnx-tokenizer-path: ${ONNX_TOKENIZER_PATH:./data/models/tokenizer.json}
+    dimension: 512
+    onnx-max-seq-len: 512
+    onnx-batch-size: 16
+    ollama-url: ${OLLAMA_EMBED_URL:http://localhost:11434}
+    ollama-model: ${EMBEDDING_MODEL:nomic-embed-text}
+  chunk:
+    size: 512
+    overlap: 50
+  search:
+    default-top-k: 8
+    cache-ttl-minutes: 5
+    rerank:
+      enabled: ${RERANK_ENABLED:false}
+      provider: ${RERANK_PROVIDER:cohere}
+      candidate-multiplier: ${RERANK_CANDIDATE_MULTIPLIER:3}
+      min-score: ${RERANK_MIN_SCORE:}
+      cohere-api-key: ${COHERE_API_KEY:}
+      cohere-model: ${RERANK_COHERE_MODEL:rerank-multilingual-v3.0}
+      jina-api-key: ${JINA_API_KEY:}
+      jina-model: ${RERANK_JINA_MODEL:jina-reranker-v2-base-multilingual}
+      onnx-model-path: ${RERANK_ONNX_MODEL_PATH:./data/models/bge-reranker-base.onnx}
+      onnx-tokenizer-path: ${RERANK_ONNX_TOKENIZER_PATH:./data/models/bge-reranker-tokenizer.json}
+      onnx-max-seq-len: ${RERANK_ONNX_MAX_SEQ_LEN:512}
+  llm:
+    provider: ${LLM_PROVIDER:ollama}
+    base-url: ${LLM_BASE_URL:}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}
+    max-tokens: 4096
+    temperature: 0.3
+    allow-external: ${LLM_ALLOW_EXTERNAL:true}
+  chat:
+    memory-window: ${CHAT_MEMORY_WINDOW:10}
+  query-rewrite:
+    enabled: ${QUERY_REWRITE_ENABLED:true}
+    history-rounds: ${QUERY_REWRITE_HISTORY:5}
+  index:
+    pubsub-enabled: ${INDEX_PUBSUB_ENABLED:true}
+    max-retry: ${INDEX_MAX_RETRY:3}
+  wiki:
+    enabled: ${WIKI_ENABLED:true}
+    auto-publish: ${WIKI_AUTO_PUBLISH:false}
