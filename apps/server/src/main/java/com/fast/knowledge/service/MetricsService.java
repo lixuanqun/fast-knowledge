@@ -56,12 +56,6 @@ public class MetricsService {
     private final Timer indexDuration;
     private final Counter indexCount;
 
-    // --- LLM ---
-    private final Counter llmCalls;
-
-    // --- Query Rewrite ---
-    private final Counter queryRewriteCount;
-
     // --- In-memory for gauge registration ---
     private final AtomicLong cacheHitCount = new AtomicLong();
     private final AtomicLong cacheMissCount = new AtomicLong();
@@ -106,12 +100,6 @@ public class MetricsService {
                 .description("文档索引耗时").register(registry);
         this.indexCount = Counter.builder("kb.index.count")
                 .description("已索引分块数").register(registry);
-
-        this.llmCalls = Counter.builder("kb.llm.calls")
-                .description("LLM 调用次数").tag("purpose", "auto").register(registry);
-
-        this.queryRewriteCount = Counter.builder("kb.query.rewrite.count")
-                .description("查询改写调用次数").register(registry);
 
         // Register cache gauge
         io.micrometer.core.instrument.Gauge.builder("kb.search.cache.hit_rate", this,
@@ -219,6 +207,9 @@ public class MetricsService {
         try {
             return timer.recordCallable(action);
         } catch (Exception e) {
+            if (e instanceof RuntimeException re) {
+                throw re; // rethrow BusinessException etc. as-is
+            }
             throw new RuntimeException(e);
         }
     }

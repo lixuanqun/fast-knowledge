@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS kb_document (
     updated_at   TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_doc_kb ON kb_document (kb_id);
+CREATE INDEX IF NOT EXISTS idx_doc_kb_created ON kb_document (kb_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_doc_status ON kb_document (index_status);
 
 CREATE TABLE IF NOT EXISTS kb_document_chunk (
@@ -101,6 +102,8 @@ CREATE TABLE IF NOT EXISTS kb_index_task (
 );
 CREATE INDEX IF NOT EXISTS idx_task_doc ON kb_index_task (document_id);
 CREATE INDEX IF NOT EXISTS idx_task_status ON kb_index_task (status);
+CREATE INDEX IF NOT EXISTS idx_task_updated ON kb_index_task (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_task_status_updated ON kb_index_task (status, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS kb_chat_session (
     id          BIGSERIAL PRIMARY KEY,
@@ -195,6 +198,7 @@ CREATE TABLE IF NOT EXISTS kb_wiki_compile_task (
     updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_wiki_task_doc ON kb_wiki_compile_task (document_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_task_status ON kb_wiki_compile_task (status);
 
 CREATE TABLE IF NOT EXISTS kb_system_config (
     config_key   VARCHAR(64) PRIMARY KEY,

@@ -4,6 +4,7 @@ import com.fast.knowledge.common.ApiResponse;
 import com.fast.knowledge.model.entity.IndexTask;
 import com.fast.knowledge.service.IndexRebuildService;
 import com.fast.knowledge.service.IndexTaskService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/index-tasks")
+@PreAuthorize("hasRole('ADMIN')")
 public class IndexTaskController {
 
     private final IndexTaskService indexTaskService;

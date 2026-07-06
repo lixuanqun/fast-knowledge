@@ -1,11 +1,13 @@
-package com.fast.knowledge.service;
+package com.fast.knowledge.service.impl;
 
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.model.dto.QaRequest;
 import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.vo.QaResponseVO;
 import com.fast.knowledge.model.vo.SearchHitVO;
-import com.fast.knowledge.service.impl.RagServiceImpl;
+import com.fast.knowledge.service.AuditLogService;
+import com.fast.knowledge.service.MetricsService;
+import com.fast.knowledge.service.SearchService;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeEach;

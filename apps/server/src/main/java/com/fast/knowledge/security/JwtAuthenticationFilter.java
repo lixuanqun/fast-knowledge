@@ -72,15 +72,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (tokenBlacklistService.isBlacklisted(token)) {
             return false;
         }
-        DecodedJWT jwt = jwtUtil.verify(token);
-        AuthenticatedUser user = new AuthenticatedUser(
-                jwt.getClaim("userId").asLong(),
-                jwt.getClaim("username").asString(),
-                jwt.getClaim("role").asString()
-        );
-        setSecurityContext(user, token);
-        cacheProvider.set("kb:session:" + user.getUserId(), token, Duration.ofHours(24));
-        return true;
+        try {
+            DecodedJWT jwt = jwtUtil.verify(token);
+            AuthenticatedUser user = new AuthenticatedUser(
+                    jwt.getClaim("userId").asLong(),
+                    jwt.getClaim("username").asString(),
+                    jwt.getClaim("role").asString()
+            );
+            setSecurityContext(user, token);
+            cacheProvider.set("kb:session:" + user.getUserId(), token, Duration.ofHours(24));
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void authenticateApiKey(HttpServletRequest request) {

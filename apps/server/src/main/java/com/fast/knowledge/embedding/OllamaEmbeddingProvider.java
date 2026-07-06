@@ -6,11 +6,14 @@ import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.security.ExternalAccessGuard;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,7 +27,7 @@ public class OllamaEmbeddingProvider implements EmbeddingProvider {
 
     private final KnowledgeProperties properties;
     private final String baseUrl;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     public OllamaEmbeddingProvider(KnowledgeProperties properties,
@@ -33,6 +36,10 @@ public class OllamaEmbeddingProvider implements EmbeddingProvider {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.baseUrl = OllamaUrlHelper.toNativeBaseUrl(properties.getEmbedding().getOllamaUrl());
+        this.restTemplate = new RestTemplateBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .readTimeout(Duration.ofSeconds(30))
+                .build();
         externalAccessGuard.validateEmbeddingEndpoint(baseUrl);
         log.info("Ollama Embedding 服务地址: {}", baseUrl);
     }

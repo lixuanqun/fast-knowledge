@@ -31,7 +31,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class ChatServiceImpl implements ChatService {
 
@@ -115,7 +119,7 @@ public class ChatServiceImpl implements ChatService {
         SseEmitter emitter = SseEmitterHelper.create(SseEmitterHelper.TIMEOUT_CHAT);
         Long userId = UserContext.currentUserId();
 
-        chatExecutor.execute(() -> {
+        chatExecutor.execute(UserContext.wrap(() -> {
             long startTime = System.currentTimeMillis();
             try {
                 ChatSession session = resolveSession(request, userId);
@@ -132,8 +136,8 @@ public class ChatServiceImpl implements ChatService {
                 boolean wasRewritten = !originalMessage.equals(rewrittenMessage);
                 metricsService.countQueryRewrite(wasRewritten);
 
-                final List<SearchHitVO> sources = new ArrayList<>();
-                final java.util.concurrent.atomic.AtomicBoolean firstTokenRecorded = new java.util.concurrent.atomic.AtomicBoolean(false);
+                final java.util.List<SearchHitVO> sources = new ArrayList<>();
+                final AtomicBoolean firstTokenRecorded = new AtomicBoolean(false);
                 TokenStream tokenStream = kbChatAssistantFactory.stream(
                         kbId, activeSession.getId(), rewrittenMessage);
 
@@ -177,9 +181,10 @@ public class ChatServiceImpl implements ChatService {
 
                 metricsService.countLlmCall("chat");
             } catch (Exception e) {
+                log.error("Chat stream failed sessionId={}", resolveSessionIdSafely(request), e);
                 SseEmitterHelper.sendError(emitter, e.getMessage());
             }
-        });
+        }));
 
         return emitter;
     }
@@ -197,6 +202,10 @@ public class ChatServiceImpl implements ChatService {
             return session;
         }
         return createSession(userId, request.getKbId(), truncate(request.getMessage(), 20));
+    }
+
+    private Long resolveSessionIdSafely(ChatMessageRequest request) {
+        return request != null ? request.getSessionId() : null;
     }
 
     private String truncate(String s, int len) {

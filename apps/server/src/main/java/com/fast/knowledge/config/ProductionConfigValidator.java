@@ -18,6 +18,7 @@ public class ProductionConfigValidator {
     );
 
     private static final Set<String> WEAK_MINIO_KEYS = Set.of("minioadmin", "minio", "admin");
+    private static final Set<String> WEAK_DB_PASSWORDS = Set.of("postgres", "password", "admin", "123456");
 
     private static final int MIN_JWT_SECRET_LENGTH = 32;
 
@@ -35,6 +36,7 @@ public class ProductionConfigValidator {
             validateJwtSecret();
         }
         if (isProductionLikeDeploy()) {
+            validateDbPassword();
             validateMinioCredentials();
             validatePrivacyMode();
         }
@@ -45,6 +47,13 @@ public class ProductionConfigValidator {
         return environment.getProperty("JWT_SECRET") != null
                 || environment.getProperty("MINIO_ACCESS_KEY") != null
                 || profiles.contains("enterprise");
+    }
+
+    private void validateDbPassword() {
+        String dbPassword = environment.getProperty("DB_PASSWORD", "");
+        if (WEAK_DB_PASSWORDS.contains(dbPassword.toLowerCase())) {
+            throw new IllegalStateException("生产环境 DB_PASSWORD 不得使用弱密码 " + dbPassword + "，请更换");
+        }
     }
 
     private void validateMinioCredentials() {

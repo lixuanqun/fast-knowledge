@@ -1,0 +1,21 @@
+{
+  "summary": { "pass": 12, "fail": 0, "skip": 3, "total": 15 },
+  "note": "Ollama 就绪后 AI API 已全部通过；UI 层此前已验证",
+  "results": [
+    { "id": "TC-UI01", "name": "UI 表单登录", "status": "PASS" },
+    { "id": "TC-UI02", "name": "仪表盘概览", "status": "PASS" },
+    { "id": "TC-UI03", "name": "侧边栏导航", "status": "PASS" },
+    { "id": "TC-UI04", "name": "知识库详情", "status": "PASS" },
+    { "id": "TC-UI05", "name": "设置页", "status": "PASS" },
+    { "id": "TC-UI06", "name": "深色模式", "status": "PASS" },
+    { "id": "TC-UI07", "name": "改密弹窗", "status": "PASS" },
+    { "id": "TC-UI08", "name": "登出 UI", "status": "PASS" },
+    { "id": "TC-UI09", "name": "/setup", "status": "SKIP", "detail": "已完成安装" },
+    { "id": "TC-UI10", "name": "OIDC callback", "status": "SKIP", "detail": "未启用" },
+    { "id": "TC-UI11", "name": "LDAP", "status": "SKIP", "detail": "未启用" },
+    { "id": "TC-UI12", "name": "智能问答页面", "status": "PASS" },
+    { "id": "TC-UI13", "name": "智能对话页面", "status": "PASS" },
+    { "id": "TC-UI14", "name": "智能写文档页面", "status": "PASS" },
+    { "id": "TC-UI15", "name": "大模型配置入口", "status": "PASS" }
+  ]
+}

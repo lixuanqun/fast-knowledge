@@ -35,12 +35,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        Long userId = resolveUserId();
-        if (userId == null) {
+        String identity = resolveIdentity(request);
+        if (identity == null) {
             return true;
         }
 
-        String key = KEY_PREFIX + userId + ":" + hm.getMethod().getDeclaringClass().getSimpleName()
+        String key = KEY_PREFIX + identity + ":" + hm.getMethod().getDeclaringClass().getSimpleName()
                 + "." + hm.getMethod().getName();
         int current = cacheProvider.increment(key, Duration.ofSeconds(annotation.windowSeconds()));
         if (current > annotation.maxRequests()) {
@@ -57,8 +57,24 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private Long resolveUserId() {
+    /** Resolve rate-limit identity: userId for authenticated users, IP for unauthenticated. */
+    private String resolveIdentity(HttpServletRequest request) {
         UserContext ctx = UserContext.get();
-        return ctx != null ? ctx.getUserId() : null;
+        if (ctx != null && ctx.getUserId() != null) {
+            return "user:" + ctx.getUserId();
+        }
+        // Fallback to IP for unauthenticated endpoints (e.g., login)
+        String ip = getClientIp(request);
+        return ip != null && !ip.isBlank() ? "ip:" + ip : null;
+    }
+
+    private static String getClientIp(HttpServletRequest request) {
+        // X-Real-IP is set by nginx/reverse-proxy from the actual TCP connection,
+        // not forwarded from client headers, so it cannot be spoofed.
+        String ip = request.getHeader("X-Real-IP");
+        if (ip == null || ip.isBlank()) {
+            ip = request.getRemoteAddr();
+        }
+        return ip;
     }
 }

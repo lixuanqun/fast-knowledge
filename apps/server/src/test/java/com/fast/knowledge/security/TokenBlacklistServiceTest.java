@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Duration;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +60,18 @@ class TokenBlacklistServiceTest {
 
         assertTrue(service.isBlacklisted(token));
         verify(cacheProvider).set(eq("kb:token:blacklist:" + token), eq("1"), any(Duration.class));
+    }
+
+    @Test
+    void blacklist_persistsWithConfigKeyWithinColumnLimit() {
+        String token = jwtUtil.createToken(1L, "admin", "ADMIN");
+
+        service.blacklist(token);
+
+        verify(systemConfigMapper).upsert(org.mockito.ArgumentMatchers.argThat(key -> {
+            assertEquals(64, key.length());
+            return true;
+        }), anyString());
     }
 
     @Test

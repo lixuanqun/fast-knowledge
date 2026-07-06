@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fast.knowledge.config.JsonbToStringTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public class Workspace {
     private Long id;
     private String name;
     private Long ownerId;
+    @TableField(typeHandler = JsonbToStringTypeHandler.class)
     private String settings;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

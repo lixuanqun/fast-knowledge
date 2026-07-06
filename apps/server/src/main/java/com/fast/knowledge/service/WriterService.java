@@ -3,6 +3,7 @@ package com.fast.knowledge.service;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.common.SseEmitterHelper;
 import com.fast.knowledge.model.dto.WriterRequest;
+import com.fast.knowledge.security.UserContext;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -35,7 +36,7 @@ public class WriterService {
             throw new BusinessException("请填写文档主题");
         }
         SseEmitter emitter = SseEmitterHelper.create(SseEmitterHelper.TIMEOUT_LONG);
-        chatExecutor.execute(() -> {
+        chatExecutor.execute(UserContext.wrap(() -> {
             try {
                 String context = "";
                 if (request.getKbId() != null) {
@@ -74,7 +75,7 @@ public class WriterService {
             } catch (Exception e) {
                 SseEmitterHelper.sendError(emitter, e.getMessage());
             }
-        });
+        }));
         return emitter;
     }
 }

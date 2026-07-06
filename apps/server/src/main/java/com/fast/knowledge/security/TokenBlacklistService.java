@@ -14,7 +14,8 @@ import java.util.HexFormat;
 public class TokenBlacklistService {
 
     private static final String CACHE_PREFIX = "kb:token:blacklist:";
-    private static final String CONFIG_PREFIX = "token.blacklist.";
+    /** SHA-256 hex is 64 chars — matches kb_system_config.config_key VARCHAR(64) without a prefix. */
+    private static final int CONFIG_KEY_MAX_LENGTH = 64;
 
     private final CacheProvider cacheProvider;
     private final SystemConfigMapper systemConfigMapper;
@@ -35,7 +36,7 @@ public class TokenBlacklistService {
         long expiresAt = resolveExpiresAt(token);
         Duration ttl = Duration.ofMillis(Math.max(expiresAt - System.currentTimeMillis(), 60_000));
         cacheProvider.set(CACHE_PREFIX + token, "1", ttl);
-        systemConfigMapper.upsert(CONFIG_PREFIX + hashToken(token), String.valueOf(expiresAt));
+        systemConfigMapper.upsert(blacklistConfigKey(token), String.valueOf(expiresAt));
     }
 
     public boolean isBlacklisted(String token) {
@@ -45,7 +46,7 @@ public class TokenBlacklistService {
         if (cacheProvider.get(CACHE_PREFIX + token).isPresent()) {
             return true;
         }
-        String stored = systemConfigMapper.getValue(CONFIG_PREFIX + hashToken(token));
+        String stored = systemConfigMapper.getValue(blacklistConfigKey(token));
         if (stored == null) {
             return false;
         }
@@ -68,6 +69,14 @@ public class TokenBlacklistService {
         } catch (Exception e) {
             return System.currentTimeMillis() + Duration.ofHours(24).toMillis();
         }
+    }
+
+    private static String blacklistConfigKey(String token) {
+        String key = hashToken(token);
+        if (key.length() > CONFIG_KEY_MAX_LENGTH) {
+            throw new IllegalStateException("Token blacklist config key exceeds column limit: " + key.length());
+        }
+        return key;
     }
 
     private static String hashToken(String token) {

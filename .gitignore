@@ -30,3 +30,7 @@ apps/server/src/main/resources/application-local.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# E2E 临时导出（保留 json 报告与脚本）
+test-assets/audit-export-*.csv
+test-assets/e2e-run*.log

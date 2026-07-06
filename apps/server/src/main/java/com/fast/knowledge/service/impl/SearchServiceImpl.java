@@ -71,7 +71,6 @@ public class SearchServiceImpl implements SearchService {
             return cached.get();
         }
 
-        metricsService.countSearch();
         int fetchK = rerank ? searchRerankService.candidateCount(topK) : topK;
 
         // Full search pipeline with segmented timing
@@ -83,9 +82,10 @@ public class SearchServiceImpl implements SearchService {
                     return Embedding.from(cachedVec.get());
                 }
                 Embedding emb = embeddingModel.embed(request.getQuery()).content();
-                float[] vec = new float[emb.vectorAsList().size()];
+                List<Float> vecList = emb.vectorAsList();
+                float[] vec = new float[vecList.size()];
                 for (int i = 0; i < vec.length; i++) {
-                    vec[i] = emb.vectorAsList().get(i);
+                    vec[i] = vecList.get(i);
                 }
                 searchCacheService.putEmbedding(request.getQuery(), vec);
                 return emb;
@@ -113,6 +113,7 @@ public class SearchServiceImpl implements SearchService {
             return rawHits;
         });
 
+        metricsService.countSearch();
         metricsService.countSearchHits(hits.size());
 
         searchCacheService.put(kb.getId(), request.getQuery(), topK, rerank, request.getDocType(), hits);

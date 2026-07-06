@@ -112,7 +112,7 @@ public class IndexTaskProcessor {
     /**
      * 执行完整索引流水线（有事务边界）。
      */
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public void execute(Long documentId) {
         KbDocument doc = documentMapper.selectById(documentId);
         if (doc == null) {
@@ -166,14 +166,20 @@ public class IndexTaskProcessor {
             doc.setChunkCount(chunkCount);
             doc.setIndexStatus("INDEXED");
             doc.setIndexError(null);
-            searchCacheService.invalidateForKb(doc.getKbId());
-            kbChatAssistantFactory.evict(doc.getKbId());
-            wikiCompileService.scheduleCompile(doc.getId());
             metricsService.countIndex(chunkCount);
 
             if (task != null) {
                 task.setStatus("DONE");
                 indexTaskMapper.updateById(task);
+            }
+
+            // Best-effort post-indexing operations: failures here don't revert index status
+            try {
+                searchCacheService.invalidateForKb(doc.getKbId());
+                kbChatAssistantFactory.evict(doc.getKbId());
+                wikiCompileService.scheduleCompile(doc.getId());
+            } catch (Exception postEx) {
+                log.warn("Post-indexing cleanup failed docId={}: {}", documentId, postEx.getMessage());
             }
         } catch (Exception e) {
             log.error("索引文档失败 docId={}", documentId, e);

@@ -120,17 +120,20 @@ public class KnowledgeBaseService {
     }
 
     public void checkReadPermission(KnowledgeBase kb) {
-        Long userId = UserContext.currentUserId();
-        if ("ADMIN".equals(UserContext.get().getRole())) {
+        UserContext ctx = UserContext.get();
+        if (ctx == null) {
+            throw new BusinessException(401, "未认证");
+        }
+        if ("ADMIN".equals(ctx.getRole())) {
             return;
         }
-        if (kb.getOwnerId().equals(userId)) {
+        if (kb.getOwnerId().equals(ctx.getUserId())) {
             return;
         }
         if ("PUBLIC".equals(kb.getVisibility())) {
             return;
         }
-        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), userId);
+        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), ctx.getUserId());
         if (member != null) {
             return;
         }
@@ -138,14 +141,17 @@ public class KnowledgeBaseService {
     }
 
     public void checkWritePermission(KnowledgeBase kb) {
-        Long userId = UserContext.currentUserId();
-        if ("ADMIN".equals(UserContext.get().getRole())) {
+        UserContext ctx = UserContext.get();
+        if (ctx == null) {
+            throw new BusinessException(401, "未认证");
+        }
+        if ("ADMIN".equals(ctx.getRole())) {
             return;
         }
-        if (kb.getOwnerId().equals(userId)) {
+        if (kb.getOwnerId().equals(ctx.getUserId())) {
             return;
         }
-        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), userId);
+        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), ctx.getUserId());
         if (member != null && ("WRITE".equals(member.getPermission()) || "ADMIN".equals(member.getPermission()))) {
             return;
         }
@@ -154,14 +160,17 @@ public class KnowledgeBaseService {
 
     /** owner、知识库 ADMIN 成员或系统 ADMIN 可管理成员与删除知识库 */
     public void checkKbAdminPermission(KnowledgeBase kb) {
-        Long userId = UserContext.currentUserId();
-        if ("ADMIN".equals(UserContext.get().getRole())) {
+        UserContext ctx = UserContext.get();
+        if (ctx == null) {
+            throw new BusinessException(401, "未认证");
+        }
+        if ("ADMIN".equals(ctx.getRole())) {
             return;
         }
-        if (kb.getOwnerId().equals(userId)) {
+        if (kb.getOwnerId().equals(ctx.getUserId())) {
             return;
         }
-        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), userId);
+        KbMember member = kbMemberMapper.findByKbAndUser(kb.getId(), ctx.getUserId());
         if (member != null && "ADMIN".equals(member.getPermission())) {
             return;
         }

@@ -40,6 +40,12 @@ public class LlmModelRegistry {
         lock.writeLock().lock();
         try {
             ResolvedLlmConfig cfg = llmConfigResolver.resolve();
+            // Keep old refs — OkHttpClient thread pools will be GC'd when unreachable;
+            // a shared OkHttpClient should replace per-model construction in a future release.
+            @SuppressWarnings("unused")
+            ChatModel oldChat = this.chatModelDelegate;
+            @SuppressWarnings("unused")
+            StreamingChatModel oldStreaming = this.streamingChatModelDelegate;
             ChatModel newChat = buildChatModel(cfg);
             StreamingChatModel newStreaming = buildStreamingChatModel(cfg);
             this.chatModelDelegate = newChat;

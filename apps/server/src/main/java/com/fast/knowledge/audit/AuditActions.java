@@ -26,6 +26,8 @@ public final class AuditActions {
     public static final String RESET_PASSWORD = "RESET_PASSWORD";
     public static final String INITIAL_SETUP = "INITIAL_SETUP";
     public static final String REBUILD_INDEX = "REBUILD_INDEX";
+    public static final String CREATE_API_KEY = "CREATE_API_KEY";
+    public static final String REVOKE_API_KEY = "REVOKE_API_KEY";
 
     private AuditActions() {
     }
