@@ -62,7 +62,11 @@ public class ApiKeyService {
         String plainKey = prefix + "." + secret.substring(8);
 
         ApiKey entity = new ApiKey();
-        entity.setName(request.getName().trim());
+        String name = request.getName();
+        if (name == null || name.isBlank()) {
+            throw new BusinessException("API Key 名称不能为空");
+        }
+        entity.setName(name.trim());
         entity.setKeyPrefix(prefix);
         entity.setKeyHash(passwordEncoder.encode(plainKey));
         entity.setUserId(userId);
@@ -70,7 +74,7 @@ public class ApiKeyService {
         entity.setStatus(1);
         apiKeyMapper.insert(entity);
 
-        auditLogService.log(AuditActions.CREATE_USER, "API_KEY", entity.getId(), entity.getName());
+        auditLogService.log(AuditActions.CREATE_API_KEY, "API_KEY", entity.getId(), entity.getName());
 
         ApiKeyCreatedVO vo = new ApiKeyCreatedVO();
         vo.setId(entity.getId());

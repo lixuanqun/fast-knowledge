@@ -1,6 +1,7 @@
 package com.fast.knowledge.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fast.knowledge.cache.CacheProvider;
@@ -22,6 +23,7 @@ import java.util.Optional;
  * 独立缓存 Embedding 向量结果，避免同一 query 重复推理。
  * 缓存失效基于知识库版本号，文档索引变更时调用 {@link #invalidateForKb}。
  */
+@Slf4j
 @Service
 public class SearchCacheService {
 
@@ -89,13 +91,12 @@ public class SearchCacheService {
                     try {
                         List<SearchHitVO> hits = objectMapper.readValue(json, HIT_LIST_TYPE);
                         metricsService.recordCacheHit();
-                        // Backfill L1
+                        // Backfill L1 with an unmodifiable copy to prevent cache corruption
                         if (l1Enabled) {
-                            l1Cache.put(key, hits);
+                            l1Cache.put(key, List.copyOf(hits));
                         }
                         return Optional.of(hits);
                     } catch (JsonProcessingException e) {
-                        metricsService.recordCacheMiss();
                         return Optional.empty();
                     }
                 })
@@ -110,12 +111,13 @@ public class SearchCacheService {
         String key = buildKey(kbId, version, query, topK, rerank, docType);
         try {
             String json = objectMapper.writeValueAsString(hits);
-            // Write-through: L1 + L2
-            if (l1Enabled) {
-                l1Cache.put(key, hits);
-            }
+            // Write L2 first, then backfill L1 to avoid inconsistency window
             cacheProvider.set(key, json, l2Ttl);
-        } catch (JsonProcessingException ignored) {
+            if (l1Enabled) {
+                l1Cache.put(key, List.copyOf(hits));
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize search cache entry for kbId={}", kbId, e);
         }
     }
 
@@ -125,7 +127,8 @@ public class SearchCacheService {
         if (!embeddingCacheEnabled) {
             return Optional.empty();
         }
-        return Optional.ofNullable(embeddingCache.getIfPresent(digestText(query)));
+        float[] cached = embeddingCache.getIfPresent(digestText(query));
+        return Optional.ofNullable(cached != null ? cached.clone() : null);
     }
 
     public void putEmbedding(String query, float[] vector) {
@@ -168,7 +171,18 @@ public class SearchCacheService {
     }
 
     private static String digestText(String text) {
-        return EMBEDDING_PREFIX + Integer.toHexString(Objects.hashCode(text));
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(EMBEDDING_PREFIX);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            // MD5 is guaranteed to be available in all JVMs
+            throw new RuntimeException(e);
+        }
     }
 
     // ---- Stats ----

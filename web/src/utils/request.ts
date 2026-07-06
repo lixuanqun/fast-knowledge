@@ -20,6 +20,10 @@ request.interceptors.request.use(config => {
 
 request.interceptors.response.use(
   res => {
+    // Blob responses (e.g., CSV export) don't have the standard ApiResponse wrapper
+    if (res.config.responseType === 'blob') {
+      return res.data
+    }
     const data = res.data
     if (data.code !== 0) {
       ElMessage.error(data.message || '请求失败')

@@ -3,6 +3,7 @@ package com.fast.knowledge.controller;
 import com.fast.knowledge.common.ApiResponse;
 import com.fast.knowledge.model.dto.LoginRequest;
 import com.fast.knowledge.model.vo.LoginVO;
+import com.fast.knowledge.security.RateLimit;
 import com.fast.knowledge.security.UserContext;
 import com.fast.knowledge.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,11 +33,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @RateLimit(maxRequests = 10, windowSeconds = 60)
     public ApiResponse<LoginVO> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
     }
 
     @PostMapping("/ldap/login")
+    @RateLimit(maxRequests = 10, windowSeconds = 60)
     public ApiResponse<LoginVO> ldapLogin(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.loginLdap(request));
     }

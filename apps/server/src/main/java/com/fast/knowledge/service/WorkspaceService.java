@@ -35,7 +35,8 @@ public class WorkspaceService {
         if (ws == null) {
             throw new BusinessException("工作区不存在");
         }
-        if (!ws.getOwnerId().equals(userId) && !"ADMIN".equals(UserContext.get().getRole())) {
+        UserContext ctx = UserContext.get();
+        if (!ws.getOwnerId().equals(userId) && (ctx == null || !"ADMIN".equals(ctx.getRole()))) {
             throw new BusinessException(403, "无权限访问该工作区");
         }
         return toVo(ws);

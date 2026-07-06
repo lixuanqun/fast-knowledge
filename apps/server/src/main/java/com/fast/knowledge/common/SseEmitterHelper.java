@@ -45,7 +45,7 @@ public final class SseEmitterHelper {
         } catch (IOException ignored) {
         }
         try {
-            emitter.completeWithError(new RuntimeException(message));
+            emitter.complete();
         } catch (Exception ignored) {
         }
     }

@@ -2,13 +2,15 @@
 
 **面向中小企业的 Java 私有化知识库** — 把制度、工艺、设备文档变成可检索、可问答、可审计的企业知识资产。
 
+**Fast = 部署快（Docker 5 分钟）+ 检索快（双层缓存 <50ms）+ 交付快（离线圈 + 审计验收）。**
+
 [![CI](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml/badge.svg)](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Java 21](https://img.shields.io/badge/Java-21-orange)](apps/server/)
 [![Spring Boot 3.5](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](apps/server/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.5-brightgreen)](web/)
 
-[产品说明](docs/产品说明.md) · [v1.0.0 功能范围](docs/releases/v1.0.0.md) · [快速部署](docs/deployment/docker.md) · [API](docs/api.md)
+[产品说明](docs/产品说明.md) · [v1.0.0 功能范围](docs/releases/v1.0.0.md) · [**自动化测试报告**](docs/testing/automation-report.md) · [快速部署](docs/deployment/docker.md) · [API](docs/api.md)
 
 ---
 
@@ -33,11 +35,12 @@
 
 ### 知识库与 AI
 
-- **混合检索** — 向量 + 全文（pgvector HYBRID），可选本地 ONNX Rerank
-- **RAG 问答** — 单次问答、多轮流式对话、AI 写文档，均附引用来源
+- **混合检索** — 向量 + 全文（pgvector HNSW 索引），可选本地 ONNX Rerank
+- **双层缓存** — Caffeine L1 本地 + Redis L2，热查询 <1ms
+- **RAG 问答** — 单次问答、多轮流式对话（含 Query Rewrite 指代消解）、AI 写文档，均附引用来源
 - **多格式文档** — PDF / DOCX / TXT / MD / PPTX / XLSX / HTML，异步索引与分块预览
 - **LLM 中立** — Ollama、DeepSeek、智谱、百炼等 OpenAI 兼容接口，管理界面配置即生效
-- **本地 Embedding** — 默认 ONNX `bge-small-zh-v1.5`，可纯内网运行
+- **本地 Embedding** — 默认 ONNX `bge-small-zh-v1.5`，启动预热，可纯内网运行
 
 ### 制造 / 国企场景（v1.0.0）
 
@@ -88,7 +91,7 @@
 | **技术栈** | **Java 21 + Spring Boot** | Go + Gin | Python + Django | Python |
 | **AI 框架** | LangChain4j | 自研 Pipeline | LangChain | 自研 DeepDoc |
 | **向量库** | pgvector | 8 种可插拔 | pgvector / FAISS / Milvus | ES + Infinity |
-| **许可协议** | AGPL v3 + 商业双许可 | MIT | MIT | Apache 2.0 |
+| **许可协议** | AGPL v3 + 商业双许可 | MIT | GPL-3.0 | Apache 2.0 |
 | **部署形态** | **单实例·每企一套** | 多租户 SaaS | 单机到集群 | 容器化私有部署 |
 | **Agent / 工作流** | ❌ 不做通用 Agent | ✅ ReAct + MCP | ✅ DAG 工作流编排 | ✅ 多 Agent 协作 |
 | **多模态** | ❌ | 图片 OCR | 图片/音视频 | ✅ 深度文档理解 |
@@ -200,6 +203,7 @@ LLM（OpenAI 兼容，可纯内网 Ollama）
 |-------|------|
 | 了解完整功能清单 | [产品说明](docs/产品说明.md) |
 | 看 v1.0.0 已交付什么 | [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) |
+| **查看自动化测试报告** | [**docs/testing/automation-report.md**](docs/testing/automation-report.md) |
 | 部署与运维 | [Docker](docs/deployment/docker.md) · [备份恢复](docs/deployment/backup-restore.md) · [K8s](k8s/README.md) |
 | 对接 API | [docs/api.md](docs/api.md) |
 | 数据不出域验收 | [合规清单](docs/compliance/data-residency-checklist.md) |
@@ -225,5 +229,5 @@ docs/          产品、架构、部署、合规
 ---
 
 <p align="center">
-  <sub>当前开发分支 <code>develop_1.0.0</code> · 规划中的 v2.0.0 能力见 <a href="docs/releases/v2.0.0.md">发布说明</a></sub>
+  <sub>生产稳定基线 <code>main</code> @ <strong>v1.0.0</strong> · 自动化测试见 <a href="docs/testing/automation-report.md">测试报告</a> · 规划中的 v2.0.0 见 <a href="docs/releases/v2.0.0.md">发布说明</a></sub>
 </p>

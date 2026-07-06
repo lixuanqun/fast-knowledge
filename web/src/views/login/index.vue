@@ -14,7 +14,12 @@
         @submit.prevent="handleLogin"
       >
         <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="admin" :prefix-icon="User" />
+          <el-input
+            v-model="form.username"
+            placeholder="admin"
+            :prefix-icon="User"
+            data-testid="login-username"
+          />
         </el-form-item>
         <el-form-item prop="password">
           <el-input
@@ -23,10 +28,17 @@
             placeholder="请输入密码"
             show-password
             :prefix-icon="Lock"
+            data-testid="login-password"
             @keyup.enter="handleLogin"
           />
         </el-form-item>
-        <el-button class="login-btn" type="primary" :loading="loading" @click="handleLogin">
+        <el-button
+          class="login-btn"
+          type="primary"
+          :loading="loading"
+          data-testid="login-submit"
+          @click="handleLogin"
+        >
           登录
         </el-button>
         <el-button
@@ -74,6 +86,7 @@ const ldapEnabled = computed(() => !!configStore.config?.ldapEnabled)
 const oidcEnabled = computed(() => !!configStore.config?.oidcEnabled)
 
 onMounted(async () => {
+  authStore.clearSession()
   initTheme()
   prefetchMainLayout()
   prefetchView('/dashboard')

@@ -80,6 +80,7 @@ public class OidcAuthService {
                 .body(String.class);
 
         try {
+            if (tokenResponse == null) throw new BusinessException("OIDC token 响应为空");
             JsonNode tokenJson = objectMapper.readTree(tokenResponse);
             String accessToken = tokenJson.path("access_token").asText(null);
             if (accessToken == null || accessToken.isBlank()) {
@@ -90,6 +91,7 @@ public class OidcAuthService {
                     .header("Authorization", "Bearer " + accessToken)
                     .retrieve()
                     .body(String.class);
+            if (userInfoResponse == null) throw new BusinessException("OIDC 用户信息响应为空");
             JsonNode userInfo = objectMapper.readTree(userInfoResponse);
             String sub = userInfo.path("sub").asText(null);
             if (sub == null || sub.isBlank()) {
@@ -131,6 +133,7 @@ public class OidcAuthService {
             String discoveryUrl = issuerUri.replaceAll("/$", "") + "/.well-known/openid-configuration";
             try {
                 String body = restClient.get().uri(discoveryUrl).retrieve().body(String.class);
+                if (body == null) throw new BusinessException("OIDC 发现文档响应为空");
                 JsonNode json = objectMapper.readTree(body);
                 endpoints = new OidcEndpoints(
                         json.path("authorization_endpoint").asText(),

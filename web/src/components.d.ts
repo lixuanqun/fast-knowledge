@@ -56,6 +56,7 @@ declare module 'vue' {
     ElUpload: typeof import('element-plus/es')['ElUpload']
     EmptyIllustration: typeof import('./components/design/EmptyIllustration.vue')['default']
     EmptyState: typeof import('./components/EmptyState.vue')['default']
+    ErrorBoundary: typeof import('./components/ErrorBoundary.vue')['default']
     IndexStatusTag: typeof import('./components/IndexStatusTag.vue')['default']
     KbInfoHeader: typeof import('./components/design/KbInfoHeader.vue')['default']
     KbSelect: typeof import('./components/KbSelect.vue')['default']

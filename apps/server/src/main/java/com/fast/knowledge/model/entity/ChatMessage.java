@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fast.knowledge.config.JsonbToStringTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class ChatMessage {
     private Long sessionId;
     private String role;
     private String content;
+    @TableField(typeHandler = JsonbToStringTypeHandler.class)
     private String sources;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

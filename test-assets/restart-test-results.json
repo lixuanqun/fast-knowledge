@@ -1,0 +1,15 @@
+{
+  "runAt": "2026-07-06T14:32:00+08:00",
+  "services": { "backend": "http://localhost:8088", "frontend": "http://localhost:5174", "ollama": "http://localhost:11434" },
+  "api": { "pass": 34, "fail": 0, "skip": 4, "total": 38 },
+  "ui": {
+    "pass": 6,
+    "fail": 0,
+    "tests": [
+      { "id": "UI-R01", "name": "UI 登录", "status": "PASS" },
+      { "id": "UI-R02", "name": "知识库详情 /kbs/1", "status": "PASS" },
+      { "id": "UI-R03", "name": "智能问答 /qa", "status": "PASS" },
+      { "id": "UI-R04", "name": "设置页 /settings", "status": "PASS" }
+    ]
+  }
+}

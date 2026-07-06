@@ -2,11 +2,8 @@ package com.fast.knowledge.config;
 
 import com.fast.knowledge.security.RateLimitInterceptor;
 import org.apache.tika.Tika;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,12 +34,6 @@ public class AppConfig implements WebMvcConfigurer {
     @Bean
     public Tika tika() {
         return new Tika();
-    }
-
-    @Bean
-    @ConditionalOnProperty(name = "knowledge.cache.provider", havingValue = "redis")
-    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory factory) {
-        return new StringRedisTemplate(factory);
     }
 
     @Bean(name = "indexExecutor")

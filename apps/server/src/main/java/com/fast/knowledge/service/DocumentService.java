@@ -15,6 +15,7 @@ import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.DocumentChunkVO;
 import com.fast.knowledge.model.vo.DocumentPreviewVO;
 import com.fast.knowledge.security.UserContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class DocumentService {
 
@@ -235,7 +237,8 @@ public class DocumentService {
         documentChunkMapper.deleteByDocumentId(docId);
         try {
             storageProvider.delete(doc.getFilePath());
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            log.warn("Failed to delete stored file: {}", doc.getFilePath(), e);
         }
         documentMapper.deleteById(docId);
         searchCacheService.invalidateForKb(kbId);

@@ -18,9 +18,10 @@ public interface WikiCompileTaskMapper extends BaseMapper<WikiCompileTask> {
     }
 
     default List<WikiCompileTask> findPending(int limit) {
+        int safeLimit = Math.min(limit, 100);
         return selectList(Wrappers.<WikiCompileTask>lambdaQuery()
                 .eq(WikiCompileTask::getStatus, "PENDING")
                 .orderByAsc(WikiCompileTask::getId)
-                .last("LIMIT " + limit));
+                .last("LIMIT " + safeLimit)); // safe: safeLimit is int, no SQL injection risk
     }
 }

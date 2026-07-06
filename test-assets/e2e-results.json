@@ -1,0 +1,240 @@
+﻿{
+    "summary":  {
+                    "skip":  4,
+                    "pass":  34,
+                    "fail":  0,
+                    "total":  38
+                },
+    "kbId":  9,
+    "testUser":  "e2e_user_20260706143315",
+    "results":  [
+                    {
+                        "Id":  "TC-A01",
+                        "Name":  "API 管理员登录",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-A02",
+                        "Name":  "错误密码登录拒绝",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-A03",
+                        "Name":  "LDAP 登录",
+                        "Status":  "SKIP",
+                        "Detail":  "环境未启用"
+                    },
+                    {
+                        "Id":  "TC-A04",
+                        "Name":  "OIDC/SSO",
+                        "Status":  "SKIP",
+                        "Detail":  "环境未启用"
+                    },
+                    {
+                        "Id":  "TC-A05",
+                        "Name":  "首次设置 /setup",
+                        "Status":  "SKIP",
+                        "Detail":  "setupComplete=true"
+                    },
+                    {
+                        "Id":  "TC-D01",
+                        "Name":  "仪表盘统计数据",
+                        "Status":  "PASS",
+                        "Detail":  "kbCount=1"
+                    },
+                    {
+                        "Id":  "TC-K01",
+                        "Name":  "新建知识库",
+                        "Status":  "PASS",
+                        "Detail":  "id=9"
+                    },
+                    {
+                        "Id":  "TC-K02",
+                        "Name":  "编辑知识库",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-K03",
+                        "Name":  "上传文档",
+                        "Status":  "PASS",
+                        "Detail":  "docId=8"
+                    },
+                    {
+                        "Id":  "TC-K04",
+                        "Name":  "文档索引完成",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-K05",
+                        "Name":  "文档预览",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-K06",
+                        "Name":  "文档分块",
+                        "Status":  "PASS",
+                        "Detail":  "chunks=1"
+                    },
+                    {
+                        "Id":  "TC-K07",
+                        "Name":  "重新索引文档",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-K08",
+                        "Name":  "添加成员",
+                        "Status":  "SKIP",
+                        "Detail":  "admin 已是所有者"
+                    },
+                    {
+                        "Id":  "TC-K09",
+                        "Name":  "Wiki 页面列表",
+                        "Status":  "PASS",
+                        "Detail":  "count=1"
+                    },
+                    {
+                        "Id":  "TC-K10",
+                        "Name":  "重建知识库索引",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-K11",
+                        "Name":  "知识库检索",
+                        "Status":  "PASS",
+                        "Detail":  "hits=1"
+                    },
+                    {
+                        "Id":  "TC-K12",
+                        "Name":  "智能问答 RAG",
+                        "Status":  "PASS",
+                        "Detail":  "answerLen=99"
+                    },
+                    {
+                        "Id":  "TC-C01",
+                        "Name":  "创建对话会话",
+                        "Status":  "PASS",
+                        "Detail":  "sessionId=13"
+                    },
+                    {
+                        "Id":  "TC-C02",
+                        "Name":  "流式对话",
+                        "Status":  "PASS",
+                        "Detail":  "bytes=55"
+                    },
+                    {
+                        "Id":  "TC-C03",
+                        "Name":  "删除对话会话",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-W01",
+                        "Name":  "智能写文档生成",
+                        "Status":  "PASS",
+                        "Detail":  "bytes=325"
+                    },
+                    {
+                        "Id":  "TC-L01",
+                        "Name":  "获取 LLM 配置",
+                        "Status":  "PASS",
+                        "Detail":  "ollama"
+                    },
+                    {
+                        "Id":  "TC-L02",
+                        "Name":  "LLM 测试连接",
+                        "Status":  "PASS",
+                        "Detail":  "è¿æ¥æå"
+                    },
+                    {
+                        "Id":  "TC-U01",
+                        "Name":  "新建用户",
+                        "Status":  "PASS",
+                        "Detail":  "id=8"
+                    },
+                    {
+                        "Id":  "TC-U02",
+                        "Name":  "编辑用户",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-U03",
+                        "Name":  "重置用户密码",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-U04",
+                        "Name":  "普通用户访问用户管理",
+                        "Status":  "PASS",
+                        "Detail":  "403"
+                    },
+                    {
+                        "Id":  "TC-U05",
+                        "Name":  "普通用户访问知识库",
+                        "Status":  "PASS",
+                        "Detail":  "count=0"
+                    },
+                    {
+                        "Id":  "TC-P01",
+                        "Name":  "创建 API Key",
+                        "Status":  "PASS",
+                        "Detail":  "id=7"
+                    },
+                    {
+                        "Id":  "TC-P02",
+                        "Name":  "吊销 API Key",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-R01",
+                        "Name":  "审计日志查询",
+                        "Status":  "PASS",
+                        "Detail":  "total=193"
+                    },
+                    {
+                        "Id":  "TC-R02",
+                        "Name":  "审计导出 CSV",
+                        "Status":  "PASS",
+                        "Detail":  "size=3077"
+                    },
+                    {
+                        "Id":  "TC-A06",
+                        "Name":  "修改密码 API",
+                        "Status":  "PASS",
+                        "Detail":  "同密码换回原值"
+                    },
+                    {
+                        "Id":  "TC-A07",
+                        "Name":  "登出 API",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-Z01",
+                        "Name":  "清理测试用户",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-Z02",
+                        "Name":  "删除测试文档",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    },
+                    {
+                        "Id":  "TC-K13",
+                        "Name":  "删除知识库",
+                        "Status":  "PASS",
+                        "Detail":  ""
+                    }
+                ]
+}

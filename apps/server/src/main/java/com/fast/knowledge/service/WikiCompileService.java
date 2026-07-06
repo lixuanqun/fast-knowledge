@@ -85,7 +85,7 @@ public class WikiCompileService {
         try {
             compileDocument(documentId);
         } catch (Exception e) {
-            log.warn("Wiki 编译失败 docId={}: {}", documentId, e.getMessage());
+            log.warn("Wiki 编译失败 docId={}", documentId, e);
         }
     }
 
