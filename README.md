@@ -5,7 +5,7 @@
 **Fast = 部署快（Docker 5 分钟）+ 检索快（双层缓存 <50ms）+ 交付快（离线圈 + 审计验收）。**
 
 [![CI](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml/badge.svg)](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Java 21](https://img.shields.io/badge/Java-21-orange)](apps/server/)
 [![Spring Boot 3.5](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](apps/server/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.5-brightgreen)](web/)
@@ -91,7 +91,7 @@
 | **技术栈** | **Java 21 + Spring Boot** | Go + Gin | Python + Django | Python |
 | **AI 框架** | LangChain4j | 自研 Pipeline | LangChain | 自研 DeepDoc |
 | **向量库** | pgvector | 8 种可插拔 | pgvector / FAISS / Milvus | ES + Infinity |
-| **许可协议** | AGPL v3 + 商业双许可 | MIT | GPL-3.0 | Apache 2.0 |
+| **许可协议** | **MIT** | MIT | GPL-3.0 | Apache 2.0 |
 | **部署形态** | **单实例·每企一套** | 多租户 SaaS | 单机到集群 | 容器化私有部署 |
 | **Agent / 工作流** | ❌ 不做通用 Agent | ✅ ReAct + MCP | ✅ DAG 工作流编排 | ✅ 多 Agent 协作 |
 | **多模态** | ❌ | 图片 OCR | 图片/音视频 | ✅ 深度文档理解 |
@@ -224,7 +224,7 @@ docs/          产品、架构、部署、合规
 
 ## 许可证
 
-**AGPL-3.0 + 商业双许可** — 社区版开源使用见 [LICENSE](LICENSE)；企业商业授权见 [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md)。
+本项目采用 **[MIT License](LICENSE)** 开源，可自由用于个人、学术及商业场景（保留版权声明即可）。
 
 ---
 

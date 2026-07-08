@@ -1,7 +1,7 @@
 {
   "name": "@fast-knowledge/web",
   "version": "1.0.0",
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "description": "Fast Knowledge 快速知识库 Web 前端",
   "keywords": [
     "knowledge-base",

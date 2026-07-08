@@ -20,10 +20,9 @@
 
     <licenses>
         <license>
-            <name>GNU Affero General Public License v3.0</name>
-            <url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
             <distribution>repo</distribution>
-            <comments>Commercial licensing available — see LICENSE-COMMERCIAL.md</comments>
         </license>
     </licenses>
 

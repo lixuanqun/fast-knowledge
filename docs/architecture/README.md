@@ -19,7 +19,6 @@ fast-knowledge/
 ├── scripts/
 ├── .env.example             # 环境变量契约
 ├── LICENSE
-└── LICENSE-COMMERCIAL.md
 ```
 
 ## 构建关系
