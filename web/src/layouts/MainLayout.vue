@@ -94,7 +94,7 @@ const authStore = useAuthStore()
 const configStore = useConfigStore()
 const themeStore = useThemeStore()
 const { user, isAdmin } = storeToRefs(authStore)
-const { instanceName } = storeToRefs(configStore)
+const { instanceName, isEnterprise } = storeToRefs(configStore)
 const { resolvedTheme } = storeToRefs(themeStore)
 const pwdDialog = ref<{ open: () => void }>()
 
@@ -110,12 +110,19 @@ const menuItems = [
   { path: '/chat', label: '智能对话', icon: ChatDotRound },
   { path: '/writer', label: '智能写文档', icon: EditPen },
   { path: '/settings/llm', label: '大模型配置', icon: Cpu, adminOnly: true },
+  { path: '/scenarios', label: '场景模板', icon: Collection, adminOnly: true, enterpriseOnly: true },
   { path: '/users', label: '用户管理', icon: User, adminOnly: true },
-  { path: '/api-keys', label: 'API Key', icon: Key, adminOnly: true },
+  { path: '/api-keys', label: 'API Key', icon: Key, adminOnly: true, enterpriseOnly: true },
   { path: '/audits', label: '审计日志', icon: Document, adminOnly: true }
 ]
 
-const visibleMenus = computed(() => menuItems.filter(m => !m.adminOnly || isAdmin.value))
+const visibleMenus = computed(() =>
+  menuItems.filter((m) => {
+    if (m.adminOnly && !isAdmin.value) return false
+    if (m.enterpriseOnly && !isEnterprise.value) return false
+    return true
+  })
+)
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = { ADMIN: '管理员', USER: '普通用户' }

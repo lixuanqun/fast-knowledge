@@ -11,6 +11,7 @@ export const useConfigStore = defineStore('config', () => {
   const instanceName = computed(() => config.value?.instanceName || 'Fast Knowledge')
   const setupComplete = computed(() => !!config.value?.setupComplete)
   const needsSetup = computed(() => loaded.value && !setupComplete.value)
+  const isEnterprise = computed(() => !!config.value?.enterprise)
 
   async function fetchConfig() {
     loading.value = true
@@ -50,6 +51,7 @@ export const useConfigStore = defineStore('config', () => {
     instanceName,
     setupComplete,
     needsSetup,
+    isEnterprise,
     fetchConfig,
     fetchLlmProviders,
     ensureLoaded,

@@ -1,0 +1,22 @@
+{
+  "id": "manufacturing-process",
+  "name": "工艺知识库",
+  "category": "manufacturing",
+  "description": "工艺规程、作业指导书、参数卡等结构化文档检索与对比问答。",
+  "suggestedKbName": "工艺知识库",
+  "recommendedChunk": {
+    "size": 512,
+    "overlap": 80
+  },
+  "sampleDocTypes": ["PROCESS", "QUALITY"],
+  "docTypeLabels": {
+    "PROCESS": "工艺",
+    "QUALITY": "质量"
+  },
+  "checklist": [
+    "上传工艺规程，文档类型选 PROCESS",
+    "关键参数章节尽量保留标题，便于章节溯源",
+    "复杂「对比两套工艺」问法将自动走 Agentic 多跳",
+    "过期工艺设置失效日期，避免误召回"
+  ]
+}

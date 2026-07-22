@@ -13,6 +13,7 @@ export * from './chat'
 export * from './sse'
 export * from './api-keys'
 export * from './wiki'
+export * from './scenarios'
 
 // backward-compatible type re-exports
 export type { KbUser } from './users'

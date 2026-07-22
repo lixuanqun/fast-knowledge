@@ -63,8 +63,10 @@ public class SystemConfigService {
         config.put("llmAllowExternal", effective.isAllowExternal());
         config.put("rerankEnabled", properties.getSearch().getRerank().isEnabled());
         config.put("rerankProvider", properties.getSearch().getRerank().getProvider());
-        config.put("ldapEnabled", properties.getAuth().getLdap().isEnabled());
-        config.put("oidcEnabled", properties.getAuth().getOidc().isEnabled());
+        config.put("ldapEnabled", properties.isEnterprise() && properties.getAuth().getLdap().isEnabled());
+        config.put("oidcEnabled", properties.isEnterprise() && properties.getAuth().getOidc().isEnabled());
+        config.put("edition", properties.getEdition() != null ? properties.getEdition() : "community");
+        config.put("enterprise", properties.isEnterprise());
         return config;
     }
 }

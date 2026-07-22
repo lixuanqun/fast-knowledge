@@ -1,5 +1,6 @@
 # 企业私有化部署推荐配置：禁止外连大模型与云端 Rerank，仅 ONNX/Ollama 本地推理
 knowledge:
+  edition: ${KNOWLEDGE_EDITION:enterprise}
   llm:
     allow-external: false
   search:

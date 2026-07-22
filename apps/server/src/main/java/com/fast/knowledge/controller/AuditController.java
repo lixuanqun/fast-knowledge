@@ -2,6 +2,7 @@ package com.fast.knowledge.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.fast.knowledge.common.ApiResponse;
+import com.fast.knowledge.config.EditionGuard;
 import com.fast.knowledge.model.entity.AuditLog;
 import com.fast.knowledge.service.AuditLogService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -23,9 +24,11 @@ import java.time.LocalDateTime;
 public class AuditController {
 
     private final AuditLogService auditLogService;
+    private final EditionGuard editionGuard;
 
-    public AuditController(AuditLogService auditLogService) {
+    public AuditController(AuditLogService auditLogService, EditionGuard editionGuard) {
         this.auditLogService = auditLogService;
+        this.editionGuard = editionGuard;
     }
 
     @GetMapping
@@ -47,6 +50,7 @@ public class AuditController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(defaultValue = "10000") int limit) {
+        editionGuard.requireEnterprise("审计导出");
         int safeLimit = Math.min(Math.max(limit, 1), 50000);
         String csv = auditLogService.exportCsv(userId, action, from, to, safeLimit);
         byte[] body = csv.getBytes(StandardCharsets.UTF_8);

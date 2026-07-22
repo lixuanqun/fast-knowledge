@@ -18,6 +18,12 @@
         <el-card class="fk-card settings-card" shadow="never" header="实例信息">
           <el-descriptions v-if="config" :column="1" border>
             <el-descriptions-item label="实例名称">{{ config.instanceName }}</el-descriptions-item>
+            <el-descriptions-item label="发行版">
+              <el-tag :type="config.enterprise ? 'warning' : 'info'" size="small">
+                {{ config.enterprise ? '企业版' : '社区版' }}
+                <span v-if="config.edition">（{{ config.edition }}）</span>
+              </el-tag>
+            </el-descriptions-item>
             <el-descriptions-item label="初始设置">
               <el-tag :type="config.setupComplete ? 'success' : 'warning'" size="small">
                 {{ config.setupComplete ? '已完成' : '未完成' }}

@@ -1,0 +1,22 @@
+{
+  "id": "manufacturing-policy",
+  "name": "制度汇编库",
+  "category": "manufacturing",
+  "description": "面向国企/制造企业的制度、红头文件、管理办法集中管理与问答。",
+  "suggestedKbName": "制度汇编库",
+  "recommendedChunk": {
+    "size": 480,
+    "overlap": 64
+  },
+  "sampleDocTypes": ["POLICY", "SAFETY"],
+  "docTypeLabels": {
+    "POLICY": "制度",
+    "SAFETY": "安全"
+  },
+  "checklist": [
+    "上传制度 PDF/Word，填写文号与生效/失效日期",
+    "按部门与标签分类，便于权限与检索过滤",
+    "索引完成后审核发布 Wiki 页，便于「制度目录」类问法",
+    "抽检问答并导出 CSV 作为内审材料"
+  ]
+}

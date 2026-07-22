@@ -72,6 +72,11 @@ const router = createRouter({
           path: 'api-keys',
           component: () => import('@/views/api-keys/index.vue'),
           meta: { adminOnly: true, title: 'API Key' }
+        },
+        {
+          path: 'scenarios',
+          component: () => import('@/views/scenarios/index.vue'),
+          meta: { adminOnly: true, title: '场景模板' }
         }
       ]
     }

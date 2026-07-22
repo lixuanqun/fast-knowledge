@@ -13,6 +13,8 @@ export interface SystemConfig {
   rerankProvider?: string
   ldapEnabled?: boolean
   oidcEnabled?: boolean
+  edition?: string
+  enterprise?: boolean
 }
 
 export interface LlmProviderPreset {

@@ -1,0 +1,22 @@
+{
+  "id": "manufacturing-equipment",
+  "name": "设备维保库",
+  "category": "manufacturing",
+  "description": "设备手册、维保计划、点检表与故障处置知识沉淀。",
+  "suggestedKbName": "设备维保库",
+  "recommendedChunk": {
+    "size": 448,
+    "overlap": 64
+  },
+  "sampleDocTypes": ["EQUIPMENT", "FAQ"],
+  "docTypeLabels": {
+    "EQUIPMENT": "设备",
+    "FAQ": "FAQ"
+  },
+  "checklist": [
+    "上传设备手册与维保 SOP，类型选 EQUIPMENT",
+    "故障 FAQ 单独标注 FAQ，提升客服/一线命中率",
+    "发布 Wiki 后可用「设备手册目录」类问法导航",
+    "对接 MES/门户时使用企业版 API Key 限定知识库"
+  ]
+}
