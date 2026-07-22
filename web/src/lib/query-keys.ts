@@ -13,7 +13,11 @@ export const queryKeys = {
   },
   dashboard: {
     stats: ['dashboard', 'stats'] as const,
-    audits: (limit: number) => ['dashboard', 'audits', limit] as const
+    audits: (limit: number) => ['dashboard', 'audits', limit] as const,
+    ragOps: ['dashboard', 'rag-ops'] as const
+  },
+  qa: {
+    history: (page: number, size: number) => ['qa', 'history', page, size] as const
   },
   system: {
     config: ['system', 'config'] as const,

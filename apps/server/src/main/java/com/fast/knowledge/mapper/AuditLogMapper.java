@@ -18,6 +18,9 @@ public interface AuditLogMapper extends BaseMapper<AuditLog> {
     @Select("SELECT * FROM kb_audit_log ORDER BY id DESC LIMIT #{limit}")
     List<AuditLog> findRecent(@Param("limit") int limit);
 
+    @Select("SELECT * FROM kb_audit_log WHERE action = #{action} ORDER BY id DESC LIMIT #{limit}")
+    List<AuditLog> findRecentByAction(@Param("action") String action, @Param("limit") int limit);
+
     default IPage<AuditLog> findPage(Page<AuditLog> page, Long userId, String action,
                                        LocalDateTime from, LocalDateTime to) {
         var wrapper = Wrappers.<AuditLog>lambdaQuery()

@@ -28,6 +28,8 @@ public final class AuditActions {
     public static final String REBUILD_INDEX = "REBUILD_INDEX";
     public static final String CREATE_API_KEY = "CREATE_API_KEY";
     public static final String REVOKE_API_KEY = "REVOKE_API_KEY";
+    public static final String WIKI_PUBLISH = "WIKI_PUBLISH";
+    public static final String WIKI_REJECT = "WIKI_REJECT";
 
     private AuditActions() {
     }

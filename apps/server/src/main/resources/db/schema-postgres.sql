@@ -206,4 +206,18 @@ CREATE TABLE IF NOT EXISTS kb_system_config (
     updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- RAG 问答历史（运营抽检 / 内审导出）
+CREATE TABLE IF NOT EXISTS kb_qa_history (
+    id           BIGSERIAL PRIMARY KEY,
+    user_id      BIGINT,
+    kb_id        BIGINT       NOT NULL,
+    question     TEXT         NOT NULL,
+    answer       TEXT         NOT NULL,
+    sources      JSONB,
+    source_count INT          NOT NULL DEFAULT 0,
+    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_qa_history_kb ON kb_qa_history (kb_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_qa_history_created ON kb_qa_history (created_at DESC);
+
 -- 向量索引由 LangChain4j PgVectorEmbeddingStore 自动建表（默认 kb_embeddings）

@@ -26,6 +26,93 @@
       </el-row>
 
       <el-card class="section-card fk-card" shadow="never">
+        <template #header>
+          <div class="section-header">
+            <span class="section-title">RAG 运营</span>
+            <el-button size="small" :loading="exporting" @click="handleExportQa">导出问答抽检 CSV</el-button>
+          </div>
+        </template>
+        <el-row :gutter="12" class="rag-stat-row">
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">检索次数</div>
+              <div class="rag-metric-value">{{ ragOps?.searchCount ?? 0 }}</div>
+            </div>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">问答次数</div>
+              <div class="rag-metric-value">{{ ragOps?.ragCount ?? 0 }}</div>
+            </div>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">零结果率</div>
+              <div class="rag-metric-value">{{ formatRate(ragOps?.zeroHitRate) }}</div>
+            </div>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">缓存命中率</div>
+              <div class="rag-metric-value">{{ formatRate(ragOps?.cacheHitRate) }}</div>
+            </div>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">检索均值 / P95</div>
+              <div class="rag-metric-value">{{ formatLatency(ragOps?.searchLatencyMeanMs) }} / {{ formatLatency(ragOps?.searchLatencyP95Ms) }}</div>
+            </div>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">问答历史</div>
+              <div class="rag-metric-value">{{ ragOps?.qaHistoryCount ?? 0 }}</div>
+            </div>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="4">
+            <div class="rag-metric">
+              <div class="rag-metric-label">Agentic 多跳</div>
+              <div class="rag-metric-value">{{ ragOps?.agenticCount ?? 0 }}</div>
+            </div>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="16" class="rag-tables">
+          <el-col :xs="24" :md="12">
+            <div class="sub-title">热门查询（近 500 次检索）</div>
+            <el-table v-if="ragOps?.hotQueries?.length" :data="ragOps.hotQueries" size="small" stripe>
+              <el-table-column prop="query" label="查询" show-overflow-tooltip />
+              <el-table-column prop="count" label="次数" width="80" align="right" />
+            </el-table>
+            <EmptyState v-else variant="default" description="暂无检索记录" />
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <div class="sub-title">近期零结果</div>
+            <el-table v-if="ragOps?.recentZeroQueries?.length" :data="ragOps.recentZeroQueries" size="small" stripe>
+              <el-table-column prop="query" label="查询" show-overflow-tooltip />
+              <el-table-column prop="kbId" label="KB" width="72" />
+              <el-table-column label="时间" width="160">
+                <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+              </el-table-column>
+            </el-table>
+            <EmptyState v-else variant="default" description="暂无零结果查询" />
+          </el-col>
+        </el-row>
+
+        <div class="sub-title qa-history-title">问答抽检（最近）</div>
+        <el-table v-if="qaHistory.length" :data="qaHistory" size="small" stripe>
+          <el-table-column prop="kbId" label="KB" width="72" />
+          <el-table-column prop="question" label="问题" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="answer" label="答案" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="sourceCount" label="引用" width="64" align="center" />
+          <el-table-column label="时间" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+          </el-table-column>
+        </el-table>
+        <EmptyState v-else variant="default" description="暂无问答历史，完成一次智能问答后会出现在此" />
+      </el-card>
+
+      <el-card class="section-card fk-card" shadow="never">
         <template #header><span class="section-title">快速入口</span></template>
         <div class="quick-row">
           <QuickEntryButton
@@ -96,7 +183,14 @@ import EmptyState from '@/components/EmptyState.vue'
 import DashboardStatCard from '@/components/design/DashboardStatCard.vue'
 import QuickEntryButton from '@/components/design/QuickEntryButton.vue'
 import { auditActionMeta, formatDateTime } from '@/utils/format'
-import { useAuditsQuery, useDashboardStatsQuery } from '@/composables/queries/useDashboard'
+import {
+  useAuditsQuery,
+  useDashboardStatsQuery,
+  useQaHistoryQuery,
+  useRagOpsQuery
+} from '@/composables/queries/useDashboard'
+import { exportQaHistory } from '@/api/qa'
+import { ElMessage } from 'element-plus'
 
 const AUDIT_ICONS = {
   Collection,
@@ -113,12 +207,18 @@ function auditIcon(action: string) {
 
 const { data: stats, isLoading: statsLoading } = useDashboardStatsQuery()
 const { data: auditsData, isLoading: auditsLoading } = useAuditsQuery(50)
+const { data: ragOps, isLoading: ragOpsLoading } = useRagOpsQuery(true)
+const { data: qaHistoryPage, isLoading: qaHistoryLoading } = useQaHistoryQuery(1, 8)
 
 const page = ref(1)
 const pageSize = ref(10)
+const exporting = ref(false)
 
-const loading = computed(() => statsLoading.value || auditsLoading.value)
+const loading = computed(
+  () => statsLoading.value || auditsLoading.value || ragOpsLoading.value || qaHistoryLoading.value
+)
 const audits = computed(() => auditsData.value || [])
+const qaHistory = computed(() => qaHistoryPage.value?.records || [])
 const pagedAudits = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return audits.value.slice(start, start + pageSize.value)
@@ -139,6 +239,34 @@ const quickLinks = [
   { path: '/chat', label: '智能对话', icon: ChatDotRound, primary: false },
   { path: '/writer', label: '智能写文档', icon: EditPen, primary: false }
 ]
+
+function formatRate(v?: number) {
+  if (v == null || Number.isNaN(v)) return '—'
+  return `${(v * 100).toFixed(1)}%`
+}
+
+function formatLatency(v?: number) {
+  if (v == null || Number.isNaN(v)) return '—'
+  return `${Math.round(v)}ms`
+}
+
+async function handleExportQa() {
+  exporting.value = true
+  try {
+    const blob = await exportQaHistory({ limit: 5000 })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'qa-history.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('已导出问答抽检')
+  } catch {
+    /* axios 已提示 */
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -153,9 +281,56 @@ const quickLinks = [
   background: $fk-card-bg;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .section-title {
   font-weight: 600;
   color: $fk-text-primary;
+}
+
+.sub-title {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: $fk-text-secondary;
+}
+
+.qa-history-title {
+  margin-top: 20px;
+}
+
+.rag-stat-row {
+  margin-bottom: 8px;
+}
+
+.rag-metric {
+  padding: 10px 12px;
+  border: 1px solid $fk-border;
+  border-radius: 8px;
+  background: $fk-surface-muted;
+  min-height: 64px;
+}
+
+.rag-metric-label {
+  font-size: 12px;
+  color: $fk-text-secondary;
+  margin-bottom: 6px;
+}
+
+.rag-metric-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: $fk-text-primary;
+  word-break: break-all;
+}
+
+.rag-tables {
+  margin-top: 8px;
 }
 
 .quick-row {
