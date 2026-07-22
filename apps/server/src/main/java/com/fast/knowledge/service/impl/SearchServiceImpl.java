@@ -11,6 +11,8 @@ import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.AuditLogService;
+import com.fast.knowledge.service.DocumentLifecycleFilter;
+import com.fast.knowledge.service.DocumentRecallPolicy;
 import com.fast.knowledge.service.KnowledgeBaseService;
 import com.fast.knowledge.service.MetricsService;
 import com.fast.knowledge.service.SearchCacheService;
@@ -32,6 +34,7 @@ public class SearchServiceImpl implements SearchService {
     private final KbEmbeddingStoreFactory embeddingStoreFactory;
     private final SearchCacheService searchCacheService;
     private final SearchRerankService searchRerankService;
+    private final DocumentLifecycleFilter documentLifecycleFilter;
     private final AuditLogService auditLogService;
     private final MetricsService metricsService;
 
@@ -40,6 +43,7 @@ public class SearchServiceImpl implements SearchService {
                              KbEmbeddingStoreFactory embeddingStoreFactory,
                              SearchCacheService searchCacheService,
                              SearchRerankService searchRerankService,
+                             DocumentLifecycleFilter documentLifecycleFilter,
                              AuditLogService auditLogService,
                              MetricsService metricsService) {
         this.knowledgeBaseService = knowledgeBaseService;
@@ -47,6 +51,7 @@ public class SearchServiceImpl implements SearchService {
         this.embeddingStoreFactory = embeddingStoreFactory;
         this.searchCacheService = searchCacheService;
         this.searchRerankService = searchRerankService;
+        this.documentLifecycleFilter = documentLifecycleFilter;
         this.auditLogService = auditLogService;
         this.metricsService = metricsService;
     }
@@ -66,12 +71,18 @@ public class SearchServiceImpl implements SearchService {
         // Cache check (L1 + L2)
         var cached = searchCacheService.get(kb.getId(), request.getQuery(), topK, rerank, request.getDocType());
         if (cached.isPresent()) {
+            List<SearchHitVO> hits = cached.get();
             metricsService.countSearch();
-            metricsService.countSearchHits(cached.get().size());
-            return cached.get();
+            metricsService.countSearchHits(hits.size());
+            auditLogService.log(AuditActions.SEARCH, "KB", kb.getId(),
+                    "query=" + StringUtils.truncate(request.getQuery(), 200)
+                            + ", hits=" + hits.size() + ", cache=hit");
+            return hits;
         }
 
-        int fetchK = rerank ? searchRerankService.candidateCount(topK) : topK;
+        int baseFetch = rerank ? searchRerankService.candidateCount(topK) : topK;
+        // 过取：生命周期过滤（禁用/未生效/已过期）后尽量仍能凑满 topK
+        int fetchK = DocumentRecallPolicy.overFetch(baseFetch);
 
         // Full search pipeline with segmented timing
         List<SearchHitVO> hits = metricsService.timeSearch(() -> {
@@ -105,12 +116,15 @@ public class SearchServiceImpl implements SearchService {
                         .toList();
             });
 
+            // Segment 2b: 排除禁用 / 未生效 / 已过期文档（Search / RAG / Chat 共用）
+            List<SearchHitVO> eligible = documentLifecycleFilter.filter(rawHits);
+
             // Segment 3: Rerank (optional)
             if (rerank) {
                 return metricsService.timeRerank(() ->
-                        searchRerankService.rerank(request.getQuery(), rawHits, topK));
+                        searchRerankService.rerank(request.getQuery(), eligible, topK));
             }
-            return rawHits;
+            return eligible.size() <= topK ? eligible : eligible.subList(0, topK);
         });
 
         metricsService.countSearch();
@@ -118,7 +132,8 @@ public class SearchServiceImpl implements SearchService {
 
         searchCacheService.put(kb.getId(), request.getQuery(), topK, rerank, request.getDocType(), hits);
         auditLogService.log(AuditActions.SEARCH, "KB", kb.getId(),
-                "query=" + StringUtils.truncate(request.getQuery(), 200) + ", hits=" + hits.size());
+                "query=" + StringUtils.truncate(request.getQuery(), 200)
+                        + ", hits=" + hits.size() + ", cache=miss");
         return hits;
     }
 }

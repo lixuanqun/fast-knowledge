@@ -22,6 +22,8 @@ export interface KbDocument {
   fileSize: number
   indexStatus: string
   chunkCount: number
+  /** 1=参与检索，0=禁用（作废/下架） */
+  enabled?: number
   docType?: string
   docNo?: string
   effectiveDate?: string

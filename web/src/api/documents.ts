@@ -7,6 +7,10 @@ export interface DocumentMetadata {
   expireDate?: string
   department?: string
   tags?: string
+  /** 1=参与检索，0=禁用 */
+  enabled?: number
+  clearEffectiveDate?: boolean
+  clearExpireDate?: boolean
 }
 
 export interface DocumentPreview {

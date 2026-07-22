@@ -15,6 +15,7 @@ import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.DocumentChunkVO;
 import com.fast.knowledge.model.vo.DocumentPreviewVO;
 import com.fast.knowledge.security.UserContext;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,9 +107,18 @@ public class DocumentService {
         KbDocument doc = requireDocument(kbId, docId);
         knowledgeBaseService.checkWritePermission(knowledgeBaseService.getById(kbId));
         applyMetadata(doc, metadata);
-        documentMapper.updateById(doc);
+        // 允许将日期清空为 null（默认 updateById 会跳过 null 字段）
+        documentMapper.update(null, Wrappers.<KbDocument>lambdaUpdate()
+                .eq(KbDocument::getId, docId)
+                .set(KbDocument::getDocType, doc.getDocType())
+                .set(KbDocument::getDocNo, doc.getDocNo())
+                .set(KbDocument::getEffectiveDate, doc.getEffectiveDate())
+                .set(KbDocument::getExpireDate, doc.getExpireDate())
+                .set(KbDocument::getDepartment, doc.getDepartment())
+                .set(KbDocument::getTags, doc.getTags())
+                .set(KbDocument::getEnabled, doc.getEnabled()));
         searchCacheService.invalidateForKb(kbId);
-        return doc;
+        return documentMapper.selectById(docId);
     }
 
     private void applyMetadata(KbDocument doc, DocumentMetadataRequest metadata) {
@@ -121,10 +131,14 @@ public class DocumentService {
         if (metadata.getDocNo() != null) {
             doc.setDocNo(metadata.getDocNo().isBlank() ? null : metadata.getDocNo().trim());
         }
-        if (metadata.getEffectiveDate() != null) {
+        if (Boolean.TRUE.equals(metadata.getClearEffectiveDate())) {
+            doc.setEffectiveDate(null);
+        } else if (metadata.getEffectiveDate() != null) {
             doc.setEffectiveDate(metadata.getEffectiveDate());
         }
-        if (metadata.getExpireDate() != null) {
+        if (Boolean.TRUE.equals(metadata.getClearExpireDate())) {
+            doc.setExpireDate(null);
+        } else if (metadata.getExpireDate() != null) {
             doc.setExpireDate(metadata.getExpireDate());
         }
         if (metadata.getDepartment() != null) {
@@ -132,6 +146,12 @@ public class DocumentService {
         }
         if (metadata.getTags() != null) {
             doc.setTags(metadata.getTags().isBlank() ? null : metadata.getTags().trim());
+        }
+        if (metadata.getEnabled() != null) {
+            if (metadata.getEnabled() != 0 && metadata.getEnabled() != 1) {
+                throw new BusinessException("enabled 只能为 0 或 1");
+            }
+            doc.setEnabled(metadata.getEnabled());
         }
     }
 

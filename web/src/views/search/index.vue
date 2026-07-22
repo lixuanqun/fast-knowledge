@@ -21,11 +21,13 @@
           </el-form-item>
           <el-form-item label="文档类型" class="search-form__item">
             <el-select v-model="docType" clearable placeholder="全部" style="width:100%">
-              <el-option label="制度" value="制度" />
-              <el-option label="工艺" value="工艺" />
-              <el-option label="设备" value="设备" />
-              <el-option label="标准" value="标准" />
-              <el-option label="其他" value="其他" />
+              <el-option label="制度" value="POLICY" />
+              <el-option label="工艺" value="PROCESS" />
+              <el-option label="设备" value="EQUIPMENT" />
+              <el-option label="质量" value="QUALITY" />
+              <el-option label="安全" value="SAFETY" />
+              <el-option label="FAQ" value="FAQ" />
+              <el-option label="其他" value="GENERAL" />
             </el-select>
           </el-form-item>
           <el-form-item label=" " class="search-form__item search-form__item--btn">
