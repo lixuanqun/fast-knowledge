@@ -24,12 +24,24 @@ public class KnowledgeProperties {
     private Chat chat = new Chat();
     private QueryRewrite queryRewrite = new QueryRewrite();
     private Index index = new Index();
+    private Agentic agentic = new Agentic();
+    /**
+     * 发行版：community（默认）| enterprise。
+     * 可用环境变量 KNOWLEDGE_EDITION 覆盖；enterprise profile 默认 enterprise。
+     */
+    private String edition = "community";
+
+    public boolean isEnterprise() {
+        return "enterprise".equalsIgnoreCase(edition != null ? edition.trim() : "");
+    }
 
     @Data
     public static class Wiki {
         private boolean enabled = true;
         /** false 时 Wiki 页保持 DRAFT，需管理员审核 */
         private boolean autoPublish = false;
+        /** 章节/制度/目录类问法优先走已发布 Wiki，否则 HYBRID */
+        private boolean queryRouting = true;
     }
 
     @Data
@@ -193,6 +205,16 @@ public class KnowledgeProperties {
         private boolean enabled = true;
         /** 用于改写的对话历史轮数 */
         private int historyRounds = 5;
+    }
+
+    @Data
+    public static class Agentic {
+        /** 复杂问法启用有限多跳拆解检索 */
+        private boolean enabled = true;
+        /** 子查询上限（含原问，实际额外跳数 = maxSubQueries - 1） */
+        private int maxSubQueries = 3;
+        /** 是否用 LLM 拆解子查询；false 则仅启发式拆分 */
+        private boolean llmDecompose = true;
     }
 
     @Data

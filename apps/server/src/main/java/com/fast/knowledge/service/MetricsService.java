@@ -70,7 +70,9 @@ public class MetricsService {
         this.rerankLatency = Timer.builder("kb.search.rerank.latency")
                 .description("重排序延迟").register(registry);
         this.searchLatency = Timer.builder("kb.search.latency")
-                .description("检索全链路延迟").register(registry);
+                .description("检索全链路延迟")
+                .publishPercentiles(0.5, 0.95)
+                .register(registry);
         this.searchCount = Counter.builder("kb.search.count")
                 .description("检索请求数").register(registry);
 
@@ -89,7 +91,9 @@ public class MetricsService {
                 .description("检索缓存").tag("result", "miss").register(registry);
 
         this.ragLatency = Timer.builder("kb.rag.latency")
-                .description("RAG 全链路延迟（检索+生成）").register(registry);
+                .description("RAG 全链路延迟（检索+生成）")
+                .publishPercentiles(0.5, 0.95)
+                .register(registry);
         this.ragCount = Counter.builder("kb.rag.count")
                 .description("RAG 问答请求数").register(registry);
 
@@ -195,6 +199,14 @@ public class MetricsService {
         Counter.builder("kb.query.rewrite.count")
                 .description("查询改写调用次数")
                 .tag("rewritten", String.valueOf(rewritten))
+                .register(registry)
+                .increment();
+    }
+
+    public void countAgentic(int subQueryCount) {
+        Counter.builder("kb.rag.agentic")
+                .description("Agentic 多跳召回")
+                .tag("sub_queries", String.valueOf(Math.min(Math.max(subQueryCount, 1), 4)))
                 .register(registry)
                 .increment();
     }

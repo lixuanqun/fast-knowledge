@@ -1,5 +1,6 @@
 # AI / RAG 相关配置：Embedding、分块、检索、Rerank、LLM、Wiki
 knowledge:
+  edition: ${KNOWLEDGE_EDITION:community}
   embedding:
     provider: ${EMBEDDING_PROVIDER:onnx}
     onnx-model-path: ${ONNX_MODEL_PATH:./data/models/bge-small-zh-v1.5.onnx}
@@ -40,9 +41,14 @@ knowledge:
   query-rewrite:
     enabled: ${QUERY_REWRITE_ENABLED:true}
     history-rounds: ${QUERY_REWRITE_HISTORY:5}
+  agentic:
+    enabled: ${AGENTIC_RETRIEVAL_ENABLED:true}
+    max-sub-queries: ${AGENTIC_MAX_SUB_QUERIES:3}
+    llm-decompose: ${AGENTIC_LLM_DECOMPOSE:true}
   index:
     pubsub-enabled: ${INDEX_PUBSUB_ENABLED:true}
     max-retry: ${INDEX_MAX_RETRY:3}
   wiki:
     enabled: ${WIKI_ENABLED:true}
     auto-publish: ${WIKI_AUTO_PUBLISH:false}
+    query-routing: ${WIKI_QUERY_ROUTING:true}
