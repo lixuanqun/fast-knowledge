@@ -5,8 +5,8 @@
                     "fail":  0,
                     "total":  38
                 },
-    "kbId":  9,
-    "testUser":  "e2e_user_20260706143315",
+    "kbId":  10,
+    "testUser":  "e2e_user_20260722071610",
     "results":  [
                     {
                         "Id":  "TC-A01",
@@ -48,7 +48,7 @@
                         "Id":  "TC-K01",
                         "Name":  "新建知识库",
                         "Status":  "PASS",
-                        "Detail":  "id=9"
+                        "Detail":  "id=10"
                     },
                     {
                         "Id":  "TC-K02",
@@ -60,7 +60,7 @@
                         "Id":  "TC-K03",
                         "Name":  "上传文档",
                         "Status":  "PASS",
-                        "Detail":  "docId=8"
+                        "Detail":  "docId=9"
                     },
                     {
                         "Id":  "TC-K04",
@@ -120,7 +120,7 @@
                         "Id":  "TC-C01",
                         "Name":  "创建对话会话",
                         "Status":  "PASS",
-                        "Detail":  "sessionId=13"
+                        "Detail":  "sessionId=14"
                     },
                     {
                         "Id":  "TC-C02",
@@ -138,7 +138,7 @@
                         "Id":  "TC-W01",
                         "Name":  "智能写文档生成",
                         "Status":  "PASS",
-                        "Detail":  "bytes=325"
+                        "Detail":  "bytes=523"
                     },
                     {
                         "Id":  "TC-L01",
@@ -156,7 +156,7 @@
                         "Id":  "TC-U01",
                         "Name":  "新建用户",
                         "Status":  "PASS",
-                        "Detail":  "id=8"
+                        "Detail":  "id=9"
                     },
                     {
                         "Id":  "TC-U02",
@@ -186,7 +186,7 @@
                         "Id":  "TC-P01",
                         "Name":  "创建 API Key",
                         "Status":  "PASS",
-                        "Detail":  "id=7"
+                        "Detail":  "id=8"
                     },
                     {
                         "Id":  "TC-P02",
@@ -198,13 +198,13 @@
                         "Id":  "TC-R01",
                         "Name":  "审计日志查询",
                         "Status":  "PASS",
-                        "Detail":  "total=193"
+                        "Detail":  "total=221"
                     },
                     {
                         "Id":  "TC-R02",
                         "Name":  "审计导出 CSV",
                         "Status":  "PASS",
-                        "Detail":  "size=3077"
+                        "Detail":  "size=3132"
                     },
                     {
                         "Id":  "TC-A06",

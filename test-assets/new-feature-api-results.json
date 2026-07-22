@@ -1,0 +1,32 @@
+﻿[
+    {
+        "Id":  "TC-N01",
+        "Name":  "RAG Ops dashboard",
+        "Status":  "PASS",
+        "Detail":  "searchCount=4;qaCount="
+    },
+    {
+        "Id":  "TC-N02",
+        "Name":  "QA history list",
+        "Status":  "PASS",
+        "Detail":  "total=0"
+    },
+    {
+        "Id":  "TC-N03",
+        "Name":  "QA history CSV export",
+        "Status":  "PASS",
+        "Detail":  "bytes=65"
+    },
+    {
+        "Id":  "TC-N04",
+        "Name":  "Scenarios list enterprise",
+        "Status":  "PASS",
+        "Detail":  "count=3"
+    },
+    {
+        "Id":  "TC-N05",
+        "Name":  "Public config edition",
+        "Status":  "PASS",
+        "Detail":  "edition=enterprise; rawKeys=setupComplete,vectorProvider,instanceName,llmProvider,enterprise,oidcEnabled,edition,rerankEnabled,llmModel,llmProviderName,rerankProvider,llmAllowExternal,embeddingProvider,ldapEnabled"
+    }
+]
