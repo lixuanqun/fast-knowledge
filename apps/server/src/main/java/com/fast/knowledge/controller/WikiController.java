@@ -2,12 +2,12 @@ package com.fast.knowledge.controller;
 
 import com.fast.knowledge.common.ApiResponse;
 import com.fast.knowledge.model.entity.WikiPage;
-import com.fast.knowledge.mapper.WikiPageMapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.fast.knowledge.service.KnowledgeBaseService;
+import com.fast.knowledge.service.WikiService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -16,30 +16,36 @@ import java.util.List;
 @RequestMapping("/kbs/{kbId}/wiki")
 public class WikiController {
 
-    private final WikiPageMapper wikiPageMapper;
-    private final KnowledgeBaseService knowledgeBaseService;
+    private final WikiService wikiService;
 
-    public WikiController(WikiPageMapper wikiPageMapper, KnowledgeBaseService knowledgeBaseService) {
-        this.wikiPageMapper = wikiPageMapper;
-        this.knowledgeBaseService = knowledgeBaseService;
+    public WikiController(WikiService wikiService) {
+        this.wikiService = wikiService;
     }
 
     @GetMapping("/pages")
-    public ApiResponse<List<WikiPage>> list(@PathVariable Long kbId) {
-        knowledgeBaseService.checkReadPermission(knowledgeBaseService.getById(kbId));
-        List<WikiPage> pages = wikiPageMapper.selectList(Wrappers.<WikiPage>lambdaQuery()
-                .eq(WikiPage::getKbId, kbId)
-                .orderByDesc(WikiPage::getUpdatedAt));
-        return ApiResponse.ok(pages);
+    public ApiResponse<List<WikiPage>> list(@PathVariable Long kbId,
+                                            @RequestParam(required = false) String status) {
+        return ApiResponse.ok(wikiService.list(kbId, status));
     }
 
     @GetMapping("/pages/{slug}")
     public ApiResponse<WikiPage> get(@PathVariable Long kbId, @PathVariable String slug) {
-        knowledgeBaseService.checkReadPermission(knowledgeBaseService.getById(kbId));
-        WikiPage page = wikiPageMapper.findByKbAndSlug(kbId, slug);
-        if (page == null) {
-            return ApiResponse.fail("Wiki 页面不存在");
-        }
-        return ApiResponse.ok(page);
+        return ApiResponse.ok(wikiService.getBySlug(kbId, slug));
+    }
+
+    @PostMapping("/pages/{pageId}/publish")
+    public ApiResponse<WikiPage> publish(@PathVariable Long kbId, @PathVariable Long pageId) {
+        return ApiResponse.ok(wikiService.publish(kbId, pageId));
+    }
+
+    @PostMapping("/pages/{pageId}/reject")
+    public ApiResponse<WikiPage> reject(@PathVariable Long kbId, @PathVariable Long pageId) {
+        return ApiResponse.ok(wikiService.reject(kbId, pageId));
+    }
+
+    @PostMapping("/index/rebuild")
+    public ApiResponse<WikiPage> rebuildIndex(@PathVariable Long kbId) {
+        // 复用写权限：通过 publish 路径的 check 在 rebuild 前先 getById+checkWrite
+        return ApiResponse.ok(wikiService.rebuildIndex(kbId));
     }
 }

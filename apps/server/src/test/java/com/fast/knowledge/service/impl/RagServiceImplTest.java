@@ -2,12 +2,12 @@ package com.fast.knowledge.service.impl;
 
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.model.dto.QaRequest;
-import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.vo.QaResponseVO;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.AuditLogService;
 import com.fast.knowledge.service.MetricsService;
-import com.fast.knowledge.service.SearchService;
+import com.fast.knowledge.service.QaHistoryService;
+import com.fast.knowledge.service.WikiAwareRetrievalService;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +23,8 @@ import java.util.concurrent.Callable;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,16 +32,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RagServiceImplTest {
 
-    @Mock private SearchService searchService;
+    @Mock private WikiAwareRetrievalService wikiAwareRetrievalService;
     @Mock private ChatModel chatModel;
     @Mock private AuditLogService auditLogService;
     @Mock private MetricsService metricsService;
+    @Mock private QaHistoryService qaHistoryService;
 
     private RagServiceImpl ragService;
 
     @BeforeEach
     void setUp() throws Exception {
-        ragService = new RagServiceImpl(searchService, chatModel, auditLogService, metricsService);
+        ragService = new RagServiceImpl(wikiAwareRetrievalService, chatModel, auditLogService, metricsService, qaHistoryService);
         // timeRag should execute the wrapped Callable (for tests); lenient because validation tests don't reach it
         lenient().when(metricsService.timeRag(any())).thenAnswer(inv -> {
             Callable<?> action = inv.getArgument(0);
@@ -73,7 +76,7 @@ class RagServiceImplTest {
         request.setQuestion("什么是Java");
 
         List<SearchHitVO> hits = List.of(hit("Java简介", "Java是一种编程语言"));
-        when(searchService.search(any(SearchRequest.class))).thenReturn(hits);
+        when(wikiAwareRetrievalService.retrieve(anyLong(), anyString())).thenReturn(hits);
         when(chatModel.chat(any(dev.langchain4j.data.message.ChatMessage[].class)))
                 .thenReturn(ChatResponse.builder()
                         .aiMessage(dev.langchain4j.data.message.AiMessage.from("Java是一种面向对象的编程语言"))
@@ -92,7 +95,7 @@ class RagServiceImplTest {
         request.setKbId(1L);
         request.setQuestion("unknown topic");
 
-        when(searchService.search(any(SearchRequest.class))).thenReturn(Collections.emptyList());
+        when(wikiAwareRetrievalService.retrieve(anyLong(), anyString())).thenReturn(Collections.emptyList());
         when(chatModel.chat(any(dev.langchain4j.data.message.ChatMessage[].class)))
                 .thenReturn(ChatResponse.builder()
                         .aiMessage(dev.langchain4j.data.message.AiMessage.from("知识库中未找到相关内容"))

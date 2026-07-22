@@ -53,6 +53,15 @@
                   <IndexStatusTag :status="row.indexStatus" />
                 </template>
               </el-table-column>
+              <el-table-column label="检索" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag
+                    size="small"
+                    effect="light"
+                    :type="recallTagType(row as KbDocument)"
+                  >{{ recallLabel(row as KbDocument) }}</el-tag>
+                </template>
+              </el-table-column>
               <el-table-column label="分块" width="80" align="center">
                 <template #default="{ row }">{{ row.chunkCount ?? 0 }}</template>
               </el-table-column>
@@ -125,8 +134,19 @@
 
           <el-tab-pane label="Wiki" name="wiki">
             <div v-loading="wikiLoading" class="tab-section">
-              <p class="tab-section__hint">文档索引完成后自动编译为 Wiki 页（可在配置中关闭自动发布）</p>
-              <el-table v-if="wikiPages.length" :data="wikiPages" stripe>
+              <div class="wiki-toolbar">
+                <p class="tab-section__hint">
+                  文档索引后编译为 Wiki（默认草稿）。发布后进入问答双路召回；「目录」问法优先命中 index。
+                </p>
+                <div class="wiki-toolbar__actions">
+                  <el-select v-model="wikiStatusFilter" clearable placeholder="全部状态" style="width:140px">
+                    <el-option label="草稿" value="DRAFT" />
+                    <el-option label="已发布" value="PUBLISHED" />
+                  </el-select>
+                  <el-button :loading="wikiRebuildPending" @click="handleRebuildWikiIndex">重建目录</el-button>
+                </div>
+              </div>
+              <el-table v-if="filteredWikiPages.length" :data="filteredWikiPages" stripe>
                 <el-table-column prop="title" label="标题" min-width="180">
                   <template #default="{ row }">
                     <el-link type="primary" @click="openWikiPage(row as WikiPage)">{{ row.title }}</el-link>
@@ -136,12 +156,31 @@
                 <el-table-column label="状态" width="100">
                   <template #default="{ row }">
                     <el-tag size="small" :type="row.status === 'PUBLISHED' ? 'success' : 'info'">
-                      {{ row.status === 'PUBLISHED' ? '已发布' : row.status }}
+                      {{ row.status === 'PUBLISHED' ? '已发布' : '草稿' }}
                     </el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column label="更新时间" width="180">
                   <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
+                </el-table-column>
+                <el-table-column label="操作" width="180" fixed="right">
+                  <template #default="{ row }">
+                    <el-button
+                      v-if="row.slug !== 'index' && row.status !== 'PUBLISHED'"
+                      link
+                      type="primary"
+                      :loading="wikiActionId === row.id"
+                      @click="handlePublishWiki(row as WikiPage)"
+                    >发布</el-button>
+                    <el-button
+                      v-if="row.slug !== 'index' && row.status === 'PUBLISHED'"
+                      link
+                      type="warning"
+                      :loading="wikiActionId === row.id"
+                      @click="handleRejectWiki(row as WikiPage)"
+                    >下架</el-button>
+                    <el-button link type="primary" @click="openWikiPage(row as WikiPage)">查看</el-button>
+                  </template>
                 </el-table-column>
               </el-table>
               <EmptyState v-else variant="docs" description="暂无 Wiki 页面，上传文档并完成索引后将自动生成" />
@@ -238,11 +277,13 @@
         </el-form-item>
         <el-form-item label="文档类型">
           <el-select v-model="uploadMeta.docType" clearable placeholder="制度/工艺/设备..." style="width:100%">
-            <el-option label="制度" value="制度" />
-            <el-option label="工艺" value="工艺" />
-            <el-option label="设备" value="设备" />
-            <el-option label="标准" value="标准" />
-            <el-option label="其他" value="其他" />
+            <el-option label="制度" value="POLICY" />
+            <el-option label="工艺" value="PROCESS" />
+            <el-option label="设备" value="EQUIPMENT" />
+            <el-option label="质量" value="QUALITY" />
+            <el-option label="安全" value="SAFETY" />
+            <el-option label="FAQ" value="FAQ" />
+            <el-option label="其他" value="GENERAL" />
           </el-select>
         </el-form-item>
         <el-form-item label="文号">
@@ -273,11 +314,13 @@
       <el-form label-width="96px">
         <el-form-item label="文档类型">
           <el-select v-model="metadataForm.docType" clearable style="width:100%">
-            <el-option label="制度" value="制度" />
-            <el-option label="工艺" value="工艺" />
-            <el-option label="设备" value="设备" />
-            <el-option label="标准" value="标准" />
-            <el-option label="其他" value="其他" />
+            <el-option label="制度" value="POLICY" />
+            <el-option label="工艺" value="PROCESS" />
+            <el-option label="设备" value="EQUIPMENT" />
+            <el-option label="质量" value="QUALITY" />
+            <el-option label="安全" value="SAFETY" />
+            <el-option label="FAQ" value="FAQ" />
+            <el-option label="其他" value="GENERAL" />
           </el-select>
         </el-form-item>
         <el-form-item label="文号">
@@ -287,7 +330,16 @@
           <el-date-picker v-model="metadataForm.effectiveDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
         <el-form-item label="失效日期">
-          <el-date-picker v-model="metadataForm.expireDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+          <el-date-picker v-model="metadataForm.expireDate" type="date" value-format="YYYY-MM-DD" style="width:100%" clearable />
+        </el-form-item>
+        <el-form-item label="参与检索">
+          <el-switch
+            v-model="metadataForm.enabled"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="是"
+            inactive-text="禁用"
+          />
         </el-form-item>
         <el-form-item label="部门">
           <el-input v-model="metadataForm.department" />
@@ -322,7 +374,7 @@ import MarkdownBody from '@/components/MarkdownBody.vue'
 import { DocumentPreviewDrawer } from '@/components/async'
 import { formatDateTime, formatFileSize, permissionLabel } from '@/utils/format'
 import { useQuery } from '@tanstack/vue-query'
-import { listWikiPages } from '@/api/wiki'
+import { listWikiPages, publishWikiPage, rejectWikiPage, rebuildWikiIndex } from '@/api/wiki'
 import { queryKeys } from '@/lib/query-keys'
 import {
   useAddKbMemberMutation,
@@ -354,6 +406,9 @@ const previewChunkId = ref<number>()
 const uploadDialogVisible = ref(false)
 const metadataDialogVisible = ref(false)
 const wikiDialogVisible = ref(false)
+const wikiStatusFilter = ref('')
+const wikiActionId = ref<number>()
+const wikiRebuildPending = ref(false)
 const pendingFile = ref<File>()
 const editingDocId = ref<number>()
 const activeWiki = ref<WikiPage>()
@@ -373,7 +428,8 @@ const metadataForm = reactive({
   effectiveDate: '',
   expireDate: '',
   department: '',
-  tags: ''
+  tags: '',
+  enabled: 1 as number
 })
 
 const { data: kb, isLoading: kbLoading } = useKbQuery(kbId)
@@ -391,7 +447,7 @@ const updateKbMutation = useUpdateKbMutation(kbId)
 const addMemberMutation = useAddKbMemberMutation(kbId)
 const removeMemberMutation = useRemoveKbMemberMutation(kbId)
 
-const { data: wikiData, isLoading: wikiLoading } = useQuery({
+const { data: wikiData, isLoading: wikiLoading, refetch: refetchWiki } = useQuery({
   queryKey: computed(() => queryKeys.wiki.pages(kbId.value)),
   queryFn: async () => {
     const res = await listWikiPages(kbId.value)
@@ -403,6 +459,10 @@ const { data: wikiData, isLoading: wikiLoading } = useQuery({
 const docs = computed(() => docsData.value || [])
 const members = computed(() => membersData.value || [])
 const wikiPages = computed(() => wikiData.value || [])
+const filteredWikiPages = computed(() => {
+  if (!wikiStatusFilter.value) return wikiPages.value
+  return wikiPages.value.filter((p) => p.status === wikiStatusFilter.value)
+})
 const failedTasks = computed(() => failedTasksData.value || [])
 const pageLoading = computed(() => kbLoading.value || docsLoading.value)
 
@@ -498,6 +558,7 @@ function openMetadata(doc: KbDocument) {
   metadataForm.expireDate = doc.expireDate || ''
   metadataForm.department = doc.department || ''
   metadataForm.tags = doc.tags || ''
+  metadataForm.enabled = doc.enabled === 0 ? 0 : 1
   metadataDialogVisible.value = true
 }
 
@@ -506,18 +567,89 @@ async function saveMetadata() {
   try {
     await metadataMutation.mutateAsync({
       docId: editingDocId.value,
-      metadata: { ...metadataForm }
+      metadata: {
+        docType: metadataForm.docType,
+        docNo: metadataForm.docNo,
+        department: metadataForm.department,
+        tags: metadataForm.tags,
+        enabled: metadataForm.enabled,
+        effectiveDate: metadataForm.effectiveDate || undefined,
+        expireDate: metadataForm.expireDate || undefined,
+        clearEffectiveDate: !metadataForm.effectiveDate,
+        clearExpireDate: !metadataForm.expireDate
+      }
     })
     metadataDialogVisible.value = false
-    ElMessage.success('元数据已保存')
+    ElMessage.success('元数据已更新')
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }
 }
 
+function recallLabel(doc: KbDocument): string {
+  if (doc.enabled === 0) return '已禁用'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (doc.effectiveDate) {
+    const effective = new Date(doc.effectiveDate)
+    if (effective > today) return '未生效'
+  }
+  if (doc.expireDate) {
+    const expire = new Date(doc.expireDate)
+    if (expire < today) return '已过期'
+  }
+  return '可检索'
+}
+
+function recallTagType(doc: KbDocument): 'success' | 'info' | 'warning' | 'danger' {
+  const label = recallLabel(doc)
+  if (label === '可检索') return 'success'
+  if (label === '未生效') return 'warning'
+  return 'info'
+}
+
 function openWikiPage(page: WikiPage) {
   activeWiki.value = page
   wikiDialogVisible.value = true
+}
+
+async function handlePublishWiki(page: WikiPage) {
+  wikiActionId.value = page.id
+  try {
+    await publishWikiPage(kbId.value, page.id)
+    ElMessage.success('已发布，目录已更新')
+    await refetchWiki()
+  } catch {
+    /* axios */
+  } finally {
+    wikiActionId.value = undefined
+  }
+}
+
+async function handleRejectWiki(page: WikiPage) {
+  wikiActionId.value = page.id
+  try {
+    await rejectWikiPage(kbId.value, page.id)
+    ElMessage.success('已下架为草稿')
+    await refetchWiki()
+  } catch {
+    /* axios */
+  } finally {
+    wikiActionId.value = undefined
+  }
+}
+
+async function handleRebuildWikiIndex() {
+  wikiRebuildPending.value = true
+  try {
+    await rebuildWikiIndex(kbId.value)
+    ElMessage.success('目录已重建')
+    await refetchWiki()
+  } catch {
+    /* axios */
+  } finally {
+    wikiRebuildPending.value = false
+  }
 }
 
 async function handleDelete(docId: number) {
@@ -614,6 +746,21 @@ async function handleRemoveMember(id: number) {
   margin: 0 0 12px;
   font-size: 13px;
   color: $fk-text-secondary;
+}
+
+.wiki-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.wiki-toolbar__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .section-gap {

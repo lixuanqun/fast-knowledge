@@ -4,14 +4,14 @@ import com.fast.knowledge.audit.AuditActions;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.model.dto.QaRequest;
-import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.vo.QaResponseVO;
 import com.fast.knowledge.model.vo.RagContextVO;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.AuditLogService;
 import com.fast.knowledge.service.MetricsService;
+import com.fast.knowledge.service.QaHistoryService;
 import com.fast.knowledge.service.RagService;
-import com.fast.knowledge.service.SearchService;
+import com.fast.knowledge.service.WikiAwareRetrievalService;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -28,17 +28,20 @@ public class RagServiceImpl implements RagService {
             若参考资料不足以回答，请明确说明「知识库中未找到相关内容」，不要编造。
             回答请使用简体中文，条理清晰。""";
 
-    private final SearchService searchService;
+    private final WikiAwareRetrievalService wikiAwareRetrievalService;
     private final ChatModel chatModel;
     private final AuditLogService auditLogService;
     private final MetricsService metricsService;
+    private final QaHistoryService qaHistoryService;
 
-    public RagServiceImpl(SearchService searchService, ChatModel chatModel,
-                          AuditLogService auditLogService, MetricsService metricsService) {
-        this.searchService = searchService;
+    public RagServiceImpl(WikiAwareRetrievalService wikiAwareRetrievalService, ChatModel chatModel,
+                          AuditLogService auditLogService, MetricsService metricsService,
+                          QaHistoryService qaHistoryService) {
+        this.wikiAwareRetrievalService = wikiAwareRetrievalService;
         this.chatModel = chatModel;
         this.auditLogService = auditLogService;
         this.metricsService = metricsService;
+        this.qaHistoryService = qaHistoryService;
     }
 
     @Override
@@ -65,16 +68,15 @@ public class RagServiceImpl implements RagService {
         metricsService.countRag();
         metricsService.countLlmCall("rag");
         auditLogService.log(AuditActions.QA, "KB", request.getKbId(),
-                "question=" + StringUtils.truncate(request.getQuestion(), 200));
+                "question=" + StringUtils.truncate(request.getQuestion(), 200)
+                        + ", sources=" + (result.getSources() != null ? result.getSources().size() : 0));
+        qaHistoryService.record(request.getKbId(), request.getQuestion(), result.getAnswer(), result.getSources());
         return result;
     }
 
     @Override
     public RagContextVO retrieve(Long kbId, String query) throws Exception {
-        SearchRequest searchRequest = new SearchRequest();
-        searchRequest.setKbId(kbId);
-        searchRequest.setQuery(query);
-        List<SearchHitVO> hits = searchService.search(searchRequest);
+        List<SearchHitVO> hits = wikiAwareRetrievalService.retrieve(kbId, query);
         String context = formatHits(hits);
         return new RagContextVO(context, hits);
     }
