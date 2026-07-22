@@ -10,6 +10,11 @@ public class UserContext {
     private Long userId;
     private String username;
     private String role;
+    /**
+     * API Key 限定的知识库 ID；null 表示不限定（JWT 用户或不限范围的 Key）。
+     * 有值时，所有 KB 读/写/管理校验必须匹配该 ID。
+     */
+    private Long scopedKbId;
 
     private static final ThreadLocal<UserContext> HOLDER = new ThreadLocal<>();
 
@@ -28,6 +33,12 @@ public class UserContext {
     public static Long currentUserId() {
         UserContext ctx = get();
         return ctx != null ? ctx.getUserId() : null;
+    }
+
+    /** 当前请求是否为「限定知识库」的 API Key 调用。 */
+    public static Long currentScopedKbId() {
+        UserContext ctx = get();
+        return ctx != null ? ctx.getScopedKbId() : null;
     }
 
     /** 将当前用户与安全上下文传播到异步线程（SSE 等场景）。 */

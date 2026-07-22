@@ -3,10 +3,14 @@ package com.fast.knowledge.service;
 import com.fast.knowledge.audit.AuditActions;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.mapper.ApiKeyMapper;
+import com.fast.knowledge.mapper.KbMemberMapper;
+import com.fast.knowledge.mapper.KnowledgeBaseMapper;
 import com.fast.knowledge.mapper.UserMapper;
 import com.fast.knowledge.model.dto.CreateApiKeyRequest;
 import com.fast.knowledge.model.entity.ApiKey;
+import com.fast.knowledge.model.entity.KbMember;
 import com.fast.knowledge.model.entity.KbUser;
+import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.ApiKeyCreatedVO;
 import com.fast.knowledge.model.vo.ApiKeyVO;
 import com.fast.knowledge.security.UserContext;
@@ -28,15 +32,21 @@ public class ApiKeyService {
 
     private final ApiKeyMapper apiKeyMapper;
     private final UserMapper userMapper;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
+    private final KbMemberMapper kbMemberMapper;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
 
     public ApiKeyService(ApiKeyMapper apiKeyMapper,
                          UserMapper userMapper,
+                         KnowledgeBaseMapper knowledgeBaseMapper,
+                         KbMemberMapper kbMemberMapper,
                          PasswordEncoder passwordEncoder,
                          AuditLogService auditLogService) {
         this.apiKeyMapper = apiKeyMapper;
         this.userMapper = userMapper;
+        this.knowledgeBaseMapper = knowledgeBaseMapper;
+        this.kbMemberMapper = kbMemberMapper;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
     }
@@ -56,6 +66,9 @@ public class ApiKeyService {
         KbUser user = userMapper.selectById(userId);
         if (user == null || user.getStatus() != 1) {
             throw new BusinessException("绑定用户不存在或已禁用");
+        }
+        if (request.getKbId() != null) {
+            assertBoundUserCanAccessKb(user, request.getKbId());
         }
         String secret = randomSecret();
         String prefix = KEY_PREFIX_LABEL + secret.substring(0, 8);
@@ -122,6 +135,28 @@ public class ApiKeyService {
         if (!"ADMIN".equals(UserContext.get() != null ? UserContext.get().getRole() : null)) {
             throw new BusinessException(403, "需要管理员权限");
         }
+    }
+
+    /** 创建限定范围 Key 时，校验绑定用户对该 KB 至少有读权限。 */
+    private void assertBoundUserCanAccessKb(KbUser user, Long kbId) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectById(kbId);
+        if (kb == null) {
+            throw new BusinessException("限定知识库不存在");
+        }
+        if ("ADMIN".equals(user.getRole())) {
+            return;
+        }
+        if (kb.getOwnerId() != null && kb.getOwnerId().equals(user.getId())) {
+            return;
+        }
+        if ("PUBLIC".equals(kb.getVisibility())) {
+            return;
+        }
+        KbMember member = kbMemberMapper.findByKbAndUser(kbId, user.getId());
+        if (member != null) {
+            return;
+        }
+        throw new BusinessException("绑定用户无权访问限定知识库");
     }
 
     private ApiKeyVO toVo(ApiKey key) {

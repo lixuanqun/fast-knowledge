@@ -97,16 +97,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (user != null && user.getStatus() == 1) {
                 setSecurityContext(
                         new AuthenticatedUser(user.getId(), user.getUsername(), user.getRole()),
-                        "api-key:" + apiKey.getId());
+                        "api-key:" + apiKey.getId(),
+                        apiKey.getKbId());
             }
         });
     }
 
     private void setSecurityContext(AuthenticatedUser user, String credential) {
+        setSecurityContext(user, credential, null);
+    }
+
+    private void setSecurityContext(AuthenticatedUser user, String credential, Long scopedKbId) {
         UserContext ctx = new UserContext();
         ctx.setUserId(user.getUserId());
         ctx.setUsername(user.getUsername());
         ctx.setRole(user.getRole());
+        ctx.setScopedKbId(scopedKbId);
         UserContext.set(ctx);
         String role = user.getRole() != null ? user.getRole() : "USER";
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(

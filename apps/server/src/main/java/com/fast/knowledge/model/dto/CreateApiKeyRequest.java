@@ -8,7 +8,7 @@ import lombok.Data;
 public class CreateApiKeyRequest {
     @NotBlank(message = "名称不能为空")
     private String name;
-    /** 限定知识库；空表示继承用户全部可读知识库 */
+    /** 限定知识库；空表示继承绑定用户全部可读知识库。有值时检索/问答/对话仅能访问该 KB。 */
     private Long kbId;
     @NotNull(message = "请指定绑定用户")
     private Long userId;

@@ -50,6 +50,15 @@ public class KnowledgeBaseService {
     }
 
     public List<KnowledgeBase> listMine() {
+        Long scopedKbId = UserContext.currentScopedKbId();
+        if (scopedKbId != null) {
+            KnowledgeBase kb = knowledgeBaseMapper.selectById(scopedKbId);
+            if (kb == null) {
+                return List.of();
+            }
+            checkReadPermission(kb);
+            return List.of(kb);
+        }
         return knowledgeBaseMapper.findByOwnerOrMember(UserContext.currentUserId());
     }
 
@@ -124,6 +133,7 @@ public class KnowledgeBaseService {
         if (ctx == null) {
             throw new BusinessException(401, "未认证");
         }
+        assertApiKeyScope(ctx, kb);
         if ("ADMIN".equals(ctx.getRole())) {
             return;
         }
@@ -145,6 +155,7 @@ public class KnowledgeBaseService {
         if (ctx == null) {
             throw new BusinessException(401, "未认证");
         }
+        assertApiKeyScope(ctx, kb);
         if ("ADMIN".equals(ctx.getRole())) {
             return;
         }
@@ -164,6 +175,7 @@ public class KnowledgeBaseService {
         if (ctx == null) {
             throw new BusinessException(401, "未认证");
         }
+        assertApiKeyScope(ctx, kb);
         if ("ADMIN".equals(ctx.getRole())) {
             return;
         }
@@ -175,5 +187,15 @@ public class KnowledgeBaseService {
             return;
         }
         throw new BusinessException(403, "无权限管理该知识库");
+    }
+
+    /**
+     * API Key 若绑定了 kbId，则只能访问该知识库（优先于系统 ADMIN 放行，防服务账号越权）。
+     */
+    private void assertApiKeyScope(UserContext ctx, KnowledgeBase kb) {
+        Long scopedKbId = ctx.getScopedKbId();
+        if (scopedKbId != null && !scopedKbId.equals(kb.getId())) {
+            throw new BusinessException(403, "API Key 无权访问该知识库");
+        }
     }
 }
