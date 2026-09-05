@@ -8,11 +8,20 @@ export interface StreamDoneMeta {
   sources?: SearchHit[]
 }
 
+/** 写文档多步编排的阶段事件载荷（event: step） */
+export interface WriterStep {
+  stage: string
+  sectionIndex?: number
+  sectionTotal?: number
+  title?: string
+}
+
 export async function consumeSse(
   url: string,
   body: object,
   onChunk: (text: string) => void,
-  onDone?: (meta?: StreamDoneMeta) => void
+  onDone?: (meta?: StreamDoneMeta) => void,
+  onStep?: (step: WriterStep) => void
 ): Promise<void> {
   const token = getToken()
   const res = await fetch(url, {
@@ -56,6 +65,14 @@ export async function consumeSse(
       if (eventName === 'error') {
         throw new Error(data)
       }
+      if (eventName === 'step') {
+        try {
+          onStep?.(JSON.parse(data))
+        } catch {
+          /* 非法 step 载荷忽略 */
+        }
+        continue
+      }
       if (eventName === 'done') {
         if (data !== '[DONE]') {
           try {
@@ -81,6 +98,10 @@ export async function streamChat(
   return consumeSse(`${API_BASE}/chat/messages/stream`, body, onChunk, onDone)
 }
 
-export async function streamWriter(body: object, onChunk: (text: string) => void): Promise<void> {
-  return consumeSse(`${API_BASE}/writer/generate`, body, onChunk)
+export async function streamWriter(
+  body: object,
+  onChunk: (text: string) => void,
+  onStep?: (step: WriterStep) => void
+): Promise<void> {
+  return consumeSse(`${API_BASE}/writer/generate`, body, onChunk, undefined, onStep)
 }

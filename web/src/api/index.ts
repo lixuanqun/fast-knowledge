@@ -18,4 +18,4 @@ export * from './scenarios'
 // backward-compatible type re-exports
 export type { KbUser } from './users'
 export type { DocumentPreview, DocumentChunk } from './documents'
-export type { StreamDoneMeta } from './sse'
+export type { StreamDoneMeta, WriterStep } from './sse'

@@ -84,8 +84,9 @@
           </template>
           <div v-if="generating && !content" class="generating-hint">
             <span class="streaming-dots"><i /><i /><i /></span>
-            正在生成文档...
+            {{ stage || '正在生成文档...' }}
           </div>
+          <div v-if="generating && stage" class="writer-stage">{{ stage }}</div>
           <MarkdownBody v-else-if="viewMode === 'preview'" :content="content" />
           <pre v-else class="source-view">{{ content }}</pre>
         </el-card>
@@ -98,6 +99,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { streamWriter } from '@/api'
+import type { WriterStep } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
 import KbSelect from '@/components/KbSelect.vue'
 import { MarkdownBody } from '@/components/async'
@@ -108,7 +110,23 @@ import { DocumentCopy, MagicStick } from '@element-plus/icons-vue'
 
 const generating = ref(false)
 const content = ref('')
+const stage = ref('')
 const viewMode = ref<'preview' | 'source'>('preview')
+
+function stageLabel(step: WriterStep): string {
+  switch (step.stage) {
+    case 'planOutline':
+      return '大纲规划中...'
+    case 'draftSection':
+      return `分节撰写 ${step.sectionIndex ?? 1}/${step.sectionTotal ?? 1}${step.title ? '：' + step.title : ''}`
+    case 'cite':
+      return '引用整理中...'
+    case 'polish':
+      return '润色输出中...'
+    default:
+      return '生成中...'
+  }
+}
 const saveMutation = useSaveWriterDocumentMutation()
 
 const form = reactive({
@@ -130,10 +148,13 @@ async function generate() {
   }
   generating.value = true
   content.value = ''
+  stage.value = ''
   viewMode.value = 'preview'
   try {
     await streamWriter(form, chunk => {
       content.value += chunk
+    }, step => {
+      stage.value = stageLabel(step)
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : '生成失败'
@@ -181,6 +202,16 @@ async function handleSave() {
 .writer-form-card,
 .writer-result-card {
   min-height: 420px;
+}
+
+.writer-stage {
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border-radius: 6px;
+  display: inline-block;
 }
 
 .generate-btn {
