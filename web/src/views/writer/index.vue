@@ -18,12 +18,12 @@
             <el-form-item label="主题" required>
               <el-input v-model="form.topic" placeholder="文档主题" maxlength="100" show-word-limit />
             </el-form-item>
-            <el-form-item label="大纲" required>
+            <el-form-item label="大纲">
               <el-input
                 v-model="form.outline"
                 type="textarea"
                 :rows="8"
-                placeholder="列出章节结构，支持 Markdown 标题"
+                placeholder="可选。留空将由 AI 自动规划章节结构；也可手动列出章节"
                 maxlength="2000"
                 show-word-limit
               />
@@ -150,10 +150,6 @@ const form = reactive({
 async function generate() {
   if (!form.topic.trim()) {
     ElMessage.warning('请填写文档主题')
-    return
-  }
-  if (!form.outline.trim()) {
-    ElMessage.warning('请填写文档大纲')
     return
   }
   generating.value = true
