@@ -40,9 +40,18 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :lg="14">
-        <el-card v-if="hasResult || loading" v-loading="loading" class="fk-card qa-result-card" shadow="never">
+        <el-card v-if="hasResult || askError || loading" v-loading="loading" class="fk-card qa-result-card" shadow="never">
           <template #header><span class="card-title">回答</span></template>
-          <MarkdownBody v-if="answer" :content="answer" />
+          <el-alert
+            v-if="askError"
+            type="error"
+            :title="askError"
+            description="请检查大模型配置与网络连通性后重试"
+            show-icon
+            :closable="false"
+            class="qa-error-alert"
+          />
+          <MarkdownBody v-else-if="answer" :content="answer" />
           <SourceList :sources="sources" :kb-id="kbId" @open="openSourcePreview" />
         </el-card>
         <div v-else class="qa-empty-split">
@@ -83,6 +92,9 @@ const loading = computed(() => askMutation.isPending.value)
 const answer = computed(() => askMutation.data.value?.answer || '')
 const sources = computed(() => askMutation.data.value?.sources || [])
 const hasResult = computed(() => askMutation.isSuccess.value)
+const askError = computed(() =>
+  askMutation.isError.value ? (askMutation.error.value instanceof Error ? askMutation.error.value.message : '问答失败') : ''
+)
 
 function openSourcePreview(payload: { kbId: number; documentId: number; chunkId?: number }) {
   previewDocId.value = payload.documentId
@@ -119,6 +131,10 @@ async function handleAsk() {
 }
 
 .qa-form-card,
+.qa-error-alert {
+  margin-bottom: 12px;
+}
+
 .qa-result-card {
   min-height: 360px;
 }

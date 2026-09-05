@@ -32,6 +32,15 @@
             @keyup.enter="handleLogin"
           />
         </el-form-item>
+        <el-alert
+          v-if="loginError"
+          type="error"
+          :title="loginError"
+          show-icon
+          :closable="false"
+          class="login-error-alert"
+          data-testid="login-error"
+        />
         <el-button
           class="login-btn"
           type="primary"
@@ -75,6 +84,7 @@ const authStore = useAuthStore()
 const configStore = useConfigStore()
 const loading = ref(false)
 const ldapLoading = ref(false)
+const loginError = ref('')
 const formRef = ref<FormInstance>()
 const form = reactive({ username: '', password: '' })
 const rules: FormRules = {
@@ -100,6 +110,7 @@ onMounted(async () => {
 async function handleLogin() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  loginError.value = ''
   loading.value = true
   try {
     const data = await authStore.login(form.username, form.password)
@@ -109,6 +120,7 @@ async function handleLogin() {
     router.push(target)
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : '账号或密码错误'
+    loginError.value = message
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -187,6 +199,10 @@ async function handleOidcLogin() {
   margin: 10px 0 0;
   color: $fk-text-secondary;
   font-size: 14px;
+}
+
+.login-error-alert {
+  margin-bottom: 14px;
 }
 
 .login-btn {

@@ -46,7 +46,7 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :lg="14">
-        <el-card v-if="content || generating" v-loading="generating" class="fk-card writer-result-card" shadow="never">
+        <el-card v-if="content || errorMsg || generating" v-loading="generating" class="fk-card writer-result-card" shadow="never">
           <template #header>
             <div class="card-header">
               <div class="preview-tabs">
@@ -87,6 +87,15 @@
             {{ stage || '正在生成文档...' }}
           </div>
           <div v-if="generating && stage" class="writer-stage">{{ stage }}</div>
+          <el-alert
+            v-if="errorMsg"
+            type="error"
+            :title="errorMsg"
+            description="请检查大模型配置与网络连通性后重试"
+            show-icon
+            :closable="false"
+            class="writer-error-alert"
+          />
           <MarkdownBody v-else-if="viewMode === 'preview'" :content="content" />
           <pre v-else class="source-view">{{ content }}</pre>
         </el-card>
@@ -111,6 +120,7 @@ import { DocumentCopy, MagicStick } from '@element-plus/icons-vue'
 const generating = ref(false)
 const content = ref('')
 const stage = ref('')
+const errorMsg = ref('')
 const viewMode = ref<'preview' | 'source'>('preview')
 
 function stageLabel(step: WriterStep): string {
@@ -149,6 +159,7 @@ async function generate() {
   generating.value = true
   content.value = ''
   stage.value = ''
+  errorMsg.value = ''
   viewMode.value = 'preview'
   try {
     await streamWriter(form, chunk => {
@@ -158,6 +169,7 @@ async function generate() {
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : '生成失败'
+    errorMsg.value = message
     ElMessage.error(message)
   } finally {
     generating.value = false
@@ -202,6 +214,10 @@ async function handleSave() {
 .writer-form-card,
 .writer-result-card {
   min-height: 420px;
+}
+
+.writer-error-alert {
+  margin-bottom: 8px;
 }
 
 .writer-stage {
