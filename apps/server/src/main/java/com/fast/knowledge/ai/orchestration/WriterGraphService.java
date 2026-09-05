@@ -99,6 +99,8 @@ public class WriterGraphService {
             String title = sections.get(index);
             sendStep(emitter, "draftSection", index + 1, sections.size(), title);
             StringBuilder buffer = new StringBuilder();
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
             chatPort.stream(SECTION_SYSTEM, sectionUser(state, title), new ChatPort.StreamHandler() {
                 @Override
                 public void onPartial(String partial) {
@@ -116,13 +118,16 @@ public class WriterGraphService {
                         buffer.setLength(0);
                         buffer.append(fullText);
                     }
+                    latch.countDown();
                 }
 
                 @Override
                 public void onError(Throwable error) {
-                    throw new IllegalStateException("分节生成失败: " + title, error);
+                    failure.set(error);
+                    latch.countDown();
                 }
             });
+            awaitStream(latch, failure, "分节生成失败: " + title);
             List<String> texts = new ArrayList<>(state.sectionTexts());
             texts.add(buffer.toString());
             return Map.of("sectionTexts", texts, "index", index + 1);
@@ -145,6 +150,8 @@ public class WriterGraphService {
         NodeAction<WriterState> polish = state -> {
             sendStep(emitter, NODE_POLISH, 0, 0, null);
             StringBuilder buffer = new StringBuilder();
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
             chatPort.stream(POLISH_SYSTEM, state.citedMd(), new ChatPort.StreamHandler() {
                 @Override
                 public void onPartial(String partial) {
@@ -162,13 +169,16 @@ public class WriterGraphService {
                         buffer.setLength(0);
                         buffer.append(fullText);
                     }
+                    latch.countDown();
                 }
 
                 @Override
                 public void onError(Throwable error) {
-                    throw new IllegalStateException("润色失败", error);
+                    failure.set(error);
+                    latch.countDown();
                 }
             });
+            awaitStream(latch, failure, "润色失败");
             String finalMd = buffer.toString().isBlank() ? state.citedMd() : buffer.toString();
             return Map.of("finalMd", finalMd);
         };
@@ -184,6 +194,24 @@ public class WriterGraphService {
                 .addEdge(NODE_CITE, NODE_POLISH)
                 .addEdge(NODE_POLISH, END)
                 .compile(org.bsc.langgraph4j.CompileConfig.builder().build());
+    }
+
+    /** 流式节点必须阻塞等待回调完成（langgraph4j 节点返回即代表状态就绪） */
+    private static void awaitStream(java.util.concurrent.CountDownLatch latch,
+                                    java.util.concurrent.atomic.AtomicReference<Throwable> failure,
+                                    String what) {
+        try {
+            if (!latch.await(180, java.util.concurrent.TimeUnit.SECONDS)) {
+                throw new IllegalStateException(what + "：流式响应超时");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(what + "：等待被中断", e);
+        }
+        Throwable error = failure.get();
+        if (error != null) {
+            throw new IllegalStateException(what, error);
+        }
     }
 
     private void sendStep(SseEmitter emitter, String stage, int index, int total, String title) {
