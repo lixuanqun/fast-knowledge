@@ -60,8 +60,13 @@
 ### 部署方式
 
 ```bash
+# Docker 全栈（推荐）
 ./scripts/install.sh          # Linux/macOS 一键 Docker 全栈
 # .\scripts\install.ps1       # Windows
+
+# ECS / 裸金属（非容器化）
+cp .env.example .env.ecs      # 编辑凭据
+./scripts/ecs-deploy.sh .env.ecs
 ```
 
 访问 http://localhost:8088 · 默认账号 `admin` / `admin123`
