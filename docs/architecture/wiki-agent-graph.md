@@ -23,7 +23,7 @@
 - Wiki 审核发布流（`WikiService.publish/reject`，DRAFT→PUBLISHED）、`index.md` 目录重建
 - 双路召回路由（`WikiQueryRouter` + `WikiAwareRetrievalService`）
 - **写文档沉淀闭环已存在**：`POST /writer/save` → `DocumentService.saveTextDocument()`（落库 + IndexTask + `dispatchIndex`）→ 索引成功后 `IndexTaskProcessor:180` 自动触发 `wikiCompileService.scheduleCompile()`；前端保存按钮与 `saveWriterDocument` API 均已有
-- `kb_wiki_link` 表已在 `db/schema-mysql.sql` 与 `schema-postgres.sql`（历史）中预留（from_page_id → to_page_id）
+- `kb_wiki_link` 表已在 `db/schema-mysql.sql` 预留（from_page_id → to_page_id）
 
 ### 1.2 目标
 
@@ -85,9 +85,9 @@
 ├──────────────────────────────────────────────────────────┤
 │  基础层（保留不动）                                         │
 │  ChatModel / StreamingChatModel ← LlmModelRegistry（热刷新） │
-│  AI Services · PgVector HYBRID · Rerank · 本地 ONNX         │
+│  AI Services · 本地向量索引 · 云端 Embedding/Rerank        │
 ├──────────────────────────────────────────────────────────┤
-│  Spring Boot 3.5 · PostgreSQL/pgvector · Redis · MinIO     │
+│  Spring Boot 3.5 · MySQL 5.7 · Redis · MinIO              │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -191,7 +191,7 @@ Agent lintLoop = AgenticServices.loopBuilder()
 | 审计 | `AuditLogService.log("WIKI_AGENT_MERGE", ...)` 含变更摘要 |
 | 指标 | `MetricsService` 新增 `countWikiAgent(type)`（merge/compile/lint-revise 计数） |
 
-`kb_wiki_change_log` DDL（对齐现有建表风格，落 `schema-postgres.sql`）：
+`kb_wiki_change_log` DDL（对齐现有建表风格，落 `db/schema-mysql.sql`）：
 
 ```sql
 CREATE TABLE IF NOT EXISTS kb_wiki_change_log (
@@ -308,7 +308,7 @@ sequence( planOutline → draftSection（按大纲逐节循环） → cite → p
 
 | PR | 内容 | 预估改动 |
 |----|------|---------|
-| PR1 | Phase 1（依赖+配置）+ Phase 2（Wiki 维护 Agent + change_log/link + 降级） | 后端 ~10 文件（新增 4：`WikiAgents`、`WikiAgentService`、`WikiChangeLog` 实体+Mapper；修改 4：`WikiCompileService`、`KnowledgeProperties`、`application-ai.yml`、`schema-postgres.sql`；测试 1-2） |
+| PR1 | Phase 1（依赖+配置）+ Phase 2（Wiki 维护 Agent + change_log/link + 降级） | 后端 ~10 文件（新增 4：`WikiAgents`、`WikiAgentService`、`WikiChangeLog` 实体+Mapper；修改 4：`WikiCompileService`、`KnowledgeProperties`、`application-ai.yml`、`schema-mysql.sql`；测试 1-2） |
 | PR2 | Phase 3+4（Writer 图 + step 事件 + 前端进度 + AI 来源标记） | 后端 ~3 文件、前端 ~2 文件、测试 1-2 |
 
 文档随 PR 更新：本设计文档状态改为「已实施」、`docs/releases/v2.0.0.md` M2 状态、`README.md` 功能表。

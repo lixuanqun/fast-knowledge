@@ -423,13 +423,13 @@ kb_system_config (KV 存储，实例配置)
 
 #### kb_embeddings（LangChain4j 自动维护）
 
-由 `PgVectorEmbeddingStore` 在首次摄入时建表，字段以 LangChain4j 1.17 为准。实现约定：
+向量索引不在业务 schema 中维护（本地文件方案 `LocalEmbeddingStore` 持久化于 `data/vectors/`）。历史 pgvector 方案的表设计备忘：
 
 | 要点 | 说明 |
 |------|------|
 | 主键 ID | 须为 **UUID** 字符串；`KbEmbeddingIngestor`、`KbEmbeddingStore.resolveId()` 使用 `UUID.randomUUID()` |
 | 业务关联 | 通过 embedding metadata（如 `document_id`、`chunk_index`）对应 `kb_document_chunk` |
-| 检索模式 | `HYBRID`（向量 + 全文 RRF），见 `knowledge.vector.pgvector.search-mode` |
+| 检索模式 | 向量余弦检索（历史 pgvector 方案曾支持向量+全文 RRF） |
 
 ### 4.3 表结构变更规范
 
@@ -437,7 +437,7 @@ kb_system_config (KV 存储，实例配置)
 
 1. 在本文档 §4 补充字段说明与 API 映射
 2. 在 [api.md](./api.md) 补充/更新 TypeScript 类型
-3. 更新 `schema-postgres.sql` 或新增增量 SQL 脚本
+3. 更新 `db/schema-mysql.sql` 或新增增量 SQL 脚本
 4. 同步更新 `model.entity` 与 Mapper XML
 5. 运行集成测试验证迁移
 
@@ -505,7 +505,7 @@ kb_system_config (KV 存储，实例配置)
 ### 阶段三：表结构（③）
 
 - [ ] 评估是否需要新表或改表
-- [ ] 更新 `schema-postgres.sql`
+- [ ] 更新 `db/schema-mysql.sql`
 - [ ] 更新本文档 §4 表结构说明
 - [ ] 本地执行迁移验证
 
@@ -586,7 +586,7 @@ checkKbAdminPermission(kb);   // 管理：owner / KB ADMIN member / 系统 ADMIN
 ```
 DocumentIngestService
   → KbDocumentSplitter → document_chunk（业务表）
-  → KbEmbeddingIngestor → PgVectorEmbeddingStore（kb_embeddings，HYBRID）
+  → KbEmbeddingIngestor → LocalEmbeddingStore（本地向量索引）
 
 SearchService / KbHybridContentRetriever
   → KbEmbeddingStore.search()

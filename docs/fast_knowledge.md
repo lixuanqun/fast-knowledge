@@ -62,8 +62,8 @@ Schema：`apps/server/src/main/resources/db/schema-mysql.sql`
 ```yaml
 knowledge:
   vector:
-    provider: pgvector
-    pgvector:
+    provider: local
+    local:
       table: kb_embeddings
       search-mode: HYBRID   # 向量 + 全文，RRF 融合
       rrf-k: 60
