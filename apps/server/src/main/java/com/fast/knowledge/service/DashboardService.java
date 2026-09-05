@@ -7,6 +7,7 @@ import lombok.Data;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class DashboardService {
@@ -28,12 +29,14 @@ public class DashboardService {
 
     public DashboardVO stats(Long userId) {
         DashboardVO vo = new DashboardVO();
-        vo.setKbCount(knowledgeBaseMapper.findByOwnerOrMember(userId).size());
+        var kbs = knowledgeBaseMapper.findByOwnerOrMember(userId);
+        vo.setKbCount(kbs.size());
         int docCount = 0, indexed = 0, failed = 0;
-        for (var kb : knowledgeBaseMapper.findByOwnerOrMember(userId)) {
-            List<KbDocument> docs = documentMapper.findByKbId(kb.getId());
-            docCount += docs.size();
-            for (KbDocument d : docs) {
+        if (!kbs.isEmpty()) {
+            List<Long> kbIds = kbs.stream().map(kb -> kb.getId()).collect(Collectors.toList());
+            List<KbDocument> allDocs = documentMapper.findByKbIds(kbIds);
+            docCount = allDocs.size();
+            for (KbDocument d : allDocs) {
                 if ("INDEXED".equals(d.getIndexStatus())) indexed++;
                 if ("FAILED".equals(d.getIndexStatus())) failed++;
             }

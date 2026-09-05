@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, onBeforeUnmount } from 'vue'
 import { streamWriter } from '@/api'
 import type { WriterStep } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
@@ -122,6 +122,11 @@ const content = ref('')
 const stage = ref('')
 const errorMsg = ref('')
 const viewMode = ref<'preview' | 'source'>('preview')
+
+let writerAbort: AbortController | null = null
+onBeforeUnmount(() => {
+  writerAbort?.abort()
+})
 
 function stageLabel(step: WriterStep): string {
   switch (step.stage) {
@@ -158,11 +163,12 @@ async function generate() {
   errorMsg.value = ''
   viewMode.value = 'preview'
   try {
+    writerAbort = new AbortController()
     await streamWriter(form, chunk => {
       content.value += chunk
     }, step => {
       stage.value = stageLabel(step)
-    })
+    }, writerAbort.signal)
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : '生成失败'
     errorMsg.value = message

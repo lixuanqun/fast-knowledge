@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { fetchImageGenImage, getImageGenTask, submitImageGen } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
@@ -89,13 +89,14 @@ const imageUrl = ref('')
 const error = ref('')
 
 const taskId = ref('')
+let pollAbort: AbortController | null = null
 
 async function generate() {
   if (!prompt.value.trim()) {
     ElMessage.warning('请输入图片描述')
     return
   }
-  if (imageUrl.value.startsWith('blob:')) {
+  if (imageUrl.value && imageUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(imageUrl.value)
   }
   generating.value = true
@@ -107,30 +108,48 @@ async function generate() {
     taskId.value = submit.data.taskId
     await poll()
     // 完成后以 blob 拉取持久化图片（供展示与下载）
-    if (imageUrl.value === '' && !error.value && taskId.value) {
+    if (!error.value && taskId.value) {
       const blob = await fetchImageGenImage(taskId.value)
       imageUrl.value = URL.createObjectURL(blob)
     }
+    generating.value = false
   } catch (e: unknown) {
+    if (e instanceof DOMException && e.name === 'AbortError') return
     error.value = e instanceof Error ? e.message : '生成失败'
     generating.value = false
   }
 }
 
 async function poll() {
-  for (;;) {
-    const res = await getImageGenTask(taskId.value)
-    const task = res.data
-    if (task.status === 'FAILED') {
-      throw new Error('生成任务失败')
+  pollAbort = new AbortController()
+  try {
+    for (;;) {
+      if (pollAbort.signal.aborted) return
+      const res = await getImageGenTask(taskId.value)
+      const task = res.data
+      if (task.status === 'FAILED') {
+        throw new Error('生成任务失败')
+      }
+      if (task.status === 'SUCCEEDED') {
+        return
+      }
+      statusLabel.value = task.status === 'RUNNING' ? '正在生成图片...' : '排队中...'
+      await new Promise((resolve, reject) => {
+        const id = setTimeout(resolve, 2500)
+        pollAbort!.signal.addEventListener('abort', () => { clearTimeout(id); reject(new DOMException('Aborted', 'AbortError')) })
+      })
     }
-    if (task.status === 'SUCCEEDED') {
-      return
-    }
-    statusLabel.value = task.status === 'RUNNING' ? '正在生成图片...' : '排队中...'
-    await new Promise(resolve => setTimeout(resolve, 2500))
+  } finally {
+    pollAbort = null
   }
 }
+
+onBeforeUnmount(() => {
+  pollAbort?.abort()
+  if (imageUrl.value && imageUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imageUrl.value)
+  }
+})
 </script>
 
 <style scoped lang="scss">

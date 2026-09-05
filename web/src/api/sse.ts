@@ -21,7 +21,8 @@ export async function consumeSse(
   body: object,
   onChunk: (text: string) => void,
   onDone?: (meta?: StreamDoneMeta) => void,
-  onStep?: (step: WriterStep) => void
+  onStep?: (step: WriterStep) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const token = getToken()
   const res = await fetch(url, {
@@ -30,7 +31,8 @@ export async function consumeSse(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal
   })
   if (!res.ok) {
     const errText = await res.text()
@@ -93,15 +95,17 @@ export async function consumeSse(
 export async function streamChat(
   body: object,
   onChunk: (text: string) => void,
-  onDone?: (meta?: StreamDoneMeta) => void
+  onDone?: (meta?: StreamDoneMeta) => void,
+  signal?: AbortSignal
 ): Promise<void> {
-  return consumeSse(`${API_BASE}/chat/messages/stream`, body, onChunk, onDone)
+  return consumeSse(`${API_BASE}/chat/messages/stream`, body, onChunk, onDone, undefined, signal)
 }
 
 export async function streamWriter(
   body: object,
   onChunk: (text: string) => void,
-  onStep?: (step: WriterStep) => void
+  onStep?: (step: WriterStep) => void,
+  signal?: AbortSignal
 ): Promise<void> {
-  return consumeSse(`${API_BASE}/writer/generate`, body, onChunk, undefined, onStep)
+  return consumeSse(`${API_BASE}/writer/generate`, body, onChunk, undefined, onStep, signal)
 }

@@ -140,15 +140,11 @@ public class ChatServiceImpl implements ChatService {
 
                             @Override
                             public void onPartial(String partial) {
-                                try {
-                                    if (firstTokenRecorded.compareAndSet(false, true)) {
-                                        long latency = System.currentTimeMillis() - startTime;
-                                        metricsService.recordFirstTokenLatency(latency);
-                                    }
-                                    emitter.send(SseEmitter.event().data(partial));
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
+                                if (firstTokenRecorded.compareAndSet(false, true)) {
+                                    long latency = System.currentTimeMillis() - startTime;
+                                    metricsService.recordFirstTokenLatency(latency);
                                 }
+                                SseEmitterHelper.sendData(emitter, partial);
                             }
 
                             @Override

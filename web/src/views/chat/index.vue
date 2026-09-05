@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { streamChat, type StreamDoneMeta } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
@@ -121,6 +121,11 @@ import { ChatDotRound, Cpu, Promotion, User } from '@element-plus/icons-vue'
 
 const queryClient = useQueryClient()
 const { data: sessionsData, isLoading: sessionsLoading } = useChatSessionsQuery()
+
+let streamAbort: AbortController | null = null
+onBeforeUnmount(() => {
+  streamAbort?.abort()
+})
 
 const sessions = computed(() => sessionsData.value || [])
 const kbId = ref<number>()
@@ -191,6 +196,7 @@ async function send() {
   scrollToBottom()
 
   try {
+    streamAbort = new AbortController()
     await streamChat(
       { sessionId: sessionId.value, kbId: kbId.value, message: text },
       chunk => {
@@ -200,7 +206,8 @@ async function send() {
       (meta?: StreamDoneMeta) => {
         if (meta?.sessionId) sessionId.value = meta.sessionId
         pendingSources.value = meta?.sources
-      }
+      },
+      streamAbort.signal
     )
     messages.value.push({
       role: 'assistant',

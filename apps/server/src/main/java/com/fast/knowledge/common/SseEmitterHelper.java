@@ -38,14 +38,14 @@ public final class SseEmitterHelper {
         }
     }
 
-    /** 发送 error 事件并完成（带错误）。所有 IOException 均静默（客户端已断开）。 */
+    /** 发送 error 事件并完成（带错误信号，客户端可触发 onerror 回调）。所有 IOException 均静默（客户端已断开）。 */
     public static void sendError(SseEmitter emitter, String message) {
         try {
             emitter.send(SseEmitter.event().name("error").data(message));
         } catch (IOException ignored) {
         }
         try {
-            emitter.complete();
+            emitter.completeWithError(new RuntimeException(message));
         } catch (Exception ignored) {
         }
     }

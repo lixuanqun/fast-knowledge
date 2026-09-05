@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -56,9 +57,12 @@ public class MetricsService {
     private final Timer indexDuration;
     private final Counter indexCount;
 
-    // --- In-memory for gauge registration ---
+    // --- In-memory for gauge / dynamic counter cache ---
     private final AtomicLong cacheHitCount = new AtomicLong();
     private final AtomicLong cacheMissCount = new AtomicLong();
+    private final ConcurrentHashMap<String, Counter> llmCounterCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Counter> agenticCounterCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Counter> wikiAgentCounterCache = new ConcurrentHashMap<>();
 
     public MetricsService(MeterRegistry registry) {
         this.registry = registry;
@@ -186,16 +190,18 @@ public class MetricsService {
     // ---- LLM ----
 
     public void countLlmCall(String purpose) {
-        Counter.builder("kb.llm.calls")
-                .description("LLM 调用次数")
-                .tag("purpose", purpose)
-                .register(registry)
+        llmCounterCache.computeIfAbsent(purpose,
+                k -> Counter.builder("kb.llm.calls")
+                        .description("LLM 调用次数")
+                        .tag("purpose", k)
+                        .register(registry))
                 .increment();
     }
 
     // ---- Query Rewrite ----
 
     public void countQueryRewrite(boolean rewritten) {
+        // 低基数标签（true/false），预创建即可
         Counter.builder("kb.query.rewrite.count")
                 .description("查询改写调用次数")
                 .tag("rewritten", String.valueOf(rewritten))
@@ -204,18 +210,21 @@ public class MetricsService {
     }
 
     public void countAgentic(int subQueryCount) {
-        Counter.builder("kb.rag.agentic")
-                .description("Agentic 多跳召回")
-                .tag("sub_queries", String.valueOf(Math.min(Math.max(subQueryCount, 1), 4)))
-                .register(registry)
+        String bucket = String.valueOf(Math.min(Math.max(subQueryCount, 1), 4));
+        agenticCounterCache.computeIfAbsent(bucket,
+                k -> Counter.builder("kb.rag.agentic")
+                        .description("Agentic 多跳召回")
+                        .tag("sub_queries", k)
+                        .register(registry))
                 .increment();
     }
 
     public void countWikiAgent(String changeType) {
-        Counter.builder("kb.wiki.agent")
-                .description("Wiki 维护 Agent 编译/合并")
-                .tag("change_type", changeType)
-                .register(registry)
+        wikiAgentCounterCache.computeIfAbsent(changeType,
+                k -> Counter.builder("kb.wiki.agent")
+                        .description("Wiki 维护 Agent 编译/合并")
+                        .tag("change_type", k)
+                        .register(registry))
                 .increment();
     }
 

@@ -57,43 +57,47 @@ public class WriterGraphService {
 
     private final ChatPort chatPort;
     private final ObjectMapper objectMapper;
+    private final CompiledGraph<WriterState> compiledGraph;
+    private final ThreadLocal<SseEmitter> currentEmitter = new ThreadLocal<>();
 
     public WriterGraphService(ChatPort chatPort, ObjectMapper objectMapper) {
         this.chatPort = chatPort;
         this.objectMapper = objectMapper;
-    }
-
-    /** 执行写文档图；调用方（WriterService）在图完成后发送 [DONE] */
-    public void generate(WriterRequest request, SseEmitter emitter, String ragContext) {
-        Map<String, Object> args = new HashMap<>();
-        args.put("topic", request.getTopic());
-        args.put("outlineHint", request.getOutline() != null ? request.getOutline() : "");
-        args.put("style", request.getStyle() != null ? request.getStyle() : "正式、专业");
-        args.put("wordCount", request.getWordCount() != null ? String.valueOf(request.getWordCount()) : "800");
-        args.put("context", ragContext != null ? ragContext : "");
-        args.put("sections", new ArrayList<String>());
-        args.put("sectionTexts", new ArrayList<String>());
-        args.put("index", 0);
-
-        // emitter 不可序列化（langgraph4j 节点间会序列化状态快照），故经闭包捕获而非放入图状态
-        graph(emitter).invoke(args).orElseThrow(() -> new IllegalStateException("写文档图未产生状态"));
-    }
-
-    private CompiledGraph<WriterState> graph(SseEmitter emitter) {
         try {
-            return buildGraphInternal(emitter);
+            this.compiledGraph = buildGraph();
         } catch (org.bsc.langgraph4j.GraphStateException e) {
             throw new IllegalStateException("写文档图定义非法", e);
         }
     }
 
-    private CompiledGraph<WriterState> buildGraphInternal(SseEmitter emitter) throws org.bsc.langgraph4j.GraphStateException {
+    /** 执行写文档图；调用方（WriterService）在图完成后发送 [DONE] */
+    public void generate(WriterRequest request, SseEmitter emitter, String ragContext) {
+        currentEmitter.set(emitter);
+        try {
+            Map<String, Object> args = new HashMap<>();
+            args.put("topic", request.getTopic());
+            args.put("outlineHint", request.getOutline() != null ? request.getOutline() : "");
+            args.put("style", request.getStyle() != null ? request.getStyle() : "正式、专业");
+            args.put("wordCount", request.getWordCount() != null ? String.valueOf(request.getWordCount()) : "800");
+            args.put("context", ragContext != null ? ragContext : "");
+            args.put("sections", new ArrayList<String>());
+            args.put("sectionTexts", new ArrayList<String>());
+            args.put("index", 0);
+
+            compiledGraph.invoke(args).orElseThrow(() -> new IllegalStateException("写文档图未产生状态"));
+        } finally {
+            currentEmitter.remove();
+        }
+    }
+
+    private CompiledGraph<WriterState> buildGraph() throws org.bsc.langgraph4j.GraphStateException {
         NodeAction<WriterState> outline = state -> {
             String outlineMd = chatPort.complete(OUTLINE_SYSTEM, outlineUser(state));
             List<String> sections = parseOutline(outlineMd);
             return Map.of("sections", sections);
         };
         NodeAction<WriterState> section = state -> {
+            SseEmitter emitter = currentEmitter.get();
             int index = state.index();
             List<String> sections = state.sections();
             String title = sections.get(index);
@@ -109,6 +113,7 @@ public class WriterGraphService {
                         SseEmitterHelper.sendData(emitter, partial);
                     } catch (Exception e) {
                         log.debug("推送分节内容失败（客户端可能已断开）: {}", e.getMessage());
+                        latch.countDown(); // release latch on client disconnect
                     }
                 }
 
@@ -135,6 +140,7 @@ public class WriterGraphService {
         EdgeAction<WriterState> afterSection = state ->
                 state.index() < state.sections().size() ? NODE_SECTION : NODE_CITE;
         NodeAction<WriterState> cite = state -> {
+            SseEmitter emitter = currentEmitter.get();
             sendStep(emitter, NODE_CITE, 0, 0, null);
             StringBuilder full = new StringBuilder("# ").append(state.topic()).append("\n\n");
             for (String text : state.sectionTexts()) {
@@ -148,6 +154,7 @@ public class WriterGraphService {
             return Map.of("citedMd", full.toString());
         };
         NodeAction<WriterState> polish = state -> {
+            SseEmitter emitter = currentEmitter.get();
             sendStep(emitter, NODE_POLISH, 0, 0, null);
             StringBuilder buffer = new StringBuilder();
             java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
@@ -160,6 +167,7 @@ public class WriterGraphService {
                         SseEmitterHelper.sendData(emitter, partial);
                     } catch (Exception e) {
                         log.debug("推送润色内容失败（客户端可能已断开）: {}", e.getMessage());
+                        latch.countDown(); // release latch on client disconnect
                     }
                 }
 

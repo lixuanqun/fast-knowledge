@@ -16,6 +16,13 @@ public interface DocumentMapper extends BaseMapper<KbDocument> {
                 .orderByDesc(KbDocument::getCreatedAt));
     }
 
+    default List<KbDocument> findByKbIds(List<Long> kbIds) {
+        if (kbIds == null || kbIds.isEmpty()) return List.of();
+        return selectList(Wrappers.<KbDocument>lambdaQuery()
+                .in(KbDocument::getKbId, kbIds)
+                .orderByDesc(KbDocument::getCreatedAt));
+    }
+
     default int deleteByKbId(Long kbId) {
         return delete(Wrappers.<KbDocument>lambdaQuery().eq(KbDocument::getKbId, kbId));
     }
