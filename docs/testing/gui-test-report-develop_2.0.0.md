@@ -196,3 +196,54 @@
 
 IAB guest 长会话下出现**页面 JS 事件处理失效**（截图/快照正常、菜单与按钮点击不触发 Vue 回调、`evaluate` 返回通道失效），关闭标签页重建后短期恢复、随后复发——属测试工具环境故障（本机同时运行 K8s 集群负载），与被测代码无关（HEAD 对照实验已证明同类现象）。受此影响，本轮浏览器遍历覆盖至仪表盘/检索页后受阻，剩余页面遍历待环境恢复或 CI 执行。
 
+
+## 八、第三轮视觉美化（2026-09-05）
+
+### 全局改进
+
+| 改进项 | 说明 |
+|--------|------|
+| 卡片圆角 | 8px → 12px（全局 `.el-card` 与各页面 `.fk-card`），与设计 token `$fk-card-radius: 12px` 对齐 |
+| 卡片阴影 | 统一 `$fk-card-shadow`（浅色 0 8px 24px rgba(64,158,255,.08)），hover 时增强至 0 12px 32px |
+| 统计卡片 | DashboardStatCard hover 上浮 2px + 阴影增强，微交互反馈 |
+| 侧边栏菜单 | 菜单项 margin 2px 8px + border-radius 8px + transition 0.2s，视觉更精致 |
+| 表格行 | el-table tbody tr 添加 background-color 过渡动画 |
+| 气泡圆角 | 聊天页面（chat）所有 border-radius 10px → 12px |
+
+### 受影响文件
+
+- `web/src/styles/index.scss`（全局卡片/表格）
+- `web/src/components/design/DashboardStatCard.vue`（统计卡片）
+- `web/src/layouts/MainLayout.vue`（侧边栏菜单）
+- `web/src/views/knowledge-base/list.vue`（知识库列表卡片）
+- `web/src/views/qa/index.vue`（问答双栏卡片）
+- `web/src/views/search/index.vue`（检索卡片）
+- `web/src/views/writer/index.vue`（写文档卡片）
+- `web/src/views/image-gen/index.vue`（图片生成卡片）
+- `web/src/views/vision/index.vue`（图片问答卡片）
+- `web/src/views/chat/index.vue`（聊天气泡）
+
+### 视觉验证
+
+- 仪表盘截图已确认（12px 圆角 + 阴影 + 统计卡片微交互）
+- TSC 0 + Vitest 11/11
+- 其余页面因 IAB 环境限制暂未截图，但 CSS 均为统一模板替换
+
+## 九、全功能端到端验证汇总（API 层）
+
+| # | 页面 | 端点 | 结果 |
+|---|------|------|------|
+| 1 | 仪表盘 | `/dashboard/stats` | ✅ documentCount=2, kbCount=2, 审计日志含 QA/SEARCH/WIKI_AGENT |
+| 2 | 知识库列表 | `/kbs` | ✅ 2 个库 |
+| 3 | 审计日志 | `/audits` | ✅ 10 条记录 |
+| 4 | 用户管理 | `/users` | ✅ 1 用户 |
+| 5 | API Key | `/api-keys` | ✅ 0 个（空列表正常） |
+| 6 | 场景模板 | `/scenarios` | ✅ 3 个场景 |
+| 7 | Wiki | `/kbs/1/wiki/pages` | ✅ 1 页 |
+| 8 | 问答历史 | `/qa/history` | ✅ 2 条 |
+| 9 | 系统配置 | `/system/config` | ✅ setupComplete=True, vectorProvider=local |
+| 10 | 云端检索 | `/search` | ✅ score 0.772（hash 0.516） |
+| 11 | RAG 问答 | `/qa` | ✅ 答案精确引用文档内容 |
+| 12 | 文生图持久化 | `/image-gen` | ✅ 1.88MB PNG，MinIO 持久化 |
+| 13 | 写文档无大纲 | `/writer/generate` | ✅ qwen-plus 自动规划 5 节 + 19KB 内容 |
+
