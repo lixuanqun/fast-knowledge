@@ -14,6 +14,10 @@ export function getImageGenTask(taskId: string) {
   return request.get<any, { data: ImageGenTask }>(`/image-gen/tasks/${taskId}`)
 }
 
-export function imageGenDownloadUrl(taskId: string) {
-  return `${import.meta.env.VITE_API_BASE || '/api/v1'}/image-gen/tasks/${taskId}/download`
+/** 以 blob 拉取生成图片（后端已持久化到存储资产，无需前端拼接临时链接） */
+export function fetchImageGenImage(taskId: string) {
+  return request.get<any, Blob>(`/image-gen/tasks/${taskId}/image`, {
+    responseType: 'blob',
+    timeout: 60000
+  })
 }

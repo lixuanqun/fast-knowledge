@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -124,6 +125,29 @@ public class MinioStorageProvider implements StorageProvider {
                     .build());
         } catch (Exception e) {
             throw new IOException("读取 MinIO 对象失败: " + filePath, e);
+        }
+    }
+
+    @Override
+    public String storeAsset(String objectKey, byte[] bytes) {
+        String key = normalizeKey(objectKey);
+        s3Client.putObject(
+                PutObjectRequest.builder().bucket(minio.getBucket()).key(key).build(),
+                RequestBody.fromBytes(bytes));
+        return key;
+    }
+
+    @Override
+    public byte[] getAsset(String objectKey) {
+        try {
+            return s3Client.getObjectAsBytes(GetObjectRequest.builder()
+                    .bucket(minio.getBucket())
+                    .key(normalizeKey(objectKey))
+                    .build()).asByteArray();
+        } catch (NoSuchKeyException e) {
+            return null;
+        } catch (Exception e) {
+            throw new BusinessException("读取存储资产失败: " + objectKey, e);
         }
     }
 

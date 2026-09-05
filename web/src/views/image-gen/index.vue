@@ -41,7 +41,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">生成结果</span>
-              <el-button v-if="imageUrl" size="small" tag="a" :href="downloadUrl" download>
+              <el-button v-if="imageUrl" size="small" tag="a" :href="imageUrl" download>
                 下载图片
               </el-button>
             </div>
@@ -74,9 +74,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getImageGenTask, submitImageGen, imageGenDownloadUrl } from '@/api'
+import { fetchImageGenImage, getImageGenTask, submitImageGen } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { MagicStick } from '@element-plus/icons-vue'
@@ -88,16 +88,15 @@ const statusLabel = ref('')
 const imageUrl = ref('')
 const error = ref('')
 
-const downloadUrl = computed(() => (taskId.value ? imageGenDownloadUrl(taskId.value) : ''))
 const taskId = ref('')
-let timer: ReturnType<typeof setTimeout> | undefined
-
-onBeforeUnmount(() => timer && clearTimeout(timer))
 
 async function generate() {
   if (!prompt.value.trim()) {
     ElMessage.warning('请输入图片描述')
     return
+  }
+  if (imageUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imageUrl.value)
   }
   generating.value = true
   imageUrl.value = ''
@@ -107,6 +106,11 @@ async function generate() {
     const submit = await submitImageGen(prompt.value.trim())
     taskId.value = submit.data.taskId
     await poll()
+    // 完成后以 blob 拉取持久化图片（供展示与下载）
+    if (imageUrl.value === '' && !error.value && taskId.value) {
+      const blob = await fetchImageGenImage(taskId.value)
+      imageUrl.value = URL.createObjectURL(blob)
+    }
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : '生成失败'
     generating.value = false
@@ -114,28 +118,18 @@ async function generate() {
 }
 
 async function poll() {
-  if (!taskId.value) return
-  try {
+  for (;;) {
     const res = await getImageGenTask(taskId.value)
     const task = res.data
-    if (task.status === 'SUCCEEDED' && task.imageUrl) {
-      imageUrl.value = task.imageUrl
-      generating.value = false
-      statusLabel.value = ''
-      return
-    }
     if (task.status === 'FAILED') {
-      error.value = '生成任务失败'
-      generating.value = false
+      throw new Error('生成任务失败')
+    }
+    if (task.status === 'SUCCEEDED') {
       return
     }
     statusLabel.value = task.status === 'RUNNING' ? '正在生成图片...' : '排队中...'
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : '查询任务失败'
-    generating.value = false
-    return
+    await new Promise(resolve => setTimeout(resolve, 2500))
   }
-  timer = setTimeout(poll, 2500)
 }
 </script>
 

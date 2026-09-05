@@ -13,6 +13,11 @@ public class BusinessException extends RuntimeException {
         this.code = code;
     }
 
+    public BusinessException(String message, Throwable cause) {
+        super(message, cause);
+        this.code = -1;
+    }
+
     public int getCode() {
         return code;
     }

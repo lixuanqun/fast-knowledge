@@ -40,10 +40,18 @@ public class ImageGenerationController {
         return ApiResponse.ok(imageGenerationService.query(taskId));
     }
 
-    /** 代理下载生成的图片（DashScope 临时链接不直接暴露给前端） */
+    /** 内联读取生成图片（前端带 Authorization 以 blob 拉取展示） */
+    @GetMapping("/tasks/{taskId}/image")
+    public ResponseEntity<byte[]> image(@PathVariable String taskId) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(imageGenerationService.imageBytes(taskId));
+    }
+
+    /** 附件下载（Content-Disposition attachment） */
     @GetMapping("/tasks/{taskId}/download")
     public ResponseEntity<byte[]> download(@PathVariable String taskId) {
-        byte[] bytes = imageGenerationService.download(taskId);
+        byte[] bytes = imageGenerationService.imageBytes(taskId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"fk-image-" + taskId + ".png\"")
                 .contentType(MediaType.IMAGE_PNG)

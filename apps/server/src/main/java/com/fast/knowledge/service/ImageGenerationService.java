@@ -30,15 +30,20 @@ public class ImageGenerationService {
     private final KnowledgeProperties properties;
     private final ObjectMapper objectMapper;
     private final com.fast.knowledge.service.AuditLogService auditLogService;
+    private final com.fast.knowledge.storage.StorageProvider storageProvider;
     private final RestClient restClient;
+    /** 已持久化到存储资产的任务 ID（懒持久化：首次 SUCCEEDED 查询时落存储） */
+    private final java.util.Set<String> persistedTasks = java.util.concurrent.ConcurrentHashMap.newKeySet();
     /** taskId → 提交时的模型名（查询任务时回传） */
     private final Map<String, String> taskModels = new ConcurrentHashMap<>();
 
     public ImageGenerationService(KnowledgeProperties properties, ObjectMapper objectMapper,
-                                  com.fast.knowledge.service.AuditLogService auditLogService) {
+                                  com.fast.knowledge.service.AuditLogService auditLogService,
+                                  com.fast.knowledge.storage.StorageProvider storageProvider) {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.auditLogService = auditLogService;
+        this.storageProvider = storageProvider;
         this.restClient = RestClient.create();
     }
 
@@ -69,24 +74,50 @@ public class ImageGenerationService {
         String key = apiKey();
         JsonNode output = getForJson(TASK_PATH + taskId, key).path("output");
         String status = output.path("task_status").asText("UNKNOWN");
-        String imageUrl = null;
-        if ("SUCCEEDED".equals(status)) {
-            imageUrl = output.path("results").path(0).path("url").asText(null);
-        }
         if ("FAILED".equals(status)) {
             String code = output.path("code").asText("");
             throw new BusinessException("文生图任务失败" + (code.isBlank() ? "" : "（" + code + "）"));
         }
-        return new ImageTask(taskId, status, imageUrl);
+        boolean persisted = false;
+        if ("SUCCEEDED".equals(status)) {
+            persisted = persistIfAbsent(taskId, output.path("results").path(0).path("url").asText(null));
+        }
+        return new ImageTask(taskId, status, persisted);
     }
 
-    /** 下载生成的图片字节（代理 DashScope 临时链接，避免前端跨域与链接泄露） */
-    public byte[] download(String taskId) {
-        String url = query(taskId).imageUrl();
-        if (url == null) {
+    /**
+     * 懒持久化：任务 SUCCEEDED 后首次查询时把图片拉回并写入存储资产
+     * （DashScope 结果链接约 24 小时过期，不能依赖）；失败时保留临时链接兜底。
+     */
+    private boolean persistIfAbsent(String taskId, String url) {
+        if (url == null || url.isBlank() || persistedTasks.contains(taskId)) {
+            return persistedTasks.contains(taskId);
+        }
+        try {
+            // 以 URI 对象传入，避免 RestClient 对签名参数二次编码
+            byte[] bytes = restClient.get().uri(java.net.URI.create(url)).retrieve().body(byte[].class);
+            if (bytes != null && bytes.length > 0) {
+                storageProvider.storeAsset("image-gen/" + taskId + ".png", bytes);
+                persistedTasks.add(taskId);
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("生成图片持久化失败（保留 DashScope 临时链接兜底）: taskId={}, {}", taskId, e.getMessage());
+        }
+        return false;
+    }
+
+    /** 读取任务图片字节：优先已持久化资产，否则回源 DashScope 临时链接 */
+    public byte[] imageBytes(String taskId) {
+        byte[] stored = storageProvider.getAsset("image-gen/" + taskId + ".png");
+        if (stored != null && stored.length > 0) {
+            return stored;
+        }
+        JsonNode output = getForJson(TASK_PATH + taskId, apiKey()).path("output");
+        String url = output.path("results").path(0).path("url").asText(null);
+        if (url == null || url.isBlank()) {
             throw new BusinessException("任务尚未生成图片或已过期");
         }
-        // 以 URI 对象传入，避免 RestClient 对签名参数二次编码导致 OSS 校验失败
         byte[] bytes = restClient.get().uri(java.net.URI.create(url)).retrieve().body(byte[].class);
         if (bytes == null || bytes.length == 0) {
             throw new BusinessException("图片下载失败，请重试");
@@ -152,7 +183,7 @@ public class ImageGenerationService {
         return s.length() <= len ? s : s.substring(0, len) + "...";
     }
 
-    /** 任务查询结果 */
-    public record ImageTask(String taskId, String status, String imageUrl) {
+    /** 任务查询结果（persisted=true 表示图片已持久化到存储资产） */
+    public record ImageTask(String taskId, String status, boolean persisted) {
     }
 }
