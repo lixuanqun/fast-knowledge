@@ -1,6 +1,6 @@
 # Docker 部署指南
 
-Fast Knowledge 面向**中小企业私有化部署**（Single Instance、Docker First）：本地开发与生产均基于 **Docker Compose** 拉起依赖（PostgreSQL + Redis + MinIO），应用使用同一镜像与环境变量契约。产品定位见 [产品说明.md](../产品说明.md)。
+Fast Knowledge 面向**中小企业私有化部署**（Single Instance、Docker First）：本地开发与生产均基于 **Docker Compose** 拉起依赖（MySQL 5.7 + Redis + MinIO），应用使用同一镜像与环境变量契约。产品定位见 [产品说明.md](../产品说明.md)。
 
 ## 前置要求
 
@@ -37,7 +37,7 @@ docker compose -f docker-compose.full.yml up -d --build
 
 访问：**http://localhost:8088**
 
-组件：PostgreSQL（pgvector）+ Redis + MinIO + 应用。
+组件：MySQL 5.7 + Redis + MinIO + 应用。
 
 ## 环境变量
 
@@ -45,7 +45,7 @@ docker compose -f docker-compose.full.yml up -d --build
 
 | 变量 | 说明 |
 |------|------|
-| `DB_URL` / `DB_USER` / `DB_PASSWORD` | PostgreSQL |
+| `DB_URL` / `DB_USER` / `DB_PASSWORD` | MySQL 5.7 |
 | `REDIS_HOST` / `REDIS_PORT` | Redis |
 | `MINIO_ENDPOINT` / `MINIO_BUCKET` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | MinIO |
 | `MINIO_REGION` | S3 region（本地 MinIO 用 `us-east-1`，应用默认） |
@@ -58,20 +58,20 @@ docker compose -f docker-compose.full.yml up -d --build
 
 | 卷 | 内容 |
 |----|------|
-| `postgres_data` | 业务库 + LangChain4j 向量表 |
+| `mysql_data` | 业务库数据 |
 | `redis_data` | 缓存、Token 黑名单、索引锁 |
 | `minio_data` | 上传文件 |
 | `app_data` | ONNX 模型等 |
 
-备份 PostgreSQL：
+备份 MySQL：
 
 ```bash
-docker exec fast-knowledge-postgres pg_dump -U postgres fast_knowledge > backup.sql
+docker exec fast-knowledge-mysql mysqldump -uroot -proot --default-character-set=utf8mb4 fast_knowledge > backup.sql
 ```
 
 ## Schema 初始化
 
-应用启动时自动执行 `db/schema-postgres.sql`（含 `CREATE EXTENSION vector`）。向量表 `kb_embeddings` 由 LangChain4j `PgVectorEmbeddingStore` 自动维护。
+应用启动时自动执行 `db/schema-mysql.sql`。向量索引由 `LocalEmbeddingStore` 持久化为本地文件（挂载卷 `app_data:/data/knowledge/vectors`），不占数据库。
 
 ## 生产建议
 
@@ -84,7 +84,7 @@ docker exec fast-knowledge-postgres pg_dump -U postgres fast_knowledge > backup.
 
 ### 数据库连接失败
 
-检查 PostgreSQL 健康：`docker compose logs postgres`
+检查 MySQL 健康：`docker compose logs mysql`
 
 ### 问答无响应
 

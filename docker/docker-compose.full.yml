@@ -1,22 +1,24 @@
-# Fast Knowledge 集群全栈部署（应用 + PostgreSQL/pgvector + Redis + MinIO）
+# Fast Knowledge 集群全栈部署（应用 + MySQL 5.7 + Redis + MinIO）
 # 用法：cd docker && docker compose -f docker-compose.full.yml up -d
 
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: fast-knowledge-postgres
+  mysql:
+    image: mysql:5.7
+    container_name: fast-knowledge-mysql
     restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      POSTGRES_DB: fast_knowledge
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fast_knowledge
+      MYSQL_USER: fast_knowledge
+      MYSQL_PASSWORD: fast_knowledge
       TZ: Asia/Shanghai
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fast_knowledge"]
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -79,7 +81,7 @@ services:
     container_name: fast-knowledge-app
     restart: unless-stopped
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -90,9 +92,9 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: bundle
       SQL_INIT_MODE: ${SQL_INIT_MODE:-always}
-      DB_URL: jdbc:postgresql://postgres:5432/fast_knowledge
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_URL: jdbc:mysql://mysql:3306/fast_knowledge?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      DB_USER: fast_knowledge
+      DB_PASSWORD: fast_knowledge
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CACHE_PROVIDER: redis
@@ -101,20 +103,19 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_PREFIX: knowledge/
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-onnx}
-      ONNX_MODEL_PATH: /data/knowledge/models/bge-small-zh-v1.5.onnx
-      ONNX_TOKENIZER_PATH: /data/knowledge/models/tokenizer.json
-      RERANK_ONNX_MODEL_PATH: /data/knowledge/models/bge-reranker-base.onnx
-      RERANK_ONNX_TOKENIZER_PATH: /data/knowledge/models/bge-reranker-tokenizer.json
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:?请设置 EMBEDDING_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
+      VECTOR_LOCAL_DIR: /data/knowledge/vectors
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       LLM_API_KEY: ${LLM_API_KEY:?请设置 LLM_API_KEY}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       JWT_SECRET: ${JWT_SECRET:?请设置 JWT_SECRET}
-      VECTOR_PROVIDER: pgvector
     volumes:
       - app_data:/data/knowledge
-      - ../data/models:/data/knowledge/models:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/actuator/health"]
       interval: 30s
@@ -123,7 +124,7 @@ services:
       start_period: 90s
 
 volumes:
-  postgres_data:
+  mysql_data:
   redis_data:
   minio_data:
   ollama_data:

@@ -8,7 +8,7 @@ mkdir -p "$OUT_DIR/images" "$OUT_DIR/models"
 
 echo "==> 导出 Docker 镜像..."
 IMAGES=(
-  "postgres:16"
+  "mysql:5.7"
   "redis:7-alpine"
   "minio/minio:latest"
 )

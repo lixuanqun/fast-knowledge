@@ -13,10 +13,10 @@ Write-Host "Fast Knowledge — 启动开发环境" -ForegroundColor Cyan
 Write-Host "  根目录: $Root"
 Write-Host ""
 
-Write-Host "[docker] 检查并启动 PostgreSQL + Redis + MinIO ..." -ForegroundColor Yellow
+Write-Host "[docker] 检查并启动 MySQL + Redis + MinIO ..." -ForegroundColor Yellow
 Push-Location $DockerDir
 try {
-    docker compose up -d postgres redis minio minio-init
+    docker compose up -d mysql redis minio minio-init
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose 启动失败，请确认 Docker Desktop 已运行。"
     }
@@ -28,7 +28,7 @@ $serverCmd = @"
 Set-Location '$Root'
 `$env:JAVA_HOME='$JdkHome'
 `$env:Path="`$env:JAVA_HOME\bin;`$env:Path"
-Write-Host '[server] profile=bundle（PostgreSQL + Redis + MinIO）' -ForegroundColor Green
+Write-Host '[server] profile=bundle（MySQL + Redis + MinIO）' -ForegroundColor Green
 mvn -pl apps/server spring-boot:run '-Dspring-boot.run.profiles=bundle'
 "@
 

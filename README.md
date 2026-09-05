@@ -184,14 +184,14 @@ Vue 3 管理端
     ↓
 Spring Boot API（JWT / LDAP / OIDC / API Key）
     ↓
-PostgreSQL + pgvector · Redis · MinIO
+MySQL 5.7 · Redis · MinIO
     ↓
 LangChain4j — 摄入 / HYBRID 检索 / RAG / 对话 / Rerank
     ↓
 LLM（OpenAI 兼容，可纯内网 Ollama）
 ```
 
-**技术栈**：Java 21 · Spring Boot 3.5 · LangChain4j · Vue 3 · PostgreSQL · Redis · MinIO
+**技术栈**：Java 21 · Spring Boot 3.5 · LangChain4j · Vue 3 · MySQL 5.7 · Redis · MinIO
 
 本地开发：`.\scripts\dev.ps1`（后端 `:8088/api`，前端 `:5174`）
 

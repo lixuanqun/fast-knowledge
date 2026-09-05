@@ -8,7 +8,7 @@ bash scripts/backup/backup-all.sh
 
 默认输出到 `backups/YYYYMMDD_HHMMSS/`，包含：
 
-- `fast_knowledge.sql` — PostgreSQL 逻辑备份
+- `fast_knowledge.sql` — MySQL 逻辑备份（mysqldump）
 - `minio_data.tar.gz` — MinIO 卷（若检测到）
 
 ## 恢复

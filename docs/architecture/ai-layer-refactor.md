@@ -13,7 +13,7 @@
 
 | # | 约束 | 架构响应 |
 |---|------|---------|
-| 1 | 传统企业基础设施：**MySQL 5.7、Redis 5/6、向量存储本地优先** | 部署形态双轨：`Classic`（MySQL 5.7 + Redis 5/6 + **本地文件向量索引**）与 `Standard`（PG16+pgvector，现有形态）。新增 `schema-mysql.sql`；向量存储经 `KbEmbeddingStoreFactory` 按 `knowledge.vector.provider=local/pgvector` 切换；MyBatis-Plus Wrapper 均为可移植 SQL（已核），Redis 用面仅 SET NX / Pub-Sub / INCR（5.0+ 全支持） |
+| 1 | 传统企业基础设施：**MySQL 5.7、Redis 5/6、向量存储本地优先** | **PostgreSQL/pgvector 已整体移除**（含依赖、compose、k8s、schema、脚本），部署收敛为单一形态：MySQL 5.7 + Redis 5/6 + 本地文件向量索引。MyBatis-Plus Wrapper 均为可移植 SQL（已核），Redis 用面仅 SET NX / Pub-Sub / INCR（5.0+ 全支持） |
 | 2 | **去掉本地 ONNX，LLM 与 Embedding 全部云端化** | 移除 OnnxEmbeddingProvider / OnnxRerankScoringModel / onnxruntime / DJL 依赖；EmbeddingProvider 新增 `openai` provider（OpenAI 兼容 `/v1/embeddings`，覆盖 DashScope compatible-mode / 硅基流动 / OpenAI）；Rerank 仅保留云端（Cohere/Jina，已就绪）或关闭。云端 LLM 支持（Ollama/DashScope/OpenAI）已在 `LlmProvider` 就绪 |
 | 3 | **引入 langgraph4j 实现平台编排** | M2 编排层选型由 langchain4j-agentic 改为 **`org.bsc.langgraph4j:langgraph4j-core:1.8.26`**（稳定线，纯图编排，不绑 LangChain4j 版本；节点调用 `ai/port` 端口，零耦合） |
 | 4 | langgraph4j 能否平替 langchain4j | **不能。** langgraph4j 仅是编排层（StateGraph/边/状态机），无模型调用、无 Embedding、无向量存储、无文档解析能力；其 langchain4j 集成模块 POM 中 `dev.langchain4j:langchain4j:1.19.0` 为 compile 依赖。结论：**保留 LangChain4j 作底座**（已压缩至 `langchain4j/` 适配器 + `llm/` + `embedding/` 内），langgraph4j 做编排层，二者为上下层关系 |
@@ -22,10 +22,10 @@
 
 | 维度 | Classic（新增，面向传统企业） | Standard（现有） |
 |------|------------------------------|-----------------|
-| 业务库 | MySQL 5.7（`schema-mysql.sql`，含 FULLTEXT ngram 中文全文索引） | PostgreSQL 16 |
-| 向量存储 | `local`：`InMemoryEmbeddingStore` + per-KB JSON 文件持久化，内存余弦检索（万级 chunk 规模适用） | `pgvector`：HNSW + 混合检索 |
-| 缓存/队列 | Redis 5/6（SET NX + Pub/Sub，已核兼容） | Redis 7 |
-| Embedding/LLM/Rerank | 全云端 API（约束 2） | 云端或本地 Ollama |
+
+
+
+
 
 ---
 

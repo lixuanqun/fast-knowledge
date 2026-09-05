@@ -13,7 +13,7 @@
 
 | 原则 | 后端体现 |
 |------|----------|
-| **Privacy by Default** | 数据落 PostgreSQL + MinIO；Embedding/Rerank 支持 ONNX 本地；`LLM_ALLOW_EXTERNAL` 控制 LLM 外连 |
+| **Privacy by Default** | 数据落 MySQL 5.7 + MinIO；Embedding 走云端 API；`LLM_ALLOW_EXTERNAL` 控制 LLM 外连 |
 | **Single Instance** | 无多租户隔离层；工作区 + 知识库 ACL 做权限边界 |
 | **Unified Stack** | 业务表与 `kb_embeddings` 同库；LangChain4j 统一摄入/检索/RAG |
 | **Docker First** | 依赖 PG/Redis/MinIO；开发与生产同一 env 契约 |
@@ -31,7 +31,7 @@
         ↓
 ② 设计数据结构（Entity / DTO / VO）
         ↓
-③ 设计表结构（`db/schema-postgres.sql`）
+③ 设计表结构（`db/schema-mysql.sql`）
         ↓
 ④ 分层实现（Controller → Service → Mapper）
         ↓
@@ -45,7 +45,7 @@
 | 接口契约优先 | 所有 Controller 路径、请求/响应字段以 [api.md](./api.md) 为准 |
 | 统一响应 | 非 SSE 接口返回 `ApiResponse<T>`，成功 `code=0` |
 | 禁止 Mock | 后端提供真实持久化与业务逻辑，前端直接调用 |
-| Schema 版本化 | 表结构变更同步更新 `schema-postgres.sql`，禁止手改生产库 |
+| Schema 版本化 | 表结构变更同步更新 `db/schema-mysql.sql`，禁止手改生产库 |
 | 权限分层 | 系统角色（ADMIN）在 Controller 注解；知识库 ACL 在 Service 层校验 |
 
 ### 1.2 代码分层
@@ -69,7 +69,7 @@ apps/server/src/main/java/com/fast/knowledge/
 └── config/         # Spring 配置、MybatisPlusConfig、MetaObjectHandler
 
 apps/server/src/main/resources/
-└── db/             # schema-postgres.sql
+└── db/             # schema-mysql.sql
 ```
 
 **MyBatis Plus 约定**：
@@ -170,7 +170,7 @@ PENDING → INDEXING → INDEXED
 
 | 需求 | 接口 | 后端职责 |
 |------|------|----------|
-| 混合检索 | POST /search | PgVector HYBRID + 可选 `SearchRerankService` |
+| 智能检索 | POST /search | 向量检索 + 可选 `SearchRerankService` |
 | RAG 问答 | POST /qa | 单次检索 + `ChatModel` 生成（sources 与上下文一致） |
 | 流式对话 | POST /chat/messages/stream | `KbChatAssistant` + `DbChatMemoryStore` + SSE |
 | 智能写作 | POST /writer/generate | `RagService.buildContext` + `StreamingChatModel` SSE |
@@ -259,11 +259,11 @@ PENDING → INDEXING → INDEXED
 
 ## 4. 表结构设计
 
-Schema 基线脚本：`apps/server/src/main/resources/db/schema-postgres.sql`
+Schema 基线脚本：`apps/server/src/main/resources/db/schema-mysql.sql`
 
-向量表 `kb_embeddings` 由 LangChain4j `PgVectorEmbeddingStore` 自动创建，不在业务 schema 中维护。
+向量索引由 `LocalEmbeddingStore` 持久化为本地文件（`data/vectors/kb-{id}.json`），不在业务 schema 中维护。
 
-> **PostgreSQL 类型约定**（与 `schema-postgres.sql` 一致）：状态/布尔字段用 `SMALLINT`（0/1），时间用 `TIMESTAMP`（映射 Java `LocalDateTime`），结构化字段用 `JSONB`。
+> **MySQL 类型约定**（与 `db/schema-mysql.sql` 一致）：状态/布尔字段用 `SMALLINT`（0/1），时间用 `DATETIME`（映射 Java `LocalDateTime`），结构化字段用 `JSON`。
 
 ### 4.1 ER 关系图
 

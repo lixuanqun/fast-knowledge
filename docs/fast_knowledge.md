@@ -16,7 +16,7 @@
 
 1. **Privacy by Default** — 文档、向量、对话默认留在服务器；Embedding/Rerank 可 ONNX 本地
 2. **Single Instance** — 单租户，轻量工作区 + 知识库 ACL，无多租户运维
-3. **Unified Stack** — PostgreSQL 承载业务表与 LangChain4j 向量表（`kb_embeddings`）
+3. **Unified Stack** — MySQL 5.7 承载业务表；向量索引为本地文件（应用进程内）
 4. **Docker First** — 本地 `docker compose`，生产 K8s，无 SQLite 双轨
 5. **LangChain4j Native** — 摄入、检索、RAG、流式对话均走官方组件
 6. **LLM Neutral** — OpenAI 兼容；`kb_system_config` + `LlmModelRegistry` 支持 UI 热更新
@@ -26,7 +26,7 @@
 ```
 Vue3 前端 ──► Spring Boot API（JWT）
                     │
-        PostgreSQL + pgvector (HYBRID, kb_embeddings)
+        MySQL 5.7 (业务表) + 本地向量索引 (kb-{id}.json)
         Redis + MinIO
                     │
               LangChain4j 1.17
@@ -51,11 +51,11 @@ Vue3 前端 ──► Spring Boot API（JWT）
 | kb_audit_log | 审计日志 |
 | kb_system_config | 实例与 LLM 配置（`llm.provider` 等） |
 
-Schema：`apps/server/src/main/resources/db/schema-postgres.sql`
+Schema：`apps/server/src/main/resources/db/schema-mysql.sql`
 
-向量表由 **LangChain4j `PgVectorEmbeddingStore`** 自动创建（默认 `kb_embeddings`）。
+向量索引由 **`LocalEmbeddingStore`** 持久化为 `data/vectors/kb-{id}.json`（按知识库分文件）。
 
-> **Embedding ID**：PgVector 要求向量主键为 UUID。摄入时 `KbEmbeddingIngestor` 与 `KbEmbeddingStore` 均使用 `UUID.randomUUID()` 生成 ID；业务 chunk 关联写在 metadata 中。
+> **向量 ID**：摄入时 `KbEmbeddingIngestor` 与 `KbEmbeddingStore` 均使用 `UUID.randomUUID()` 生成向量 ID；业务 chunk 关联写入 metadata（kbId/docId/chunkId）。
 
 ## 向量与检索
 
@@ -77,7 +77,7 @@ knowledge:
 
 | 路径 | 组件 |
 |------|------|
-| 摄入 | `KbDocumentSplitter` → `KbEmbeddingIngestor` → `PgVectorEmbeddingStore` |
+| 摄入 | `KbDocumentSplitter` → `KbEmbeddingIngestor` → `LocalEmbeddingStore` |
 | 检索 API | `SearchService` → `KbEmbeddingStore.search()` → `SearchRerankService` |
 | 单轮 RAG | `RagService.ask` → 单次 `SearchService.search` + `ChatModel` |
 | 多轮对话 | `KbChatAssistant` + `CompressingQueryTransformer` + `DbChatMemoryStore` |
@@ -102,7 +102,7 @@ knowledge:
 | 组件 | 实现 |
 |------|------|
 | LLM | `ChatModel` / `StreamingChatModel`（OpenAI 兼容） |
-| 向量库 | `PgVectorEmbeddingStore`（HYBRID） |
+| 向量索引 | `LocalEmbeddingStore`（内存余弦 + JSON 落盘） |
 | RAG | `DefaultRetrievalAugmentor` + `KbHybridContentRetriever` |
 | 对话记忆 | `MessageWindowChatMemory` + `DbChatMemoryStore` |
 | Rerank | `ScoringModel`：ONNX / Cohere / Jina |
@@ -126,7 +126,7 @@ knowledge:
 
 自 SQLite / sqlite-vec / 自研 `VectorStore` SPI 升级后：
 
-1. 使用 PostgreSQL + Docker Compose
+1. 使用 MySQL 5.7 + Docker Compose
 2. 配置 `.env`
 3. 对已有知识库执行**全量 re-index**
 

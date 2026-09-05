@@ -13,7 +13,7 @@ bash scripts/offline/prepare-bundle.sh
 
 产物目录 `dist/offline-bundle/` 包含：
 
-- `images/*.tar` — PostgreSQL、Redis、MinIO、应用镜像
+- `images/*.tar` — MySQL 5.7、Redis、MinIO、应用镜像
 - `models/` — ONNX 模型文件（需事先放入 `data/models/`）
 - `docker-compose.full.yml`
 - `install-offline.sh`

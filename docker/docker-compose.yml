@@ -1,26 +1,28 @@
-# Fast Knowledge 本地开发依赖（PostgreSQL/pgvector + Redis + MinIO）
+# Fast Knowledge 本地开发依赖（MySQL 5.7 + Redis + MinIO）
 # 用法：cd docker && docker compose up -d
-# 启动应用：mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=bundle
+# 启动应用：mvn -pl apps/server spring-boot:run
 
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: fast-knowledge-postgres
+  mysql:
+    image: mysql:5.7
+    container_name: fast-knowledge-mysql
     restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      POSTGRES_DB: fast_knowledge
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fast_knowledge
+      MYSQL_USER: fast_knowledge
+      MYSQL_PASSWORD: fast_knowledge
       TZ: Asia/Shanghai
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fast_knowledge"]
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -74,7 +76,7 @@ services:
       - ai
 
 volumes:
-  postgres_data:
+  mysql_data:
   redis_data:
   minio_data:
   ollama_data:

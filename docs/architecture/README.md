@@ -52,7 +52,7 @@ web (npm build) ──dist──► apps/server/target/classes/static ──► 
 ```
 上传文档 → DocumentIngestService
          → KbDocumentSplitter（分块）→ KbEmbeddingIngestor（向量化）
-         → PgVectorEmbeddingStore（HYBRID 索引）
+         → LocalEmbeddingStore（本地向量索引）
          → SearchService / KbHybridContentRetriever（检索 ± Rerank）
          → RagService（单轮 QA）/ KbChatAssistant（流式对话）
          → ChatModel / StreamingChatModel（生成）
@@ -62,7 +62,7 @@ web (npm build) ──dist──► apps/server/target/classes/static ──► 
 
 | 组件 | 配置项 | 默认 |
 |-----|--------|------|
-| 向量库 | `knowledge.vector.pgvector.*` | PgVector HYBRID |
+| 向量索引 | 本地文件存储 `data/vectors/kb-{id}.json` | LocalEmbeddingStore 余弦检索 |
 | 缓存 | `knowledge.cache.provider` | `redis` |
 | 对象存储 | `knowledge.storage.provider` | `minio` |
 | Embedding | `knowledge.embedding.provider` | `onnx` |

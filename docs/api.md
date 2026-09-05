@@ -121,7 +121,7 @@ interface UserVO {
 interface SystemConfig {
   instanceName: string
   setupComplete: boolean
-  vectorProvider: string       // 固定为 "pgvector"
+  vectorProvider: string       // 固定为 "local"
   embeddingProvider: string    // onnx | ollama | hash
   llmProvider?: string
   llmProviderName?: string
@@ -990,7 +990,7 @@ interface AuditLog {
 
 #### POST /search
 
-向量 + 全文 **HYBRID** 检索（PgVector RRF 融合）。若启用 `RERANK_ENABLED`，先扩召回再重排序。
+向量检索（本地索引，余弦相似度）。若启用 `RERANK_ENABLED`，先扩召回再重排序。
 
 | 项 | 值 |
 |----|-----|

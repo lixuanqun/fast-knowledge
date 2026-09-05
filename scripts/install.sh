@@ -55,7 +55,7 @@ ensure_llm_api_key() {
 }
 
 echo "==> Fast Knowledge 全栈安装（Docker Compose）"
-echo "    将启动 PostgreSQL、Redis、MinIO 与应用容器"
+echo "    将启动 MySQL、Redis、MinIO 与应用容器"
 
 if [ ! -f .env ]; then
   cp .env.example .env 2>/dev/null || cp ../.env.example .env 2>/dev/null || true

@@ -5,7 +5,7 @@ $Repo = "lixuanqun/fast-knowledge"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Description = Get-Content -Path (Join-Path $Root ".github/description.txt") -Raw -Encoding UTF8
 $Description = $Description.Trim()
-$Topics = "knowledge-base,rag,retrieval-augmented-generation,langchain4j,pgvector,spring-boot,vue3,docker,self-hosted,private-deployment,on-premise,enterprise-search,semantic-search,hybrid-search,llm,llm-agnostic,java,typescript,open-source,chinese"
+$Topics = "knowledge-base,rag,retrieval-augmented-generation,langchain4j,mysql,spring-boot,vue3,docker,self-hosted,private-deployment,on-premise,enterprise-search,semantic-search,hybrid-search,llm,llm-agnostic,java,typescript,open-source,chinese"
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     throw "GitHub CLI (gh) not found. Install from https://cli.github.com/"

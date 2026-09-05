@@ -45,7 +45,7 @@ function Get-EnvVarValue {
 
 Write-Host ""
 Write-Host "==> Fast Knowledge 全栈安装（Docker Compose）" -ForegroundColor Cyan
-Write-Host "    将启动 PostgreSQL、Redis、MinIO 与应用容器"
+Write-Host "    将启动 MySQL、Redis、MinIO 与应用容器"
 Write-Host ""
 
 if (-not (Test-Path $EnvFile)) {

@@ -17,7 +17,7 @@
           <span class="meta-sep">·</span>
           <span>检索 Top K：{{ searchTopK }}</span>
           <span class="meta-sep">·</span>
-          <span>混合检索：PgVector HYBRID</span>
+          <span>混合检索：本地向量 + 关键词</span>
         </div>
       </div>
     </div>

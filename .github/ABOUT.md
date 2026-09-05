@@ -14,11 +14,11 @@
 
 来源：[description.txt](./description.txt)
 
-> 面向中小企业的开源私有化知识库：单实例部署、数据本地可控、LLM 中立。LangChain4j RAG、PgVector 混合检索、Docker 一键部署。
+> 面向中小企业的开源私有化知识库：单实例部署、数据本地可控、LLM 中立。LangChain4j RAG、混合检索、MySQL + 本地向量、Docker 一键部署。
 
 ## 推荐 Topics
 
-`knowledge-base` · `rag` · `langchain4j` · `pgvector` · `self-hosted` · `private-deployment` · `llm-agnostic` · `spring-boot` · `vue3` · `docker` · `open-source` 等（GitHub 上限 20 个）
+`knowledge-base` · `rag` · `langchain4j` · `mysql` · `self-hosted` · `private-deployment` · `llm-agnostic` · `spring-boot` · `vue3` · `docker` · `open-source` 等（GitHub 上限 20 个）
 
 完整列表见 [set-github-metadata.ps1](../scripts/set-github-metadata.ps1)。
 

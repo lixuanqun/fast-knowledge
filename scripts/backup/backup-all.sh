@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 备份 PostgreSQL 与 MinIO 数据（需在部署主机执行，依赖 docker compose）
+# 备份 MySQL 与 MinIO 数据（需在部署主机执行，依赖 docker compose）
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

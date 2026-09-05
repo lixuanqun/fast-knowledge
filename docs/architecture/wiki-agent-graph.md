@@ -23,7 +23,7 @@
 - Wiki 审核发布流（`WikiService.publish/reject`，DRAFT→PUBLISHED）、`index.md` 目录重建
 - 双路召回路由（`WikiQueryRouter` + `WikiAwareRetrievalService`）
 - **写文档沉淀闭环已存在**：`POST /writer/save` → `DocumentService.saveTextDocument()`（落库 + IndexTask + `dispatchIndex`）→ 索引成功后 `IndexTaskProcessor:180` 自动触发 `wikiCompileService.scheduleCompile()`；前端保存按钮与 `saveWriterDocument` API 均已有
-- `kb_wiki_link` 表已在 `schema-postgres.sql` 预留（from_page_id → to_page_id），代码尚未引用
+- `kb_wiki_link` 表已在 `db/schema-mysql.sql` 与 `schema-postgres.sql`（历史）中预留（from_page_id → to_page_id）
 
 ### 1.2 目标
 

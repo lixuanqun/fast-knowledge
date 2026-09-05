@@ -64,10 +64,10 @@
 ## 技术架构（摘要）
 
 ```
-摄入 → KbEmbeddingIngestor → PgVectorEmbeddingStore (HYBRID)
+摄入 → KbEmbeddingIngestor → LocalEmbeddingStore（本地向量索引）
 检索 → SearchService → [Rerank] → RAG 问答/对话/写文档
 LLM  → LlmModelRegistry（UI 配置热刷新）
-存储 → PostgreSQL · Redis · MinIO
+存储 → MySQL 5.7 · Redis · MinIO
 ```
 
 **已移除**：SQLite、sqlite-vec、自研 VectorStore SPI、Caffeine、本地文件存储。

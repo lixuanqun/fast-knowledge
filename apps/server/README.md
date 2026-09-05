@@ -9,7 +9,7 @@ Java 21 + Spring Boot 3.5 知识库 API 服务，RAG 基于 **LangChain4j 1.17**
 
 - JWT 认证 + 知识库 ACL + 用户管理
 - 文档上传与异步索引（Tika）
-- PgVector **HYBRID** 混合检索 + 可选 **Reranker**（ONNX / Cohere / Jina）
+- 本地向量检索 + 可选 **Reranker**（Cohere / Jina 云端）
 - LangChain4j RAG：问答 / 多轮流式对话 / 智能写文档
 - **LLM 中立**：`LlmSettingsService` + `LlmModelRegistry` 管理界面配置热刷新
 
@@ -17,7 +17,7 @@ Java 21 + Spring Boot 3.5 知识库 API 服务，RAG 基于 **LangChain4j 1.17**
 
 | 组件 | 技术 |
 |------|------|
-| 数据库 + 向量 | PostgreSQL 16 + pgvector（`kb_embeddings`） |
+| 数据库 + 向量 | MySQL 5.7 + 本地向量索引（`data/vectors/`） |
 | 缓存 | Redis |
 | 文件存储 | MinIO |
 | LLM | OpenAI 兼容 API / Ollama（UI 或环境变量配置） |
@@ -40,7 +40,7 @@ mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=bundle
 |---------|------|
 | `llm/LlmConfigResolver` | LLM 预设解析（DB > env > 默认） |
 | `llm/LlmModelRegistry` | ChatModel 热刷新 |
-| `langchain4j/store/` | PgVector HYBRID |
+| `langchain4j/store/` | 本地向量索引 |
 | `langchain4j/ingest/` | 分块与向量化 |
 | `langchain4j/rerank/` | 可选检索重排序 |
 | `service/RagService` | 单轮 RAG 问答 |
