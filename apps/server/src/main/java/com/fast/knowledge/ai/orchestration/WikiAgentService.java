@@ -136,7 +136,7 @@ public class WikiAgentService {
         args.put("docId", documentId);
         args.put("title", doc.getTitle() != null ? doc.getTitle() : "");
         args.put("docNo", doc.getDocNo() != null ? doc.getDocNo() : "");
-        args.put("meta", buildSourceHint(doc));
+        args.put("meta", StringUtils.buildSourceHint(doc.getTitle(), doc.getDocNo(), doc.getDocType(), null));
         args.put("docText", text);
         args.put("existingMd", existing != null && existing.getContentMd() != null ? existing.getContentMd() : "");
         args.put("iteration", 0);
@@ -225,7 +225,21 @@ public class WikiAgentService {
             page.setSourceDocIds(String.valueOf(doc.getId()));
             page.setVersion(toVersion);
             page.setStatus(status);
-            wikiPageMapper.insert(page);
+            try {
+                wikiPageMapper.insert(page);
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 并发竞态：另一线程已插入相同 slug，回退为 update
+                page = wikiPageMapper.findByKbAndSlug(doc.getKbId(), slug);
+                if (page == null) {
+                    throw new IllegalStateException("Wiki 页并发插入失败且回退查询也为空: " + slug, e);
+                }
+                page.setTitle(doc.getTitle());
+                page.setContentMd(result.draftMd());
+                page.setSourceDocIds(String.valueOf(doc.getId()));
+                page.setVersion(toVersion);
+                page.setStatus(status);
+                wikiPageMapper.updateById(page);
+            }
         } else {
             page.setTitle(doc.getTitle());
             page.setContentMd(result.draftMd());
@@ -322,14 +336,5 @@ public class WikiAgentService {
         return "检查意见：\n" + issues + "\n\n草稿：\n" + StringUtils.truncate(draftMd, 8000);
     }
 
-    private static String buildSourceHint(KbDocument doc) {
-        StringBuilder sb = new StringBuilder("文档：《").append(doc.getTitle()).append("》");
-        if (doc.getDocNo() != null && !doc.getDocNo().isBlank()) {
-            sb.append("，文号：").append(doc.getDocNo());
-        }
-        if (doc.getDocType() != null && !doc.getDocType().isBlank()) {
-            sb.append("，类型：").append(doc.getDocType());
-        }
-        return sb.toString();
-    }
+
 }

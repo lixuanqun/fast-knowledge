@@ -3,6 +3,7 @@ package com.fast.knowledge.storage;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -62,6 +63,13 @@ public class MinioStorageProvider implements StorageProvider {
                 ? minio.getRegion() : "us-east-1";
         this.s3Client = builder.region(Region.of(region)).build();
         ensureBucket();
+    }
+
+    @PreDestroy
+    void destroy() {
+        if (s3Client != null) {
+            s3Client.close();
+        }
     }
 
     /** bucket 缺失时自动创建，使应用不依赖 compose/init 脚本即可完成首跑 */

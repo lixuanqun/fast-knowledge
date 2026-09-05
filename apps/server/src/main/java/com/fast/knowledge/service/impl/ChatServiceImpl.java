@@ -5,6 +5,7 @@ import com.fast.knowledge.ai.port.ConversationPort;
 import com.fast.knowledge.audit.AuditActions;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.common.SseEmitterHelper;
+import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.mapper.ChatMessageMapper;
 import com.fast.knowledge.mapper.ChatSessionMapper;
 import com.fast.knowledge.model.dto.ChatMessageRequest;
@@ -159,7 +160,7 @@ public class ChatServiceImpl implements ChatService {
                                             activeSession.getId(), java.time.LocalDateTime.now());
 
                                     auditLogService.log(AuditActions.CHAT, "SESSION", activeSession.getId(),
-                                            "kbId=" + kbId + ", message=" + truncate(originalMessage, 200));
+                                            "kbId=" + kbId + ", message=" + StringUtils.truncateEllipsis(originalMessage, 200));
 
                                     Map<String, Object> done = new HashMap<>();
                                     done.put("sessionId", activeSession.getId());
@@ -199,17 +200,17 @@ public class ChatServiceImpl implements ChatService {
             }
             return session;
         }
-        return createSession(userId, request.getKbId(), truncate(request.getMessage(), 20));
+        return createSession(userId, request.getKbId(), safeTitle(request.getMessage(), 20));
     }
 
     private Long resolveSessionIdSafely(ChatMessageRequest request) {
         return request != null ? request.getSessionId() : null;
     }
 
-    private String truncate(String s, int len) {
+    private static String safeTitle(String s, int len) {
         if (s == null) {
             return "新对话";
         }
-        return s.length() <= len ? s : s.substring(0, len) + "...";
+        return StringUtils.truncateEllipsis(s, len);
     }
 }

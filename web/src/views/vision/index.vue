@@ -63,8 +63,7 @@
             class="vision-error-alert"
           />
           <div v-else-if="loading && !answer" class="generating-hint">
-            <span class="streaming-dots"><i /><i /><i /></span>
-            视觉模型识别中...
+            <StreamingIndicator text="视觉模型识别中..." />
           </div>
           <MarkdownBody v-else-if="answer" :content="answer" />
         </el-card>
@@ -82,6 +81,7 @@ import { askAboutImage } from '@/api'
 import { MarkdownBody } from '@/components/async'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import StreamingIndicator from '@/components/StreamingIndicator.vue'
 import { Picture, UploadFilled } from '@element-plus/icons-vue'
 
 const file = ref<File>()

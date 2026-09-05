@@ -1,5 +1,6 @@
 package com.fast.knowledge.ai.orchestration.retrieval;
 
+import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.service.SearchService;
 import com.fast.knowledge.model.vo.SearchHitVO;
@@ -58,10 +59,10 @@ public class RetrievalOrchestrator {
     private static List<SearchHitVO> merge(List<SearchHitVO> primary, List<SearchHitVO> secondary, int limit) {
         Map<String, SearchHitVO> map = new LinkedHashMap<>();
         for (SearchHitVO hit : primary) {
-            map.putIfAbsent(key(hit), hit);
+            map.putIfAbsent(StringUtils.dedupeKey(hit.getDocType(), hit.getDocumentId(), hit.getChunkId()), hit);
         }
         for (SearchHitVO hit : secondary) {
-            map.putIfAbsent(key(hit), hit);
+            map.putIfAbsent(StringUtils.dedupeKey(hit.getDocType(), hit.getDocumentId(), hit.getChunkId()), hit);
             if (map.size() >= limit) {
                 break;
             }
@@ -69,10 +70,5 @@ public class RetrievalOrchestrator {
         return new ArrayList<>(map.values()).subList(0, Math.min(limit, map.size()));
     }
 
-    private static String key(SearchHitVO hit) {
-        if ("WIKI".equals(hit.getDocType())) {
-            return "wiki:" + hit.getDocumentId();
-        }
-        return "doc:" + hit.getDocumentId() + ":" + hit.getChunkId();
-    }
+
 }

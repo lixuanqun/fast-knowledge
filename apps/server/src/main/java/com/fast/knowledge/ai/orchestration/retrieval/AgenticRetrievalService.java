@@ -1,6 +1,7 @@
 package com.fast.knowledge.ai.orchestration.retrieval;
 
 import com.fast.knowledge.ai.port.ChatPort;
+import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.service.MetricsService;
 import com.fast.knowledge.service.QueryComplexityClassifier;
@@ -73,7 +74,7 @@ public class AgenticRetrievalService {
                 continue;
             }
             for (SearchHitVO hit : hits) {
-                merged.putIfAbsent(dedupeKey(hit), hit);
+                merged.putIfAbsent(StringUtils.dedupeKey(hit.getDocType(), hit.getDocumentId(), hit.getChunkId()), hit);
                 if (merged.size() >= 16) {
                     break;
                 }
@@ -162,12 +163,7 @@ public class AgenticRetrievalService {
         return out;
     }
 
-    private static String dedupeKey(SearchHitVO hit) {
-        if ("WIKI".equals(hit.getDocType())) {
-            return "wiki:" + hit.getDocumentId();
-        }
-        return "doc:" + hit.getDocumentId() + ":" + hit.getChunkId();
-    }
+
 
     @FunctionalInterface
     public interface BiFunctionThrowing<A, B, R> {

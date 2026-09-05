@@ -83,8 +83,7 @@
             </div>
           </template>
           <div v-if="generating && !content" class="generating-hint">
-            <span class="streaming-dots"><i /><i /><i /></span>
-            {{ stage || '正在生成文档...' }}
+            <StreamingIndicator :text="stage || '正在生成文档...'" />
           </div>
           <div v-if="generating && stage" class="writer-stage">{{ stage }}</div>
           <el-alert
@@ -113,6 +112,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import KbSelect from '@/components/KbSelect.vue'
 import { MarkdownBody } from '@/components/async'
 import EmptyState from '@/components/EmptyState.vue'
+import StreamingIndicator from '@/components/StreamingIndicator.vue'
 import { useSaveWriterDocumentMutation } from '@/composables/queries/useWriter'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy, MagicStick } from '@element-plus/icons-vue'
@@ -300,39 +300,7 @@ async function handleSave() {
   justify-content: center;
 }
 
-.streaming-dots {
-  display: inline-flex;
-  gap: 4px;
-}
 
-.streaming-dots i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: $fk-primary;
-  animation: dot-bounce 1.2s infinite ease-in-out;
-}
-
-.streaming-dots i:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.streaming-dots i:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes dot-bounce {
-  0%,
-  80%,
-  100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  40% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 
 .btn-icon {
   margin-right: 4px;

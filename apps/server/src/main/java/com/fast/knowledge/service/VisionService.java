@@ -3,6 +3,7 @@ package com.fast.knowledge.service;
 import com.fast.knowledge.ai.port.VisionPort;
 import com.fast.knowledge.audit.AuditActions;
 import com.fast.knowledge.common.BusinessException;
+import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.config.KnowledgeProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -62,7 +63,7 @@ public class VisionService {
 
         String answer = visionPort.askAboutImage(base64, mimeType, question.trim());
         auditLogService.log(AuditActions.VISION_ASK, "IMAGE", null,
-                "type=" + mimeType + ", size=" + image.getSize() + ", question=" + truncate(question, 100));
+                "type=" + mimeType + ", size=" + image.getSize() + ", question=" + StringUtils.truncateEllipsis(question, 100));
         return answer;
     }
 
@@ -77,7 +78,5 @@ public class VisionService {
         return type;
     }
 
-    private static String truncate(String s, int len) {
-        return s.length() <= len ? s : s.substring(0, len) + "...";
-    }
+
 }

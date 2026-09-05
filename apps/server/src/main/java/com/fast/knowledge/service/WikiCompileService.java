@@ -138,7 +138,7 @@ public class WikiCompileService {
             }
             // LLM 调用在事务外 —— 避免长时间持有 DB 连接
             String text = textExtractionService.extractFullText(doc);
-            String sourceHint = buildSourceHint(doc);
+            String sourceHint = StringUtils.buildSourceHint(doc.getTitle(), doc.getDocNo(), doc.getDocType(), doc.getDepartment());
             String userPrompt = sourceHint + "\n\n原文摘录：\n" + StringUtils.truncate(text, 12000);
             String contentMd = chatPort.complete(WIKI_SYSTEM, userPrompt);
 
@@ -195,17 +195,5 @@ public class WikiCompileService {
         wikiCompileTaskMapper.updateById(task);
     }
 
-    private String buildSourceHint(KbDocument doc) {
-        StringBuilder sb = new StringBuilder("文档：《").append(doc.getTitle()).append("》");
-        if (doc.getDocNo() != null && !doc.getDocNo().isBlank()) {
-            sb.append("，文号：").append(doc.getDocNo());
-        }
-        if (doc.getDocType() != null && !doc.getDocType().isBlank()) {
-            sb.append("，类型：").append(doc.getDocType());
-        }
-        if (doc.getDepartment() != null && !doc.getDepartment().isBlank()) {
-            sb.append("，部门：").append(doc.getDepartment());
-        }
-        return sb.toString();
-    }
+
 }

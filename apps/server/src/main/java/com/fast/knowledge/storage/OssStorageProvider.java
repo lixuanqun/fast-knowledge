@@ -3,6 +3,7 @@ package com.fast.knowledge.storage;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -73,6 +74,13 @@ public class OssStorageProvider implements StorageProvider {
         builder.region(Region.of(deriveRegion(oss.getEndpoint(), oss.getRegion())));
         this.s3Client = builder.build();
         ensureBucket();
+    }
+
+    @PreDestroy
+    void destroy() {
+        if (s3Client != null) {
+            s3Client.close();
+        }
     }
 
     /** bucket 缺失时自动创建（使用 S3 兼容协议，无需控制台预建） */

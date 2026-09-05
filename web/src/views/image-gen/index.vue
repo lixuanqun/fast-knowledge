@@ -56,8 +56,7 @@
             class="gen-error-alert"
           />
           <div v-else-if="generating" class="generating-hint">
-            <span class="streaming-dots"><i /><i /><i /></span>
-            {{ statusLabel }}
+            <StreamingIndicator :text="statusLabel" />
           </div>
           <el-image
             v-else-if="imageUrl"
@@ -79,6 +78,7 @@ import { ElMessage } from 'element-plus'
 import { fetchImageGenImage, getImageGenTask, submitImageGen } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import StreamingIndicator from '@/components/StreamingIndicator.vue'
 import { MagicStick } from '@element-plus/icons-vue'
 
 const prompt = ref('')

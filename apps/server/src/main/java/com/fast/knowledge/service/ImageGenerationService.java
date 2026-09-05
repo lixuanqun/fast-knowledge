@@ -5,6 +5,7 @@ import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fast.knowledge.common.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -64,7 +65,7 @@ public class ImageGenerationService {
         }
         taskModels.put(taskId, cfg.getModel());
         auditLogService.log("IMAGE_GEN_SUBMIT", "TASK", null,
-                "taskId=" + taskId + ", prompt=" + truncate(prompt, 100));
+                "taskId=" + taskId + ", prompt=" + StringUtils.truncateEllipsis(prompt, 100));
         return taskId;
     }
 
@@ -179,9 +180,7 @@ public class ImageGenerationService {
         }
     }
 
-    private String truncate(String s, int len) {
-        return s.length() <= len ? s : s.substring(0, len) + "...";
-    }
+
 
     /** 任务查询结果（persisted=true 表示图片已持久化到存储资产） */
     public record ImageTask(String taskId, String status, boolean persisted) {

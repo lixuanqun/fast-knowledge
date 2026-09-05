@@ -1,5 +1,6 @@
 package com.fast.knowledge.ai.orchestration.retrieval;
 
+import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.service.WikiService;
 import com.fast.knowledge.model.entity.WikiPage;
@@ -92,15 +93,10 @@ public class WikiQueryRouter {
         hit.setDocumentTitle("[Wiki] " + page.getTitle());
         hit.setSection(page.getSlug());
         hit.setDocType("WIKI");
-        hit.setContent(truncate(page.getContentMd(), 6000));
+        hit.setContent(StringUtils.truncate(page.getContentMd(), 6000));
         hit.setScore(1.0);
         return hit;
     }
 
-    private static String truncate(String text, int max) {
-        if (text == null) {
-            return "";
-        }
-        return text.length() <= max ? text : text.substring(0, max) + "…";
-    }
+
 }
