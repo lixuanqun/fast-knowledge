@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * LangChain4j 文档向量化摄入：分块元数据绑定后批量嵌入并写入 PgVector。
+ * LangChain4j 文档向量化摄入：分块元数据绑定后批量嵌入并写入向量存储。
  */
 @Service
 public class KbEmbeddingIngestor {

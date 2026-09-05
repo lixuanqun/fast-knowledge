@@ -2,8 +2,6 @@
 knowledge:
   edition: ${KNOWLEDGE_EDITION:community}
   vector:
-    # pgvector（Standard 形态）| local（Classic 形态：本地文件向量索引，MySQL 部署用）
-    provider: ${VECTOR_PROVIDER:pgvector}
     local:
       storage-dir: ${VECTOR_LOCAL_DIR:./data/vectors}
   embedding:

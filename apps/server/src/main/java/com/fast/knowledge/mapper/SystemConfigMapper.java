@@ -15,7 +15,7 @@ public interface SystemConfigMapper extends BaseMapper<SystemConfig> {
     String getValue(@Param("key") String key);
 
     /**
-     * 跨方言 upsert（Java 层实现，兼容 PostgreSQL / MySQL）：
+     * 跨方言 upsert（Java 层实现）：
      * 先按主键查询，缺失则插入；并发插入撞唯一键时回退为更新。
      */
     default int upsert(String key, String value) {

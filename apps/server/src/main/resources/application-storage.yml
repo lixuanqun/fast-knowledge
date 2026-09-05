@@ -9,8 +9,6 @@ knowledge:
       secret-key: ${MINIO_SECRET_KEY:minioadmin}
       region: ${MINIO_REGION:us-east-1}
       prefix: ${MINIO_PREFIX:knowledge/}
-  vector:
-    provider: pgvector
   cache:
     provider: redis
   setup:

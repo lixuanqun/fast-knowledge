@@ -52,7 +52,7 @@ public class SystemConfigService {
         Map<String, Object> config = new HashMap<>();
         config.put("instanceName", getInstanceName());
         config.put("setupComplete", isSetupComplete());
-        config.put("vectorProvider", properties.getVector().getProvider());
+        config.put("vectorProvider", "local");
         config.put("embeddingProvider", properties.getEmbedding().getProvider());
 
         EffectiveLlmSettings effective = llmSettingsService.getEffectiveLlm();

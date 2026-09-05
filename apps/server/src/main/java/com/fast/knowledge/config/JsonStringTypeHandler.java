@@ -2,7 +2,6 @@ package com.fast.knowledge.config;
 
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.postgresql.util.PGobject;
 
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
@@ -10,18 +9,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Maps PostgreSQL JSONB/JSON columns to Java String.
- * PostgreSQL JDBC returns JSONB as PGobject; this handler converts to plain String.
+ * Maps JSON columns to Java String.
+ * MySQL JSON 列可直接以字符串写入/读取；读取时兼容驱动返回的非 String 类型。
  */
-public class JsonbToStringTypeHandler extends BaseTypeHandler<String> {
+public class JsonStringTypeHandler extends BaseTypeHandler<String> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType)
             throws SQLException {
-        PGobject pg = new PGobject();
-        pg.setType("jsonb");
-        pg.setValue(parameter);
-        ps.setObject(i, pg);
+        ps.setString(i, parameter);
     }
 
     @Override
@@ -40,12 +36,6 @@ public class JsonbToStringTypeHandler extends BaseTypeHandler<String> {
     }
 
     private static String toString(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof PGobject pg) {
-            return pg.getValue();
-        }
-        return value.toString();
+        return value == null ? null : value.toString();
     }
 }

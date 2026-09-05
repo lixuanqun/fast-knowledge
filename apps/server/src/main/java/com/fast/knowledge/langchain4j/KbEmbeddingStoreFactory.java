@@ -4,9 +4,7 @@ import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.langchain4j.store.LocalEmbeddingStore;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import jakarta.annotation.PreDestroy;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
@@ -14,24 +12,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 知识库向量存储工厂 — 双轨：
- * <ul>
- *   <li>provider=pgvector（Standard 形态）：PgVectorEmbeddingStore（HYBRID + HNSW）</li>
- *   <li>provider=local（Classic 形态，MySQL 部署默认）：LocalEmbeddingStore（本地文件 + 内存检索）</li>
- * </ul>
- * 上层（KbEmbeddingIngestor / Search / Retrieval）只面向 EmbeddingStore 接口，无感知差异。
+ * 知识库向量存储工厂 — 本地文件向量索引（LocalEmbeddingStore：内存余弦检索 + per-KB JSON 持久化）。
+ * 上层（KbEmbeddingIngestor / Search / Retrieval）只面向 EmbeddingStore 接口。
  */
 @Component
 public class KbEmbeddingStoreFactory {
 
-    private final ObjectProvider<PgVectorEmbeddingStore> pgStoreProvider;
     private final KnowledgeProperties properties;
     private final Map<Long, KbEmbeddingStore> stores = new ConcurrentHashMap<>();
     private final Map<Long, LocalEmbeddingStore> localStores = new ConcurrentHashMap<>();
 
-    public KbEmbeddingStoreFactory(ObjectProvider<PgVectorEmbeddingStore> pgStoreProvider,
-                                   KnowledgeProperties properties) {
-        this.pgStoreProvider = pgStoreProvider;
+    public KbEmbeddingStoreFactory(KnowledgeProperties properties) {
         this.properties = properties;
     }
 
@@ -54,12 +45,9 @@ public class KbEmbeddingStoreFactory {
     }
 
     private EmbeddingStore<TextSegment> resolveDelegate(Long kbId) {
-        if ("local".equalsIgnoreCase(properties.getVector().getProvider())) {
-            return localStores.computeIfAbsent(kbId, id -> {
-                Path file = Path.of(properties.getVector().getLocal().getStorageDir(), "kb-" + id + ".json");
-                return LocalEmbeddingStore.load(file);
-            });
-        }
-        return pgStoreProvider.getObject();
+        return localStores.computeIfAbsent(kbId, id -> {
+            Path file = Path.of(properties.getVector().getLocal().getStorageDir(), "kb-" + id + ".json");
+            return LocalEmbeddingStore.load(file);
+        });
     }
 }

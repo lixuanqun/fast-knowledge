@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>按环节分段计时，支持检索链路各阶段独立观测：
  * <ul>
  *   <li>kb.search.embedding.latency — Embedding 向量化延迟</li>
- *   <li>kb.search.vector.latency — pgvector 检索延迟</li>
+ *   <li>kb.search.vector.latency — 向量检索延迟</li>
  *   <li>kb.search.rerank.latency — 重排序延迟</li>
  *   <li>kb.search.latency — 检索全链路延迟</li>
  *   <li>kb.rag.latency — RAG 全链路延迟（检索+生成）</li>
@@ -66,7 +66,7 @@ public class MetricsService {
         this.embeddingLatency = Timer.builder("kb.search.embedding.latency")
                 .description("Embedding 向量化延迟").register(registry);
         this.vectorSearchLatency = Timer.builder("kb.search.vector.latency")
-                .description("pgvector 检索延迟").register(registry);
+                .description("向量检索延迟").register(registry);
         this.rerankLatency = Timer.builder("kb.search.rerank.latency")
                 .description("重排序延迟").register(registry);
         this.searchLatency = Timer.builder("kb.search.latency")

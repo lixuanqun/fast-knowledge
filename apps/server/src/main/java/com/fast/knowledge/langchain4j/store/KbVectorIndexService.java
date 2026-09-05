@@ -9,7 +9,7 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 
 /**
  * 向量索引维护（按元数据删除）—— 经 {@link KbEmbeddingStoreFactory} 双轨路由
- * （pgvector 与本地文件索引均可按元数据过滤删除）。
+ * （本地文件向量索引按元数据过滤删除）。
  */
 @Service
 public class KbVectorIndexService {
@@ -31,7 +31,7 @@ public class KbVectorIndexService {
 
     public void deleteKb(Long kbId) {
         storeFactory.getStore(kbId).removeAll(metadataKey(KbEmbeddingStore.META_KB_ID).isEqualTo(kbId));
-        // local 形态下同步落盘空库并逐出缓存；pgvector 形态仅逐出包装缓存
+        // 同步落盘空库并逐出缓存
         storeFactory.evict(kbId);
     }
 

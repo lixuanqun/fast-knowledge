@@ -14,14 +14,14 @@ import static org.mockito.Mockito.when;
 class MybatisPlusConfigTest {
 
     @Test
-    void resolveDbType_detectsPostgresql() throws Exception {
+    void resolveDbType_detectsMysql() throws Exception {
         DataSource ds = mock(DataSource.class);
         Connection conn = mock(Connection.class);
         DatabaseMetaData meta = mock(DatabaseMetaData.class);
         when(ds.getConnection()).thenReturn(conn);
         when(conn.getMetaData()).thenReturn(meta);
-        when(meta.getURL()).thenReturn("jdbc:postgresql://localhost:5432/fast_knowledge");
+        when(meta.getURL()).thenReturn("jdbc:mysql://localhost:3306/fast_knowledge");
 
-        assertEquals(DbType.POSTGRE_SQL, MybatisPlusConfig.resolveDbType(ds));
+        assertEquals(DbType.MYSQL, MybatisPlusConfig.resolveDbType(ds));
     }
 }

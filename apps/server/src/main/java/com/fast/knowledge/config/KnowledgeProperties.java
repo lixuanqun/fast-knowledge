@@ -118,9 +118,7 @@ public class KnowledgeProperties {
 
     @Data
     public static class Vector {
-        /** pgvector（Standard 形态）| local（Classic 形态：本地文件向量索引，MySQL 部署默认） */
-        private String provider = "pgvector";
-        private PgVector pgvector = new PgVector();
+        /** 本地文件向量索引（LocalEmbeddingStore：内存检索 + JSON 持久化） */
         private Local local = new Local();
     }
 
@@ -128,24 +126,6 @@ public class KnowledgeProperties {
     public static class Local {
         /** 本地向量索引持久化目录（per-KB JSON 文件） */
         private String storageDir = "./data/vectors";
-    }
-
-    @Data
-    public static class PgVector {
-        private String host = "localhost";
-        private int port = 5432;
-        private String database = "fast_knowledge";
-        private String user = "postgres";
-        private String password = "postgres";
-        private String table = "kb_embeddings";
-        private String searchMode = "HYBRID";
-        private int rrfK = 60;
-        /** 索引类型: hnsw | ivfflat */
-        private String indexType = "hnsw";
-        /** HNSW 构建参数 m（每层最大连接数，默认 16） */
-        private int hnswM = 16;
-        /** HNSW 构建参数 ef_construction（默认 200） */
-        private int hnswEfConstruction = 200;
     }
 
     @Data

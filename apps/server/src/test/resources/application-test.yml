@@ -2,15 +2,13 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: classpath:db/schema-postgres.sql
+      schema-locations: classpath:db/schema-mysql.sql
 
 knowledge:
   cache:
     provider: redis
   embedding:
     provider: hash
-  vector:
-    provider: pgvector
   storage:
     provider: minio
     minio:
