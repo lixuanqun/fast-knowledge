@@ -14,6 +14,8 @@ export * from './sse'
 export * from './api-keys'
 export * from './wiki'
 export * from './scenarios'
+export * from './vision'
+export * from './image-gen'
 
 // backward-compatible type re-exports
 export type { KbUser } from './users'

@@ -22,6 +22,8 @@ public class KnowledgeProperties {
     private Auth auth = new Auth();
     private Wiki wiki = new Wiki();
     private Writer writer = new Writer();
+    private Vision vision = new Vision();
+    private ImageGen imageGen = new ImageGen();
     private Chat chat = new Chat();
     private QueryRewrite queryRewrite = new QueryRewrite();
     private Index index = new Index();
@@ -55,6 +57,26 @@ public class KnowledgeProperties {
         private int maxLintIterations = 2;
         /** LLM 语义 Lint（关闭则仅规则 Lint） */
         private boolean llmLintEnabled = true;
+    }
+
+    @Data
+    public static class Vision {
+        /** 视觉问答（qwen-vl 系列，云端）；内网纯离线模式不可用 */
+        private boolean enabled = true;
+        private String model = "qwen-vl-plus";
+        /** 单图大小上限（MB） */
+        private int maxImageMb = 10;
+    }
+
+    @Data
+    public static class ImageGen {
+        /** 文生图（wanx 系列，DashScope 原生异步任务 API） */
+        private boolean enabled = true;
+        private String model = "wanx2.1-t2i-turbo";
+        /** 生成尺寸，如 1024*1024 */
+        private String size = "1024*1024";
+        /** 任务轮询超时（秒） */
+        private int pollTimeoutSeconds = 120;
     }
 
     @Data

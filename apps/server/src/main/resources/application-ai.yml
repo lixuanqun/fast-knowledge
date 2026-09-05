@@ -64,3 +64,14 @@ knowledge:
   writer:
     # 写文档多步编排（大纲→分节→引用→润色）
     graph-enabled: ${WRITER_GRAPH_ENABLED:false}
+  vision:
+    # 图片问答（qwen-vl 系列，云端；内网纯离线模式不可用）
+    enabled: ${VISION_ENABLED:true}
+    model: ${VISION_MODEL:qwen-vl-plus}
+    max-image-mb: ${VISION_MAX_IMAGE_MB:10}
+  image-gen:
+    # 文生图（wanx 系列，DashScope 原生异步任务 API）
+    enabled: ${IMAGE_GEN_ENABLED:true}
+    model: ${IMAGE_GEN_MODEL:wanx2.1-t2i-turbo}
+    size: ${IMAGE_GEN_SIZE:1024*1024}
+    poll-timeout-seconds: ${IMAGE_GEN_POLL_TIMEOUT:120}

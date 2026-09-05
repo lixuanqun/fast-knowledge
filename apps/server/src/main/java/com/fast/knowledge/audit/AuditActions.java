@@ -31,6 +31,8 @@ public final class AuditActions {
     public static final String WIKI_PUBLISH = "WIKI_PUBLISH";
     public static final String WIKI_REJECT = "WIKI_REJECT";
     public static final String WIKI_AGENT_MERGE = "WIKI_AGENT_MERGE";
+    public static final String VISION_ASK = "VISION_ASK";
+    public static final String IMAGE_GEN_SUBMIT = "IMAGE_GEN_SUBMIT";
 
     private AuditActions() {
     }

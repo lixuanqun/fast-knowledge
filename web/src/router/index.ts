@@ -49,6 +49,16 @@ const router = createRouter({
           meta: { keepAlive: true, title: '智能写文档' }
         },
         {
+          path: 'vision',
+          component: () => import('@/views/vision/index.vue'),
+          meta: { keepAlive: true, title: '图片问答' }
+        },
+        {
+          path: 'image-gen',
+          component: () => import('@/views/image-gen/index.vue'),
+          meta: { keepAlive: true, title: '图片生成' }
+        },
+        {
           path: 'settings',
           component: () => import('@/views/settings/index.vue'),
           meta: { keepAlive: true, title: '设置与隐私' }
