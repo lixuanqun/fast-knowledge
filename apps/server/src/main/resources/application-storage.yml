@@ -1,7 +1,7 @@
 # 文件存储与向量基础设施
 knowledge:
   storage:
-    provider: minio
+    provider: ${STORAGE_PROVIDER:minio}
     minio:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
       bucket: ${MINIO_BUCKET:fast-knowledge}
@@ -9,6 +9,13 @@ knowledge:
       secret-key: ${MINIO_SECRET_KEY:minioadmin}
       region: ${MINIO_REGION:us-east-1}
       prefix: ${MINIO_PREFIX:knowledge/}
+    oss:
+      endpoint: ${OSS_ENDPOINT:https://oss-cn-hangzhou.aliyuncs.com}
+      bucket: ${OSS_BUCKET:fast-knowledge}
+      access-key: ${OSS_ACCESS_KEY:}
+      secret-key: ${OSS_SECRET_KEY:}
+      region: ${OSS_REGION:}
+      prefix: ${OSS_PREFIX:knowledge/}
   cache:
     provider: redis
   setup:

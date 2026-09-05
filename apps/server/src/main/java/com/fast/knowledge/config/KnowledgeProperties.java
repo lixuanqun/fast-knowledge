@@ -162,8 +162,23 @@ public class KnowledgeProperties {
 
     @Data
     public static class Storage {
+        /** minio（私有化/离线）| oss（阿里云对象存储） */
         private String provider = "minio";
         private Minio minio = new Minio();
+        private Oss oss = new Oss();
+    }
+
+    @Data
+    public static class Oss {
+        /** 如 https://oss-cn-hangzhou.aliyuncs.com */
+        private String endpoint = "https://oss-cn-hangzhou.aliyuncs.com";
+        private String bucket = "fast-knowledge";
+        private String accessKey = "";
+        private String secretKey = "";
+        /** 签名区域，缺省从 endpoint 推断（oss-cn-hangzhou → cn-hangzhou） */
+        private String region = "";
+        /** 对象前缀，如 knowledge/ */
+        private String prefix = "knowledge/";
     }
 
     @Data
