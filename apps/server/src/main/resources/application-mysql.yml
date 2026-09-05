@@ -1,0 +1,18 @@
+# Classic 部署形态：MySQL 5.7 + 本地向量索引
+# 启用方式：--spring.profiles.active=mysql（叠加在 db profile 之上覆盖数据源与 schema）
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fast_knowledge?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER:fast_knowledge}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:always}
+      schema-locations: classpath:db/schema-mysql.sql
+
+knowledge:
+  vector:
+    provider: ${VECTOR_PROVIDER:local}
+    local:
+      storage-dir: ${VECTOR_LOCAL_DIR:./data/vectors}

@@ -1,9 +1,10 @@
-# 企业私有化部署推荐配置：禁止外连大模型与云端 Rerank，仅 ONNX/Ollama 本地推理
+# 企业私有化部署推荐配置：禁止外连大模型与云端 Rerank
+# 说明：ONNX 本地推理已移除（模型全云端化），纯内网模式下 Rerank 必须关闭；
+#       LLM/Embedding 如需内网闭环，请指向内网 OpenAI 兼容网关（LLM_BASE_URL / EMBEDDING_BASE_URL）
 knowledge:
   edition: ${KNOWLEDGE_EDITION:enterprise}
   llm:
     allow-external: false
   search:
     rerank:
-      enabled: ${RERANK_ENABLED:true}
-      provider: ${RERANK_PROVIDER:onnx}
+      enabled: ${RERANK_ENABLED:false}

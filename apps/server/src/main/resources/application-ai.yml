@@ -1,15 +1,21 @@
 # AI / RAG 相关配置：Embedding、分块、检索、Rerank、LLM、Wiki
 knowledge:
   edition: ${KNOWLEDGE_EDITION:community}
+  vector:
+    # pgvector（Standard 形态）| local（Classic 形态：本地文件向量索引，MySQL 部署用）
+    provider: ${VECTOR_PROVIDER:pgvector}
+    local:
+      storage-dir: ${VECTOR_LOCAL_DIR:./data/vectors}
   embedding:
-    provider: ${EMBEDDING_PROVIDER:onnx}
-    onnx-model-path: ${ONNX_MODEL_PATH:./data/models/bge-small-zh-v1.5.onnx}
-    onnx-tokenizer-path: ${ONNX_TOKENIZER_PATH:./data/models/tokenizer.json}
-    dimension: 512
-    onnx-max-seq-len: 512
-    onnx-batch-size: 16
+    # openai（OpenAI 兼容 /v1/embeddings：DashScope compatible-mode、硅基流动、OpenAI 等）| ollama | hash
+    provider: ${EMBEDDING_PROVIDER:openai}
+    openai-base-url: ${EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    openai-api-key: ${EMBEDDING_API_KEY:}
+    openai-model: ${EMBEDDING_MODEL:text-embedding-v3}
+    # 维度必须与所选模型输出一致（text-embedding-v3=1024，text-embedding-3-small=1536）
+    dimension: ${EMBEDDING_DIMENSION:1024}
     ollama-url: ${OLLAMA_EMBED_URL:http://localhost:11434}
-    ollama-model: ${EMBEDDING_MODEL:nomic-embed-text}
+    ollama-model: ${OLLAMA_EMBED_MODEL:nomic-embed-text}
   chunk:
     size: 512
     overlap: 50
@@ -18,6 +24,7 @@ knowledge:
     cache-ttl-minutes: 5
     rerank:
       enabled: ${RERANK_ENABLED:false}
+      # 仅云端：cohere | jina（内网纯离线模式下必须关闭，见 ProductionConfigValidator）
       provider: ${RERANK_PROVIDER:cohere}
       candidate-multiplier: ${RERANK_CANDIDATE_MULTIPLIER:3}
       min-score: ${RERANK_MIN_SCORE:}
@@ -25,9 +32,6 @@ knowledge:
       cohere-model: ${RERANK_COHERE_MODEL:rerank-multilingual-v3.0}
       jina-api-key: ${JINA_API_KEY:}
       jina-model: ${RERANK_JINA_MODEL:jina-reranker-v2-base-multilingual}
-      onnx-model-path: ${RERANK_ONNX_MODEL_PATH:./data/models/bge-reranker-base.onnx}
-      onnx-tokenizer-path: ${RERANK_ONNX_TOKENIZER_PATH:./data/models/bge-reranker-tokenizer.json}
-      onnx-max-seq-len: ${RERANK_ONNX_MAX_SEQ_LEN:512}
   llm:
     provider: ${LLM_PROVIDER:ollama}
     base-url: ${LLM_BASE_URL:}
@@ -52,3 +56,11 @@ knowledge:
     enabled: ${WIKI_ENABLED:true}
     auto-publish: ${WIKI_AUTO_PUBLISH:false}
     query-routing: ${WIKI_QUERY_ROUTING:true}
+    agent:
+      # Wiki 维护 Agent（langgraph4j 图：增量合并 + Lint 循环 + 变更日志）；叠加企业版门控
+      enabled: ${WIKI_AGENT_ENABLED:false}
+      max-lint-iterations: ${WIKI_AGENT_MAX_LINT_ITERATIONS:2}
+      llm-lint-enabled: ${WIKI_AGENT_LLM_LINT:true}
+  writer:
+    # 写文档多步编排（大纲→分节→引用→润色）
+    graph-enabled: ${WRITER_GRAPH_ENABLED:false}

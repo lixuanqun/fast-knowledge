@@ -4,6 +4,7 @@ import com.fast.knowledge.config.KnowledgeProperties;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +17,11 @@ import java.sql.Statement;
 /**
  * LangChain4j PgVector 向量库配置 — HYBRID 检索 + 可选 HNSW/IVFFlat 索引。
  * <p>索引创建延迟到 ApplicationReadyEvent，避免阻塞 Spring 容器启动。
+ * <p>仅 Standard 形态（knowledge.vector.provider=pgvector，默认）装配；
+ * Classic 形态（local）下不创建该 Bean，避免在 MySQL 数据源上执行 PG 专属 SQL。
  */
 @Configuration
+@ConditionalOnProperty(name = "knowledge.vector.provider", havingValue = "pgvector", matchIfMissing = true)
 public class PgVectorEmbeddingStoreConfig {
 
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStoreConfig.class);

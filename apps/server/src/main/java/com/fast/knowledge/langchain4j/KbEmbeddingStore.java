@@ -7,8 +7,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -30,10 +30,10 @@ public class KbEmbeddingStore implements dev.langchain4j.store.embedding.Embeddi
     public static final String META_SECTION = "section";
 
     private final Long kbId;
-    private final PgVectorEmbeddingStore delegate;
+    private final EmbeddingStore<TextSegment> delegate;
     private final KnowledgeProperties properties;
 
-    public KbEmbeddingStore(Long kbId, PgVectorEmbeddingStore delegate, KnowledgeProperties properties) {
+    public KbEmbeddingStore(Long kbId, EmbeddingStore<TextSegment> delegate, KnowledgeProperties properties) {
         this.kbId = kbId;
         this.delegate = delegate;
         this.properties = properties;

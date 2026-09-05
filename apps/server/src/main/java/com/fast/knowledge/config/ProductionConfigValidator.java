@@ -65,12 +65,10 @@ public class ProductionConfigValidator {
 
     private void validatePrivacyMode() {
         if (!properties.getLlm().isAllowExternal()) {
-            String rerankProvider = properties.getSearch().getRerank().getProvider();
-            if (properties.getSearch().getRerank().isEnabled()
-                    && rerankProvider != null
-                    && !"onnx".equalsIgnoreCase(rerankProvider.trim())) {
+            // Rerank 仅剩云端实现（Cohere/Jina），纯内网模式下必须关闭
+            if (properties.getSearch().getRerank().isEnabled()) {
                 throw new IllegalStateException(
-                        "allow-external=false 时 Rerank 仅允许 provider=onnx，当前: " + rerankProvider);
+                        "allow-external=false 时 Rerank 不可用（仅支持云端 Cohere/Jina），请设置 RERANK_ENABLED=false");
             }
         }
     }

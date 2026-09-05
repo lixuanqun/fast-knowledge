@@ -3,6 +3,7 @@ package com.fast.knowledge.storage;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,8 +13,10 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -24,6 +27,7 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @ConditionalOnProperty(name = "knowledge.storage.provider", havingValue = "minio", matchIfMissing = true)
 public class MinioStorageProvider implements StorageProvider {
@@ -56,6 +60,17 @@ public class MinioStorageProvider implements StorageProvider {
         String region = (minio.getRegion() != null && !minio.getRegion().isBlank())
                 ? minio.getRegion() : "us-east-1";
         this.s3Client = builder.region(Region.of(region)).build();
+        ensureBucket();
+    }
+
+    /** bucket 缺失时自动创建，使应用不依赖 compose/init 脚本即可完成首跑 */
+    private void ensureBucket() {
+        try {
+            s3Client.headBucket(b -> b.bucket(minio.getBucket()));
+        } catch (NoSuchBucketException e) {
+            s3Client.createBucket(CreateBucketRequest.builder().bucket(minio.getBucket()).build());
+            log.info("MinIO bucket 已自动创建: {}", minio.getBucket());
+        }
     }
 
     @Override

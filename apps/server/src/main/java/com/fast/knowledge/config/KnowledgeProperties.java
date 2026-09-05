@@ -21,6 +21,7 @@ public class KnowledgeProperties {
     private Setup setup = new Setup();
     private Auth auth = new Auth();
     private Wiki wiki = new Wiki();
+    private Writer writer = new Writer();
     private Chat chat = new Chat();
     private QueryRewrite queryRewrite = new QueryRewrite();
     private Index index = new Index();
@@ -42,6 +43,24 @@ public class KnowledgeProperties {
         private boolean autoPublish = false;
         /** 章节/制度/目录类问法优先走已发布 Wiki，否则 HYBRID */
         private boolean queryRouting = true;
+        /** Wiki 维护 Agent（langgraph4j 图编排：增量合并 + Lint 循环 + 变更日志），需企业版 */
+        private Agent agent = new Agent();
+    }
+
+    @Data
+    public static class Agent {
+        /** 默认关闭；开启需叠加企业版门控（EditionGuard） */
+        private boolean enabled = false;
+        /** lint→revise 循环封顶轮数 */
+        private int maxLintIterations = 2;
+        /** LLM 语义 Lint（关闭则仅规则 Lint） */
+        private boolean llmLintEnabled = true;
+    }
+
+    @Data
+    public static class Writer {
+        /** 写文档多步编排（大纲→分节→引用→润色），默认走单次生成 */
+        private boolean graphEnabled = false;
     }
 
     @Data
@@ -77,8 +96,16 @@ public class KnowledgeProperties {
 
     @Data
     public static class Vector {
+        /** pgvector（Standard 形态）| local（Classic 形态：本地文件向量索引，MySQL 部署默认） */
         private String provider = "pgvector";
         private PgVector pgvector = new PgVector();
+        private Local local = new Local();
+    }
+
+    @Data
+    public static class Local {
+        /** 本地向量索引持久化目录（per-KB JSON 文件） */
+        private String storageDir = "./data/vectors";
     }
 
     @Data
@@ -149,12 +176,13 @@ public class KnowledgeProperties {
 
     @Data
     public static class Embedding {
-        private String provider = "onnx";
-        private String onnxModelPath = "./models/bge-small-zh-v1.5.onnx";
-        private String onnxTokenizerPath = "./models/tokenizer.json";
-        private int dimension = 512;
-        private int onnxMaxSeqLen = 512;
-        private int onnxBatchSize = 16;
+        /** openai（OpenAI 兼容 /v1/embeddings，含 DashScope compatible-mode）| ollama | hash */
+        private String provider = "openai";
+        private String openaiBaseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+        private String openaiApiKey = "";
+        private String openaiModel = "text-embedding-v3";
+        /** 向量维度（云端模型各不相同，须与 provider 输出一致） */
+        private int dimension = 1024;
         private String ollamaUrl = "http://localhost:11434";
         private String ollamaModel = "nomic-embed-text";
         /** 是否缓存 query embedding 结果 */
@@ -178,7 +206,7 @@ public class KnowledgeProperties {
     public static class Rerank {
         /** 是否启用检索重排序 */
         private boolean enabled = false;
-        /** cohere | jina | onnx */
+        /** cohere | jina（云端） */
         private String provider = "cohere";
         /** 初召回倍数：先取 topK * multiplier，再 rerank 截断 */
         private int candidateMultiplier = 3;
@@ -188,9 +216,6 @@ public class KnowledgeProperties {
         private String cohereModel = "rerank-multilingual-v3.0";
         private String jinaApiKey = "";
         private String jinaModel = "jina-reranker-v2-base-multilingual";
-        private String onnxModelPath = "./data/models/bge-reranker-base.onnx";
-        private String onnxTokenizerPath = "./data/models/bge-reranker-tokenizer.json";
-        private int onnxMaxSeqLen = 512;
     }
 
     @Data

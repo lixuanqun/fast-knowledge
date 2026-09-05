@@ -19,10 +19,6 @@ import org.springframework.context.annotation.Configuration;
 
 
 
-import java.nio.file.Files;
-
-import java.nio.file.Path;
-
 import java.time.Duration;
 
 import java.util.Optional;
@@ -31,7 +27,7 @@ import java.util.Optional;
 
 /**
 
- * 可选 Reranker（ScoringModel）：ONNX 本地 / Cohere / Jina 云端 API。
+ * 可选 Reranker（ScoringModel）：Cohere / Jina 云端 API。
 
  * 默认关闭；开启后检索先召回更多候选，再重排序截取 topK。
 
@@ -62,8 +58,6 @@ public class ScoringModelConfig {
 
         return switch (provider) {
 
-            case "onnx" -> buildOnnx(rerank);
-
             case "cohere" -> buildCohere(rerank, properties, externalAccessGuard);
 
             case "jina" -> buildJina(rerank, properties, externalAccessGuard);
@@ -77,36 +71,6 @@ public class ScoringModelConfig {
             }
 
         };
-
-    }
-
-
-
-    private Optional<ScoringModel> buildOnnx(KnowledgeProperties.Rerank rerank) {
-
-        Path modelPath = Path.of(rerank.getOnnxModelPath());
-
-        if (!Files.exists(modelPath)) {
-
-            log.warn("Rerank provider=onnx 但模型文件不存在: {}", modelPath.toAbsolutePath());
-
-            return Optional.empty();
-
-        }
-
-        try {
-
-            log.info("Rerank provider: onnx ({})", modelPath.toAbsolutePath());
-
-            return Optional.of(new OnnxRerankScoringModel(rerank));
-
-        } catch (Exception e) {
-
-            log.warn("加载 ONNX Reranker 失败: {}", e.getMessage());
-
-            return Optional.empty();
-
-        }
 
     }
 

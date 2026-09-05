@@ -33,8 +33,8 @@
     <properties>
         <java.version>21</java.version>
         <tika.version>3.3.0</tika.version>
-        <langchain4j.version>1.17.1</langchain4j.version>
-        <djl.version>0.31.1</djl.version>
+        <langchain4j.version>1.17.2</langchain4j.version>
+        <langgraph4j.version>1.8.26</langgraph4j.version>
         <springdoc.version>2.8.6</springdoc.version>
         <mybatis-plus.version>3.5.9</mybatis-plus.version>
         <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
