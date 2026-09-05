@@ -45,6 +45,8 @@
 | [backend-design.md](./backend-design.md) | 后端分层与开发清单 |
 | [fast_knowledge.md](./fast_knowledge.md) | LangChain4j 管道、配置详解 |
 | [architecture/README.md](./architecture/README.md) | Monorepo 与包职责 |
+| [architecture/wiki-agent-graph.md](./architecture/wiki-agent-graph.md) | 文档生产流水线设计：Wiki 维护 Agent 与写文档多步编排（评审中） |
+| [architecture/ai-layer-refactor.md](./architecture/ai-layer-refactor.md) | 知识智能层分层重构蓝图：端口化 + Agentic 化（M0/M1 实施中） |
 | [deployment/docker.md](./deployment/docker.md) | Docker Compose 部署 |
 | [deployment/llm-providers.md](./deployment/llm-providers.md) | LLM / Embedding / Rerank |
 
@@ -76,5 +78,6 @@ LLM  → LlmModelRegistry（UI 配置热刷新）
 
 | 日期 | 说明 |
 |------|------|
+| 2026-09-04 | 新增 Wiki 维护 Agent 与写文档编排设计文档（评审中） |
 | 2026-07-03 | 统一产品定位与功能清单；LLM 中立 UI 配置；GitHub 展示文档 |
 | 2026-07-02 | LangChain4j 重构后文档体系 |
