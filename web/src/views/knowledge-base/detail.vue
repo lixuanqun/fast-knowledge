@@ -464,7 +464,7 @@ const filteredWikiPages = computed(() => {
   return wikiPages.value.filter((p) => p.status === wikiStatusFilter.value)
 })
 const failedTasks = computed(() => failedTasksData.value || [])
-const pageLoading = computed(() => kbLoading.value || docsLoading.value)
+const pageLoading = computed(() => kbLoading.value || docsLoading.value || wikiLoading.value)
 
 const pagedDocs = computed(() => {
   const start = (docPage.value - 1) * docPageSize.value

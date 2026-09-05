@@ -34,14 +34,21 @@ request.interceptors.response.use(
   err => {
     if (err.response?.status === 401) {
       const pinia = getActivePinia()
-      if (pinia) {
-        import('@/stores/auth').then(({ useAuthStore }) => {
-          useAuthStore(pinia).clearSession()
-        })
-      } else {
-        import('./auth').then(({ clearAuth }) => clearAuth())
+      const clearAndRedirect = () => {
+        if (pinia) {
+          import('@/stores/auth').then(({ useAuthStore }) => {
+            useAuthStore(pinia).clearSession()
+          }).finally(() => {
+            router.push('/login')
+          })
+        } else {
+          import('./auth').then(({ clearAuth }) => {
+            clearAuth()
+            router.push('/login')
+          })
+        }
       }
-      router.push('/login')
+      clearAndRedirect()
     }
     ElMessage.error(err.message || '网络错误')
     return Promise.reject(err)

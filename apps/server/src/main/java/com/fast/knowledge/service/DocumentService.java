@@ -66,19 +66,19 @@ public class DocumentService {
     }
 
     public List<KbDocument> listByKb(Long kbId) {
-        knowledgeBaseService.getById(kbId);
+        checkPermission(kbId);
         return documentMapper.findByKbId(kbId);
     }
 
     public KbDocument getById(Long kbId, Long docId) {
         KbDocument doc = requireDocument(kbId, docId);
-        knowledgeBaseService.getById(kbId);
+        checkPermission(kbId);
         return doc;
     }
 
     public DocumentPreviewVO preview(Long kbId, Long docId, Long highlightChunkId) throws Exception {
         KbDocument doc = requireDocument(kbId, docId);
-        knowledgeBaseService.getById(kbId);
+        checkPermission(kbId);
 
         DocumentPreviewVO vo = new DocumentPreviewVO();
         vo.setDocumentId(doc.getId());
@@ -163,6 +163,40 @@ public class DocumentService {
                 .collect(Collectors.toList());
     }
 
+    private KbDocument createDocumentAndIndexTask(Long kbId, StoredObject stored,
+                                                   String title, String fileName,
+                                                   DocumentMetadataRequest metadata) {
+        KbDocument doc = new KbDocument();
+        doc.setKbId(kbId);
+        doc.setTitle(title);
+        doc.setFileName(fileName);
+        doc.setFileType(stored.extension());
+        doc.setFileSize(stored.size());
+        doc.setFilePath(stored.absolutePath());
+        doc.setIndexStatus("PENDING");
+        doc.setChunkCount(0);
+        doc.setEnabled(1);
+        doc.setCreatedBy(UserContext.currentUserId());
+        if (metadata != null) {
+            applyMetadata(doc, metadata);
+        }
+        documentMapper.insert(doc);
+
+        IndexTask task = new IndexTask();
+        task.setDocumentId(doc.getId());
+        task.setStatus("PENDING");
+        task.setRetryCount(0);
+        indexTaskMapper.insert(task);
+
+        dispatchIndex(doc.getId());
+        auditLogService.log("UPLOAD_DOC", "DOCUMENT", doc.getId(), doc.getTitle());
+        return doc;
+    }
+
+    private void checkPermission(Long kbId) {
+        knowledgeBaseService.getById(kbId);
+    }
+
     private KbDocument requireDocument(Long kbId, Long docId) {
         KbDocument doc = documentMapper.selectById(docId);
         if (doc == null || !doc.getKbId().equals(kbId)) {
@@ -190,30 +224,7 @@ public class DocumentService {
         knowledgeBaseService.checkWritePermission(kb);
         String originalName = file.getOriginalFilename();
         StoredObject stored = storageProvider.storeUpload(kbId, file);
-
-        KbDocument doc = new KbDocument();
-        doc.setKbId(kbId);
-        doc.setTitle(stripExtension(originalName));
-        doc.setFileName(originalName);
-        doc.setFileType(stored.extension());
-        doc.setFileSize(stored.size());
-        doc.setFilePath(stored.absolutePath());
-        doc.setIndexStatus("PENDING");
-        doc.setChunkCount(0);
-        doc.setEnabled(1);
-        doc.setCreatedBy(UserContext.currentUserId());
-        applyMetadata(doc, metadata);
-        documentMapper.insert(doc);
-
-        IndexTask task = new IndexTask();
-        task.setDocumentId(doc.getId());
-        task.setStatus("PENDING");
-        task.setRetryCount(0);
-        indexTaskMapper.insert(task);
-
-        dispatchIndex(doc.getId());
-        auditLogService.log("UPLOAD_DOC", "DOCUMENT", doc.getId(), doc.getTitle());
-        return doc;
+        return createDocumentAndIndexTask(kbId, stored, stripExtension(originalName), originalName, metadata);
     }
 
     @Transactional
@@ -225,27 +236,7 @@ public class DocumentService {
         }
         String safeTitle = title != null && !title.isBlank() ? title : "生成文档";
         StoredObject stored = storageProvider.storeText(kbId, safeTitle + ".md", content);
-
-        KbDocument doc = new KbDocument();
-        doc.setKbId(kbId);
-        doc.setTitle(safeTitle);
-        doc.setFileName(safeTitle + ".md");
-        doc.setFileType(stored.extension());
-        doc.setFileSize(stored.size());
-        doc.setFilePath(stored.absolutePath());
-        doc.setIndexStatus("PENDING");
-        doc.setChunkCount(0);
-        doc.setEnabled(1);
-        doc.setCreatedBy(UserContext.currentUserId());
-        documentMapper.insert(doc);
-
-        IndexTask task = new IndexTask();
-        task.setDocumentId(doc.getId());
-        task.setStatus("PENDING");
-        task.setRetryCount(0);
-        indexTaskMapper.insert(task);
-        dispatchIndex(doc.getId());
-        return doc;
+        return createDocumentAndIndexTask(kbId, stored, safeTitle, safeTitle + ".md", null);
     }
 
     @Transactional

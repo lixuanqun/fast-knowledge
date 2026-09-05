@@ -45,7 +45,12 @@ public class ImageGenerationService {
         this.objectMapper = objectMapper;
         this.auditLogService = auditLogService;
         this.storageProvider = storageProvider;
-        this.restClient = RestClient.create();
+        var httpClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .build();
+        this.restClient = RestClient.builder()
+                .requestFactory(new org.springframework.http.client.JdkClientHttpRequestFactory(httpClient))
+                .build();
     }
 
     /** 提交文生图任务，返回 DashScope task_id */
