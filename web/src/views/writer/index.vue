@@ -202,8 +202,14 @@ async function handleSave() {
 </script>
 
 <style scoped lang="scss">
+.writer-form-card {
+  border-radius: 12px;
+  box-shadow: $fk-card-shadow;
+}
+
 .fk-card {
-  border-radius: 10px;
+  border-radius: 12px;
+  box-shadow: $fk-card-shadow;
   border: 1px solid $fk-border;
 }
 

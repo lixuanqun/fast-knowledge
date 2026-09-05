@@ -135,7 +135,8 @@ async function poll() {
 
 <style scoped lang="scss">
 .fk-card {
-  border-radius: 10px;
+  border-radius: 12px;
+  box-shadow: $fk-card-shadow;
   border: 1px solid $fk-border;
 }
 

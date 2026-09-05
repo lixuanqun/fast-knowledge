@@ -23,9 +23,15 @@ defineProps<{
 
 <style scoped lang="scss">
 .stat-card {
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid $fk-border;
   background: $fk-card-bg;
+  box-shadow: $fk-card-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(64, 158, 255, 0.12);
 }
 
 .stat-card__body {

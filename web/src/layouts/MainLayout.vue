@@ -207,6 +207,12 @@ async function handleLogout() {
   flex: 1;
 }
 
+.side-menu :deep(.el-menu-item) {
+  transition: background-color 0.2s ease, border-right-color 0.2s ease;
+  margin: 2px 8px;
+  border-radius: 8px;
+}
+
 .side-menu :deep(.el-menu-item.is-active) {
   background-color: var(--fk-menu-active-bg);
   border-right: 3px solid $fk-primary;

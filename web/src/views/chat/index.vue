@@ -239,7 +239,7 @@ async function send() {
   flex: 1;
   min-height: 0;
   border: 1px solid $fk-border;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: $fk-card-bg;
 }
@@ -350,7 +350,7 @@ async function send() {
 .msg-bubble {
   max-width: 72%;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .msg-bubble.user {

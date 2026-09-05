@@ -46,15 +46,24 @@ body {
 
 .el-card {
   border: 1px solid $border-color;
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: $fk-card-bg;
   --el-card-bg-color: #{$fk-card-bg};
+  box-shadow: $fk-card-shadow;
+  transition: box-shadow 0.2s ease;
+}
+
+.el-card:hover {
+  box-shadow: 0 12px 32px rgba(64, 158, 255, 0.12);
 }
 
 .el-table {
   --el-table-header-bg-color: var(--fk-table-header-bg);
   --el-table-bg-color: #{$fk-card-bg};
   --el-table-tr-bg-color: #{$fk-card-bg};
+}
+.el-table tbody tr {
+  transition: background-color 0.15s ease;
 }
 
 .el-drawer {
