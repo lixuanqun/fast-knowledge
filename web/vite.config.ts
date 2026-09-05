@@ -8,8 +8,9 @@ import viteCompression from 'vite-plugin-compression'
 import { resolve } from 'path'
 
 export default defineConfig({
-  // 生产单 JAR 部署时前端托管于 context-path(/api/v1) 之下：FK_BASE=/api/v1/ npm run build
-  base: process.env.FK_BASE || '/',
+  // 生产单 JAR 部署时前端托管于 context-path(/api/v1) 之下：
+  // VITE_ROUTER_BASE=/api/v1/ npm run build —— 资源 base 与 vue-router base 由同一变量驱动
+  base: process.env.VITE_ROUTER_BASE || '/',
   plugins: [
     vue(),
     AutoImport({
