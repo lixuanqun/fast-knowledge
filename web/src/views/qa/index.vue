@@ -125,10 +125,6 @@ async function handleAsk() {
 </script>
 
 <style scoped lang="scss">
-.fk-card {
-  border-radius: 10px;
-  border: 1px solid $fk-border;
-}
 
 .qa-form-card,
 .qa-error-alert {

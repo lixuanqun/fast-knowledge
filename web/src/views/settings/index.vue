@@ -101,11 +101,6 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.fk-card {
-  border-radius: 10px;
-  border: 1px solid $fk-border;
-  background: $fk-card-bg;
-}
 
 .settings-card {
   margin-top: 16px;

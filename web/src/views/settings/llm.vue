@@ -234,11 +234,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.fk-card {
-  border-radius: 10px;
-  border: 1px solid $fk-border;
-  background: $fk-card-bg;
-}
 
 .docs-card {
   margin-top: 16px;

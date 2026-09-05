@@ -132,11 +132,6 @@ async function ask() {
   box-shadow: $fk-card-shadow;
 }
 
-.fk-card {
-  border-radius: 12px;
-  box-shadow: $fk-card-shadow;
-  border: 1px solid $fk-border;
-}
 
 .vision-upload {
   width: 100%;

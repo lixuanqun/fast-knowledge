@@ -71,5 +71,8 @@ body {
 }
 
 .fk-card {
+  border-radius: 12px;
+  border: 1px solid $border-color;
   background-color: $fk-card-bg;
+  box-shadow: $fk-card-shadow;
 }

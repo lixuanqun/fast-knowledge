@@ -69,6 +69,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SourceList: typeof import('./components/SourceList.vue')['default']
+    StreamingIndicator: typeof import('./components/StreamingIndicator.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

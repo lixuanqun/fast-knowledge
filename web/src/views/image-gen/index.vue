@@ -153,11 +153,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.fk-card {
-  border-radius: 12px;
-  box-shadow: $fk-card-shadow;
-  border: 1px solid $fk-border;
-}
 
 .gen-btn {
   width: 100%;

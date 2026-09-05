@@ -102,39 +102,9 @@ public class WriterGraphService {
             List<String> sections = state.sections();
             String title = sections.get(index);
             sendStep(emitter, "draftSection", index + 1, sections.size(), title);
-            StringBuilder buffer = new StringBuilder();
-            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-            java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
-            chatPort.stream(SECTION_SYSTEM, sectionUser(state, title), new ChatPort.StreamHandler() {
-                @Override
-                public void onPartial(String partial) {
-                    buffer.append(partial);
-                    try {
-                        SseEmitterHelper.sendData(emitter, partial);
-                    } catch (Exception e) {
-                        log.debug("推送分节内容失败（客户端可能已断开）: {}", e.getMessage());
-                        latch.countDown(); // release latch on client disconnect
-                    }
-                }
-
-                @Override
-                public void onComplete(String fullText) {
-                    if (!fullText.isBlank()) {
-                        buffer.setLength(0);
-                        buffer.append(fullText);
-                    }
-                    latch.countDown();
-                }
-
-                @Override
-                public void onError(Throwable error) {
-                    failure.set(error);
-                    latch.countDown();
-                }
-            });
-            awaitStream(latch, failure, "分节生成失败: " + title);
+            String content = streamAndCollect(emitter, SECTION_SYSTEM, sectionUser(state, title), "分节生成失败: " + title);
             List<String> texts = new ArrayList<>(state.sectionTexts());
-            texts.add(buffer.toString());
+            texts.add(content);
             return Map.of("sectionTexts", texts, "index", index + 1);
         };
         EdgeAction<WriterState> afterSection = state ->
@@ -156,38 +126,10 @@ public class WriterGraphService {
         NodeAction<WriterState> polish = state -> {
             SseEmitter emitter = currentEmitter.get();
             sendStep(emitter, NODE_POLISH, 0, 0, null);
-            StringBuilder buffer = new StringBuilder();
-            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-            java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
-            chatPort.stream(POLISH_SYSTEM, state.citedMd(), new ChatPort.StreamHandler() {
-                @Override
-                public void onPartial(String partial) {
-                    buffer.append(partial);
-                    try {
-                        SseEmitterHelper.sendData(emitter, partial);
-                    } catch (Exception e) {
-                        log.debug("推送润色内容失败（客户端可能已断开）: {}", e.getMessage());
-                        latch.countDown(); // release latch on client disconnect
-                    }
-                }
-
-                @Override
-                public void onComplete(String fullText) {
-                    if (!fullText.isBlank()) {
-                        buffer.setLength(0);
-                        buffer.append(fullText);
-                    }
-                    latch.countDown();
-                }
-
-                @Override
-                public void onError(Throwable error) {
-                    failure.set(error);
-                    latch.countDown();
-                }
-            });
-            awaitStream(latch, failure, "润色失败");
-            String finalMd = buffer.toString().isBlank() ? state.citedMd() : buffer.toString();
+            String finalMd = streamAndCollect(emitter, POLISH_SYSTEM, state.citedMd(), "润色失败");
+            if (finalMd.isBlank()) {
+                finalMd = state.citedMd();
+            }
             return Map.of("finalMd", finalMd);
         };
         return new StateGraph<WriterState>(WriterState::new)
@@ -202,6 +144,45 @@ public class WriterGraphService {
                 .addEdge(NODE_CITE, NODE_POLISH)
                 .addEdge(NODE_POLISH, END)
                 .compile(org.bsc.langgraph4j.CompileConfig.builder().build());
+    }
+
+    /**
+     * 流式生成并收集全文：逐段推送 SSE，阻塞等待完成或失败。
+     * 客户端断开时释放 latch 避免线程长时间阻塞。
+     */
+    private String streamAndCollect(SseEmitter emitter, String systemPrompt, String userPrompt, String what) {
+        StringBuilder buffer = new StringBuilder();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
+        chatPort.stream(systemPrompt, userPrompt, new ChatPort.StreamHandler() {
+            @Override
+            public void onPartial(String partial) {
+                buffer.append(partial);
+                try {
+                    SseEmitterHelper.sendData(emitter, partial);
+                } catch (Exception e) {
+                    log.debug("推送流式内容失败（客户端可能已断开）: {}", e.getMessage());
+                    latch.countDown();
+                }
+            }
+
+            @Override
+            public void onComplete(String fullText) {
+                if (!fullText.isBlank()) {
+                    buffer.setLength(0);
+                    buffer.append(fullText);
+                }
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                failure.set(error);
+                latch.countDown();
+            }
+        });
+        awaitStream(latch, failure, what);
+        return buffer.toString();
     }
 
     /** 流式节点必须阻塞等待回调完成（langgraph4j 节点返回即代表状态就绪） */

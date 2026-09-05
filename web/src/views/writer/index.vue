@@ -213,11 +213,6 @@ async function handleSave() {
   box-shadow: $fk-card-shadow;
 }
 
-.fk-card {
-  border-radius: 12px;
-  box-shadow: $fk-card-shadow;
-  border: 1px solid $fk-border;
-}
 
 .writer-form-card,
 .writer-result-card {

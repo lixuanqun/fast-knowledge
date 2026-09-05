@@ -163,11 +163,6 @@ function openHitPreview(hit: SearchHit) {
   box-shadow: $fk-card-shadow;
 }
 
-.fk-card {
-  border-radius: 12px;
-  box-shadow: $fk-card-shadow;
-  border: 1px solid $fk-border;
-}
 
 .search-form-card {
   margin-bottom: 16px;
