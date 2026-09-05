@@ -105,7 +105,7 @@
 
 ---
 
-## 三、问题清单与处置（更新：复测完成）
+## 三、问题清单与处置（更新：LLM 端到端复测完成）
 
 | ID | 级别 | 问题 | 处置 |
 |----|------|------|------|
@@ -116,6 +116,41 @@
 | OBS-1 | P3 | 历史遗留数据存在 `?????` 乱码记录（仪表盘热门查询、知识库列表） | 旧数据编码问题，与本次改动无关，建议清理测试库 |
 
 **测试工具环境记录**：复测过程中 IAB guest 渲染进程曾崩溃一次、`evaluate` 返回通道失效（返回值一律为空对象），故改用「生产 bundle 形态（后端直接托管前端，`/api/v1/index.html`）+ 截图 + data-testid 可见性断言」完成复测；期间 `vite dev` 长会话出现页面 JS 半死现象（fill/快照正常、Vue 事件回调不执行），均已通过重建标签页/切换生产形态绕过，与被测代码无关。
+
+
+
+---
+
+## 六、真实 LLM 端到端验证（百炼 qwen-plus + text-embedding-v3）
+
+接入阿里云百炼（DashScope compatible-mode，`qwen-plus` 生成 + `text-embedding-v3` 512 维向量）后的全链路验证。后端以 `WIKI_AGENT_ENABLED=true`、`WRITER_GRAPH_ENABLED=true`、企业版运行。
+
+### E2E-1 写文档 langgraph4j 图路径 ✅
+
+`planOutline → draftSection ×4（流式）→ cite → polish` 全流程：
+- **step 事件进度 UI 首次真实运行**：生成中显示「分节撰写 2/4：数字化点检与保养流程设计」「润色输出中」等阶段标签（![生成中](file:///D:/fk_repo/gui-test-screenshots/e2e1_writer_step1.png)、![流式输出](file:///D:/fk_repo/gui-test-screenshots/e2e1_streaming_live.png)）
+- qwen-plus 自动将简短大纲扩写为「背景与目标/数字化点检与保养流程设计/设备台账标准化管理与多维数据分析应用/分阶段实施路径与关键保障措施」四节专业内容，流式渲染至预览区
+- 保存回知识库 → 自动索引 → **INDEXED 14 chunks**（![保存](file:///D:/fk_repo/gui-test-screenshots/e2e1_saved.png)）
+
+### E2E-2 智能问答（真实 RAG）✅
+
+问「设备维保数字化管理方案的核心目标是什么？」→ qwen-plus 基于命中文档生成结构化答案（三大转变，精确引用原文要点）+ 来源列表（![答案](file:///D:/fk_repo/gui-test-screenshots/e2e3_qa_answer.png)）——**「知识 → AI 写文档 → 保存回库 → 再检索问答」闭环完整打通**。
+
+### E2E-3 Wiki 维护 Agent 自动编译 ✅
+
+- 文档索引完成后自动触发：Wiki 页 `doc-11` 生成（DRAFT 待审，符合 autoPublish=false 设计），`kb_wiki_change_log` 记录 `COMPILE v1`
+- **重索引触发增量合并**：`MERGE v1→v2` 落库，页版本升 v2——**v2.0.0 M2「文档更新不再全量覆盖」核心价值实证**
+- GUI Wiki Tab 显示编译产物（![Wiki 列表](file:///D:/fk_repo/gui-test-screenshots/e2e4_wiki_tab.png)），查看弹窗展示结构化 Markdown 与来源溯源（![Wiki 内容](file:///D:/fk_repo/gui-test-screenshots/e2e4_wiki_page_content.png)）
+
+### 过程中发现并修复的缺陷
+
+| ID | 级别 | 缺陷 | 修复 |
+|----|------|------|------|
+| BUG-5 | P1 | DashScope text-embedding 单请求 input 上限 10 条，整批发送导致索引 400 | `OpenAiEmbeddingProvider.embedBatch` 按 10 条分批；修复后 14 chunks 索引成功 |
+| BUG-6 | P1 | `scheduleCompile` 对 DONE 任务直接跳过，**文档重索引后 Wiki 永不更新**，增量合并永不触发 | 重置任务重新编译（仅 COMPILING 进行中跳过，防并发）；修复后 MERGE v1→v2 实证 |
+| BUG-7 | P2 | DashScope 流式回调时序：`chatPort.stream` 为异步语义，图节点不等流完成即返回空 buffer，导致 SSE 零内容 token | WriterGraphService 流式节点以 `CountDownLatch` 阻塞等待回调完成；修复后 SSE 21KB 含完整逐段内容 |
+| IMP-1 | P3 | DashScope 流式实证通过（探针 3 PARTIAL + COMPLETE）；`OpenAiEmbeddingProvider` 补 `dimensions` 透传（text-embedding-v3 支持 512 维，与存量表兼容免重建） | 已实现并验证 |
+
 
 ---
 

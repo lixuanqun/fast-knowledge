@@ -79,9 +79,11 @@ public class WikiCompileService {
             task.setDocumentId(documentId);
             task.setStatus("PENDING");
             wikiCompileTaskMapper.insert(task);
-        } else if (!"PENDING".equals(existing.getStatus()) && !"FAILED".equals(existing.getStatus())) {
+        } else if ("COMPILING".equals(existing.getStatus())) {
+            // 编译进行中，避免并发重复调度
             return;
         } else {
+            // 文档（重新）索引成功 → 重置任务重新编译，保证 Wiki 页随文档更新而增量合并
             existing.setStatus("PENDING");
             existing.setErrorMsg(null);
             wikiCompileTaskMapper.updateById(existing);
