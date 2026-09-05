@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useConfigStore } from '@/stores/config'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.VITE_ROUTER_BASE || '/'),
   routes: [
     { path: '/login', component: () => import('@/views/login/index.vue'), meta: { public: true } },
     { path: '/login/callback', component: () => import('@/views/login/callback.vue'), meta: { public: true } },
