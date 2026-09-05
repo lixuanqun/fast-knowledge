@@ -1,5 +1,6 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.port.IngestPort;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
@@ -10,7 +11,6 @@ import com.fast.knowledge.model.dto.KnowledgeBaseRequest;
 import com.fast.knowledge.model.entity.KbMember;
 import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.security.UserContext;
-import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +23,7 @@ public class KnowledgeBaseService {
     private final DocumentMapper documentMapper;
     private final DocumentChunkMapper documentChunkMapper;
     private final KbMemberMapper kbMemberMapper;
-    private final KbVectorIndexService vectorIndexService;
+    private final IngestPort ingestPort;
     private final KnowledgeProperties properties;
     private final AuditLogService auditLogService;
     private final WorkspaceService workspaceService;
@@ -33,7 +33,7 @@ public class KnowledgeBaseService {
                                 DocumentMapper documentMapper,
                                 DocumentChunkMapper documentChunkMapper,
                                 KbMemberMapper kbMemberMapper,
-                                KbVectorIndexService vectorIndexService,
+                                IngestPort ingestPort,
                                 KnowledgeProperties properties,
                                 AuditLogService auditLogService,
                                 WorkspaceService workspaceService,
@@ -42,7 +42,7 @@ public class KnowledgeBaseService {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.kbMemberMapper = kbMemberMapper;
-        this.vectorIndexService = vectorIndexService;
+        this.ingestPort = ingestPort;
         this.properties = properties;
         this.auditLogService = auditLogService;
         this.workspaceService = workspaceService;
@@ -122,7 +122,7 @@ public class KnowledgeBaseService {
         documentChunkMapper.deleteByKbId(id);
         documentMapper.deleteByKbId(id);
         kbMemberMapper.deleteByKbId(id);
-        vectorIndexService.deleteKb(id);
+        ingestPort.deleteKb(id);
         knowledgeBaseMapper.deleteById(id);
         searchCacheService.invalidateForKb(id);
         auditLogService.log("DELETE_KB", "KB", id, kb.getName());

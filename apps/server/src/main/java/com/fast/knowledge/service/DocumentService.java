@@ -1,9 +1,9 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.port.IngestPort;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.storage.StoredObject;
 import com.fast.knowledge.storage.StorageProvider;
-import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.mapper.IndexTaskMapper;
@@ -34,7 +34,7 @@ public class DocumentService {
     private final IndexTaskMapper indexTaskMapper;
     private final KnowledgeBaseService knowledgeBaseService;
     private final DocumentIngestService documentIngestService;
-    private final KbVectorIndexService vectorIndexService;
+    private final IngestPort ingestPort;
     private final StorageProvider storageProvider;
     private final AuditLogService auditLogService;
     private final SearchCacheService searchCacheService;
@@ -46,7 +46,7 @@ public class DocumentService {
                            IndexTaskMapper indexTaskMapper,
                            KnowledgeBaseService knowledgeBaseService,
                            DocumentIngestService documentIngestService,
-                           KbVectorIndexService vectorIndexService,
+                           IngestPort ingestPort,
                            StorageProvider storageProvider,
                            AuditLogService auditLogService,
                            SearchCacheService searchCacheService,
@@ -57,7 +57,7 @@ public class DocumentService {
         this.indexTaskMapper = indexTaskMapper;
         this.knowledgeBaseService = knowledgeBaseService;
         this.documentIngestService = documentIngestService;
-        this.vectorIndexService = vectorIndexService;
+        this.ingestPort = ingestPort;
         this.storageProvider = storageProvider;
         this.auditLogService = auditLogService;
         this.searchCacheService = searchCacheService;
@@ -253,7 +253,7 @@ public class DocumentService {
         KbDocument doc = requireDocument(kbId, docId);
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
-        vectorIndexService.deleteByDocument(doc.getKbId(), docId);
+        ingestPort.deleteByDocument(doc.getKbId(), docId);
         documentChunkMapper.deleteByDocumentId(docId);
         try {
             storageProvider.delete(doc.getFilePath());

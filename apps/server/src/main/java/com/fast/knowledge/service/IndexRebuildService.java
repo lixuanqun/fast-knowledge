@@ -1,11 +1,7 @@
 package com.fast.knowledge.service;
 
-import com.fast.knowledge.langchain4j.assistant.KbAssistantFactory;
-import com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory;
-import com.fast.knowledge.langchain4j.ingest.KbEmbeddingIngestor;
-import com.fast.knowledge.langchain4j.retrieval.KbContentRetrieverFactory;
-import com.fast.knowledge.langchain4j.KbEmbeddingStoreFactory;
-import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
+import com.fast.knowledge.ai.port.ConversationPort;
+import com.fast.knowledge.ai.port.IngestPort;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.model.entity.DocumentChunk;
@@ -25,35 +21,23 @@ public class IndexRebuildService {
 
     private final DocumentChunkMapper documentChunkMapper;
     private final DocumentMapper documentMapper;
-    private final KbEmbeddingStoreFactory kbEmbeddingStoreFactory;
-    private final KbContentRetrieverFactory kbContentRetrieverFactory;
-    private final KbAssistantFactory kbAssistantFactory;
-    private final KbChatAssistantFactory kbChatAssistantFactory;
-    private final KbVectorIndexService vectorIndexService;
-    private final KbEmbeddingIngestor embeddingIngestor;
+    private final IngestPort ingestPort;
+    private final ConversationPort conversationPort;
     private final KnowledgeBaseService knowledgeBaseService;
     private final AuditLogService auditLogService;
     private final SearchCacheService searchCacheService;
 
     public IndexRebuildService(DocumentChunkMapper documentChunkMapper,
                                DocumentMapper documentMapper,
-                               KbEmbeddingStoreFactory kbEmbeddingStoreFactory,
-                               KbContentRetrieverFactory kbContentRetrieverFactory,
-                               KbAssistantFactory kbAssistantFactory,
-                               KbChatAssistantFactory kbChatAssistantFactory,
-                               KbVectorIndexService vectorIndexService,
-                               KbEmbeddingIngestor embeddingIngestor,
+                               IngestPort ingestPort,
+                               ConversationPort conversationPort,
                                KnowledgeBaseService knowledgeBaseService,
                                AuditLogService auditLogService,
                                SearchCacheService searchCacheService) {
         this.documentChunkMapper = documentChunkMapper;
         this.documentMapper = documentMapper;
-        this.kbEmbeddingStoreFactory = kbEmbeddingStoreFactory;
-        this.kbContentRetrieverFactory = kbContentRetrieverFactory;
-        this.kbAssistantFactory = kbAssistantFactory;
-        this.kbChatAssistantFactory = kbChatAssistantFactory;
-        this.vectorIndexService = vectorIndexService;
-        this.embeddingIngestor = embeddingIngestor;
+        this.ingestPort = ingestPort;
+        this.conversationPort = conversationPort;
         this.knowledgeBaseService = knowledgeBaseService;
         this.auditLogService = auditLogService;
         this.searchCacheService = searchCacheService;
@@ -78,11 +62,9 @@ public class IndexRebuildService {
     public int rebuildKbIndex(Long kbId) throws Exception {
         KnowledgeBase kb = knowledgeBaseService.getById(kbId);
         knowledgeBaseService.checkWritePermission(kb);
-        vectorIndexService.deleteKb(kbId);
-        kbEmbeddingStoreFactory.evict(kbId);
-        kbContentRetrieverFactory.evict(kbId);
-        kbAssistantFactory.evict(kbId);
-        kbChatAssistantFactory.evict(kbId);
+        ingestPort.deleteKb(kbId);
+        ingestPort.evictKbRuntime(kbId);
+        conversationPort.evictAssistant(kbId);
 
         List<DocumentChunk> chunks = documentChunkMapper.findByKbId(kbId);
         if (chunks.isEmpty()) {
@@ -99,7 +81,7 @@ public class IndexRebuildService {
         for (Map.Entry<Long, List<DocumentChunk>> entry : byDoc.entrySet()) {
             KbDocument doc = docCache.computeIfAbsent(entry.getKey(), documentMapper::selectById);
             if (doc != null) {
-                embeddingIngestor.embedChunks(doc, entry.getValue());
+                ingestPort.embedChunks(doc, entry.getValue());
             }
         }
 

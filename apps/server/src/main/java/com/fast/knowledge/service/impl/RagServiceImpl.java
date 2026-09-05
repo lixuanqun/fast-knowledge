@@ -7,14 +7,12 @@ import com.fast.knowledge.model.dto.QaRequest;
 import com.fast.knowledge.model.vo.QaResponseVO;
 import com.fast.knowledge.model.vo.RagContextVO;
 import com.fast.knowledge.model.vo.SearchHitVO;
+import com.fast.knowledge.ai.port.ChatPort;
 import com.fast.knowledge.service.AuditLogService;
 import com.fast.knowledge.service.MetricsService;
 import com.fast.knowledge.service.QaHistoryService;
 import com.fast.knowledge.service.RagService;
-import com.fast.knowledge.service.WikiAwareRetrievalService;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import com.fast.knowledge.ai.orchestration.retrieval.RetrievalOrchestrator;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,17 +26,17 @@ public class RagServiceImpl implements RagService {
             若参考资料不足以回答，请明确说明「知识库中未找到相关内容」，不要编造。
             回答请使用简体中文，条理清晰。""";
 
-    private final WikiAwareRetrievalService wikiAwareRetrievalService;
-    private final ChatModel chatModel;
+    private final RetrievalOrchestrator retrievalOrchestrator;
+    private final ChatPort chatPort;
     private final AuditLogService auditLogService;
     private final MetricsService metricsService;
     private final QaHistoryService qaHistoryService;
 
-    public RagServiceImpl(WikiAwareRetrievalService wikiAwareRetrievalService, ChatModel chatModel,
+    public RagServiceImpl(RetrievalOrchestrator retrievalOrchestrator, ChatPort chatPort,
                           AuditLogService auditLogService, MetricsService metricsService,
                           QaHistoryService qaHistoryService) {
-        this.wikiAwareRetrievalService = wikiAwareRetrievalService;
-        this.chatModel = chatModel;
+        this.retrievalOrchestrator = retrievalOrchestrator;
+        this.chatPort = chatPort;
         this.auditLogService = auditLogService;
         this.metricsService = metricsService;
         this.qaHistoryService = qaHistoryService;
@@ -55,9 +53,7 @@ public class RagServiceImpl implements RagService {
             String userPrompt = rag.getContext().isBlank()
                     ? "问题：" + request.getQuestion()
                     : "参考资料：\n" + rag.getContext() + "\n\n问题：" + request.getQuestion();
-            String answer = chatModel.chat(SystemMessage.from(QA_SYSTEM_PROMPT), UserMessage.from(userPrompt))
-                    .aiMessage()
-                    .text();
+            String answer = chatPort.complete(QA_SYSTEM_PROMPT, userPrompt);
 
             QaResponseVO vo = new QaResponseVO();
             vo.setAnswer(answer);
@@ -76,7 +72,7 @@ public class RagServiceImpl implements RagService {
 
     @Override
     public RagContextVO retrieve(Long kbId, String query) throws Exception {
-        List<SearchHitVO> hits = wikiAwareRetrievalService.retrieve(kbId, query);
+        List<SearchHitVO> hits = retrievalOrchestrator.retrieve(kbId, query);
         String context = formatHits(hits);
         return new RagContextVO(context, hits);
     }

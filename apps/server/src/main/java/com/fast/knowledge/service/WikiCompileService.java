@@ -1,5 +1,6 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.port.ChatPort;
 import com.fast.knowledge.common.StringUtils;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.mapper.DocumentMapper;
@@ -8,9 +9,6 @@ import com.fast.knowledge.mapper.WikiPageMapper;
 import com.fast.knowledge.model.entity.KbDocument;
 import com.fast.knowledge.model.entity.WikiCompileTask;
 import com.fast.knowledge.model.entity.WikiPage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,8 +31,10 @@ public class WikiCompileService {
     private final WikiPageMapper wikiPageMapper;
     private final WikiCompileTaskMapper wikiCompileTaskMapper;
     private final TextExtractionService textExtractionService;
-    private final ChatModel chatModel;
+    private final ChatPort chatPort;
     private final AuditLogService auditLogService;
+    private final com.fast.knowledge.config.EditionGuard editionGuard;
+    private final com.fast.knowledge.ai.orchestration.WikiAgentService wikiAgentService;
     /** 注入自身代理以确保 protected @Transactional 方法 AOP 生效 */
     private WikiCompileService self;
 
@@ -43,16 +43,20 @@ public class WikiCompileService {
                               WikiPageMapper wikiPageMapper,
                               WikiCompileTaskMapper wikiCompileTaskMapper,
                               TextExtractionService textExtractionService,
-                              ChatModel chatModel,
+                              ChatPort chatPort,
                               AuditLogService auditLogService,
+                              com.fast.knowledge.config.EditionGuard editionGuard,
+                              com.fast.knowledge.ai.orchestration.WikiAgentService wikiAgentService,
                               @Lazy WikiCompileService self) {
         this.properties = properties;
         this.documentMapper = documentMapper;
         this.wikiPageMapper = wikiPageMapper;
         this.wikiCompileTaskMapper = wikiCompileTaskMapper;
         this.textExtractionService = textExtractionService;
-        this.chatModel = chatModel;
+        this.chatPort = chatPort;
         this.auditLogService = auditLogService;
+        this.editionGuard = editionGuard;
+        this.wikiAgentService = wikiAgentService;
         this.self = self;
     }
 
@@ -117,13 +121,24 @@ public class WikiCompileService {
             self.updateTaskStatus(task, "COMPILING", null);
         }
         try {
+            // Wiki 维护 Agent（langgraph4j 图）：企业版 + 开关开启时走增量合并/Lint 流水线，
+            // 任何异常回退到下方单发编译路径（保持 best-effort 语义）
+            if (properties.getWiki().getAgent().isEnabled() && editionGuard.isEnterprise()) {
+                try {
+                    wikiAgentService.run(documentId);
+                    if (task != null) {
+                        self.updateTaskStatus(task, "DONE", null);
+                    }
+                    return;
+                } catch (Exception agentEx) {
+                    log.warn("Wiki Agent 图执行失败，回退单发编译 docId={}", documentId, agentEx);
+                }
+            }
             // LLM 调用在事务外 —— 避免长时间持有 DB 连接
             String text = textExtractionService.extractFullText(doc);
             String sourceHint = buildSourceHint(doc);
             String userPrompt = sourceHint + "\n\n原文摘录：\n" + StringUtils.truncate(text, 12000);
-            String contentMd = chatModel.chat(SystemMessage.from(WIKI_SYSTEM), UserMessage.from(userPrompt))
-                    .aiMessage()
-                    .text();
+            String contentMd = chatPort.complete(WIKI_SYSTEM, userPrompt);
 
             // 仅 DB 写入需要事务
             self.saveWikiResult(doc, documentId, contentMd, task);

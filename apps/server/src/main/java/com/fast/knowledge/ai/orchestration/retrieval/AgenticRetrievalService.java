@@ -1,12 +1,12 @@
-package com.fast.knowledge.service;
+package com.fast.knowledge.ai.orchestration.retrieval;
 
+import com.fast.knowledge.ai.port.ChatPort;
 import com.fast.knowledge.config.KnowledgeProperties;
-import com.fast.knowledge.llm.LlmModelRegistry;
+import com.fast.knowledge.service.MetricsService;
+import com.fast.knowledge.service.QueryComplexityClassifier;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -38,16 +38,16 @@ public class AgenticRetrievalService {
     private static final Pattern JSON_ARRAY = Pattern.compile("\\[.*]", Pattern.DOTALL);
 
     private final KnowledgeProperties properties;
-    private final LlmModelRegistry llmModelRegistry;
+    private final ChatPort chatPort;
     private final ObjectMapper objectMapper;
     private final MetricsService metricsService;
 
     public AgenticRetrievalService(KnowledgeProperties properties,
-                                   LlmModelRegistry llmModelRegistry,
+                                   ChatPort chatPort,
                                    ObjectMapper objectMapper,
                                    MetricsService metricsService) {
         this.properties = properties;
-        this.llmModelRegistry = llmModelRegistry;
+        this.chatPort = chatPort;
         this.objectMapper = objectMapper;
         this.metricsService = metricsService;
     }
@@ -122,11 +122,7 @@ public class AgenticRetrievalService {
     }
 
     private List<String> llmDecompose(String query, int max) throws Exception {
-        String raw = llmModelRegistry.getChatModel()
-                .chat(SystemMessage.from(DECOMPOSE_PROMPT),
-                        UserMessage.from("用户问题：" + query + "\nJSON数组："))
-                .aiMessage()
-                .text();
+        String raw = chatPort.complete(DECOMPOSE_PROMPT, "用户问题：" + query + "\nJSON数组：");
         if (raw == null || raw.isBlank()) {
             return List.of();
         }
@@ -140,7 +136,7 @@ public class AgenticRetrievalService {
                 .toList();
     }
 
-    static List<String> heuristicSplit(String query) {
+    public static List<String> heuristicSplit(String query) {
         String q = query.trim();
         // 「A和B的区别」类
         String[] parts = q.split("(?:对比|比较|区别|差异|以及|还有|同时|分别是|分别)");

@@ -30,7 +30,7 @@ class KnowledgeBaseApiKeyScopeTest {
     @Mock
     private KbMemberMapper kbMemberMapper;
     @Mock
-    private com.fast.knowledge.langchain4j.store.KbVectorIndexService vectorIndexService;
+    private com.fast.knowledge.ai.port.IngestPort ingestPort;
     @Mock
     private com.fast.knowledge.config.KnowledgeProperties properties;
     @Mock

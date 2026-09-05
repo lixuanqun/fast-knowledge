@@ -2,6 +2,7 @@ package com.fast.knowledge.service;
 
 import com.fast.knowledge.config.KnowledgeProperties;
 import org.junit.jupiter.api.BeforeEach;
+import com.fast.knowledge.ai.orchestration.retrieval.WikiQueryRouter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

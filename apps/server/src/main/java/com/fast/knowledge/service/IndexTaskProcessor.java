@@ -1,19 +1,15 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.port.ConversationPort;
+import com.fast.knowledge.ai.port.IngestPort;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.config.KnowledgeProperties;
-import com.fast.knowledge.langchain4j.ingest.KbDocumentSplitter;
-import com.fast.knowledge.langchain4j.ingest.KbEmbeddingIngestor;
-import com.fast.knowledge.langchain4j.store.KbVectorIndexService;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
 import com.fast.knowledge.mapper.IndexTaskMapper;
 import com.fast.knowledge.model.entity.DocumentChunk;
 import com.fast.knowledge.model.entity.IndexTask;
 import com.fast.knowledge.model.entity.KbDocument;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -21,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,12 +34,10 @@ public class IndexTaskProcessor {
     private final DocumentChunkMapper documentChunkMapper;
     private final IndexTaskMapper indexTaskMapper;
     private final ChunkService chunkService;
-    private final KbDocumentSplitter documentSplitter;
-    private final KbEmbeddingIngestor embeddingIngestor;
-    private final KbVectorIndexService vectorIndexService;
+    private final IngestPort ingestPort;
+    private final ConversationPort conversationPort;
     private final com.fast.knowledge.cache.CacheProvider cacheProvider;
     private final SearchCacheService searchCacheService;
-    private final com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory kbChatAssistantFactory;
     private final WikiCompileService wikiCompileService;
     private final TextExtractionService textExtractionService;
     private final MetricsService metricsService;
@@ -54,12 +47,10 @@ public class IndexTaskProcessor {
                                DocumentChunkMapper documentChunkMapper,
                                IndexTaskMapper indexTaskMapper,
                                ChunkService chunkService,
-                               KbDocumentSplitter documentSplitter,
-                               KbEmbeddingIngestor embeddingIngestor,
-                               KbVectorIndexService vectorIndexService,
+                               IngestPort ingestPort,
+                               ConversationPort conversationPort,
                                com.fast.knowledge.cache.CacheProvider cacheProvider,
                                SearchCacheService searchCacheService,
-                               com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory kbChatAssistantFactory,
                                WikiCompileService wikiCompileService,
                                TextExtractionService textExtractionService,
                                MetricsService metricsService,
@@ -68,12 +59,10 @@ public class IndexTaskProcessor {
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
         this.chunkService = chunkService;
-        this.documentSplitter = documentSplitter;
-        this.embeddingIngestor = embeddingIngestor;
-        this.vectorIndexService = vectorIndexService;
+        this.ingestPort = ingestPort;
+        this.conversationPort = conversationPort;
         this.cacheProvider = cacheProvider;
         this.searchCacheService = searchCacheService;
-        this.kbChatAssistantFactory = kbChatAssistantFactory;
         this.wikiCompileService = wikiCompileService;
         this.textExtractionService = textExtractionService;
         this.metricsService = metricsService;
@@ -130,18 +119,13 @@ public class IndexTaskProcessor {
             int chunkCount = metricsService.timeIndex(() -> {
                 try {
                     String text = textExtractionService.extractFullText(doc);
-                    Metadata docMetadata = Metadata.from(Map.of(
-                            "kbId", doc.getKbId(),
-                            "docId", documentId,
-                            "title", doc.getTitle() != null ? doc.getTitle() : ""
-                    ));
-                    List<TextSegment> splitSegments = documentSplitter.split(Document.from(text, docMetadata));
+                    List<String> splitSegments = ingestPort.split(text, doc.getKbId(), documentId, doc.getTitle());
                     documentChunkMapper.deleteByDocumentId(documentId);
-                    vectorIndexService.deleteByDocument(doc.getKbId(), documentId);
+                    ingestPort.deleteByDocument(doc.getKbId(), documentId);
 
                     List<DocumentChunk> chunks = new ArrayList<>();
                     for (int i = 0; i < splitSegments.size(); i++) {
-                        String content = splitSegments.get(i).text();
+                        String content = splitSegments.get(i);
                         DocumentChunk chunk = new DocumentChunk();
                         chunk.setKbId(doc.getKbId());
                         chunk.setDocumentId(documentId);
@@ -154,7 +138,7 @@ public class IndexTaskProcessor {
                     if (!chunks.isEmpty()) {
                         documentChunkMapper.batchInsert(chunks);
                         List<DocumentChunk> saved = documentChunkMapper.findByDocumentId(documentId);
-                        embeddingIngestor.embedChunks(doc, saved);
+                        ingestPort.embedChunks(doc, saved);
                         return saved.size();
                     }
                     return 0;
@@ -176,7 +160,7 @@ public class IndexTaskProcessor {
             // Best-effort post-indexing operations: failures here don't revert index status
             try {
                 searchCacheService.invalidateForKb(doc.getKbId());
-                kbChatAssistantFactory.evict(doc.getKbId());
+                conversationPort.evictAssistant(doc.getKbId());
                 wikiCompileService.scheduleCompile(doc.getId());
             } catch (Exception postEx) {
                 log.warn("Post-indexing cleanup failed docId={}: {}", documentId, postEx.getMessage());

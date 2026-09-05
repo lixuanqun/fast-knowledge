@@ -200,6 +200,19 @@ CREATE TABLE IF NOT EXISTS kb_wiki_compile_task (
 CREATE INDEX IF NOT EXISTS idx_wiki_task_doc ON kb_wiki_compile_task (document_id);
 CREATE INDEX IF NOT EXISTS idx_wiki_task_status ON kb_wiki_compile_task (status);
 
+-- Wiki 维护 Agent 变更日志（增量合并 / 全量编译，供审计与回溯）
+CREATE TABLE IF NOT EXISTS kb_wiki_change_log (
+    id            BIGSERIAL PRIMARY KEY,
+    kb_id         BIGINT       NOT NULL,
+    page_id       BIGINT       NOT NULL,
+    from_version  INT,
+    to_version    INT          NOT NULL,
+    change_type   VARCHAR(32)  NOT NULL,
+    summary       VARCHAR(1000),
+    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_wiki_change_page ON kb_wiki_change_log (page_id);
+
 CREATE TABLE IF NOT EXISTS kb_system_config (
     config_key   VARCHAR(64) PRIMARY KEY,
     config_value VARCHAR(1024) NOT NULL,

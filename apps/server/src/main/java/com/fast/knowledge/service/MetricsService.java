@@ -211,6 +211,14 @@ public class MetricsService {
                 .increment();
     }
 
+    public void countWikiAgent(String changeType) {
+        Counter.builder("kb.wiki.agent")
+                .description("Wiki 维护 Agent 编译/合并")
+                .tag("change_type", changeType)
+                .register(registry)
+                .increment();
+    }
+
     public MeterRegistry registry() {
         return registry;
     }

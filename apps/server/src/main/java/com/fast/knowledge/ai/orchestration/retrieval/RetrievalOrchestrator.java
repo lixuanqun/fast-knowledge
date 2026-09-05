@@ -1,6 +1,7 @@
-package com.fast.knowledge.service;
+package com.fast.knowledge.ai.orchestration.retrieval;
 
 import com.fast.knowledge.model.dto.SearchRequest;
+import com.fast.knowledge.service.SearchService;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import org.springframework.stereotype.Service;
 
@@ -10,20 +11,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 统一召回入口（QA / Chat 共用）：
+ * 检索编排器（Retrieval Orchestrator，QA / Chat 共用统一召回入口）：
  * <ol>
  *   <li>复杂问法 → 轻量 Agentic 多跳（每跳仍走 Wiki+HYBRID 单轮）</li>
  *   <li>简单问法 → Wiki 优先 + HYBRID 兜底</li>
  * </ol>
  */
 @Service
-public class WikiAwareRetrievalService {
+public class RetrievalOrchestrator {
 
     private final SearchService searchService;
     private final WikiQueryRouter wikiQueryRouter;
     private final AgenticRetrievalService agenticRetrievalService;
 
-    public WikiAwareRetrievalService(SearchService searchService,
+    public RetrievalOrchestrator(SearchService searchService,
                                      WikiQueryRouter wikiQueryRouter,
                                      AgenticRetrievalService agenticRetrievalService) {
         this.searchService = searchService;

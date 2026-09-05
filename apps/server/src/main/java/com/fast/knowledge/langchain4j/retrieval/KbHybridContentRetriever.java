@@ -2,7 +2,7 @@ package com.fast.knowledge.langchain4j.retrieval;
 
 import com.fast.knowledge.langchain4j.KbEmbeddingStore;
 import com.fast.knowledge.model.vo.SearchHitVO;
-import com.fast.knowledge.service.WikiAwareRetrievalService;
+import com.fast.knowledge.ai.orchestration.retrieval.RetrievalOrchestrator;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
@@ -16,17 +16,17 @@ import java.util.Map;
 public class KbHybridContentRetriever implements ContentRetriever {
 
     private final Long kbId;
-    private final WikiAwareRetrievalService wikiAwareRetrievalService;
+    private final RetrievalOrchestrator retrievalOrchestrator;
 
-    public KbHybridContentRetriever(Long kbId, WikiAwareRetrievalService wikiAwareRetrievalService) {
+    public KbHybridContentRetriever(Long kbId, RetrievalOrchestrator retrievalOrchestrator) {
         this.kbId = kbId;
-        this.wikiAwareRetrievalService = wikiAwareRetrievalService;
+        this.retrievalOrchestrator = retrievalOrchestrator;
     }
 
     @Override
     public List<Content> retrieve(Query query) {
         try {
-            return wikiAwareRetrievalService.retrieve(kbId, query.text()).stream()
+            return retrievalOrchestrator.retrieve(kbId, query.text()).stream()
                     .map(this::toContent)
                     .toList();
         } catch (Exception e) {

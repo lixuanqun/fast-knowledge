@@ -1,12 +1,10 @@
 package com.fast.knowledge.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fast.knowledge.ai.port.ConversationPort;
 import com.fast.knowledge.audit.AuditActions;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.common.SseEmitterHelper;
-import com.fast.knowledge.langchain4j.RetrievedContentMapper;
-import com.fast.knowledge.langchain4j.assistant.KbChatAssistantFactory;
-import com.fast.knowledge.langchain4j.memory.DbChatMemoryStore;
 import com.fast.knowledge.mapper.ChatMessageMapper;
 import com.fast.knowledge.mapper.ChatSessionMapper;
 import com.fast.knowledge.model.dto.ChatMessageRequest;
@@ -19,8 +17,6 @@ import com.fast.knowledge.service.ChatService;
 import com.fast.knowledge.service.KnowledgeBaseService;
 import com.fast.knowledge.service.MetricsService;
 import com.fast.knowledge.service.QueryRewriter;
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.TokenStream;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -42,8 +38,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
     private final KnowledgeBaseService knowledgeBaseService;
-    private final KbChatAssistantFactory kbChatAssistantFactory;
-    private final DbChatMemoryStore chatMemoryStore;
+    private final ConversationPort conversationPort;
     private final ObjectMapper objectMapper;
     private final Executor chatExecutor;
     private final AuditLogService auditLogService;
@@ -53,8 +48,7 @@ public class ChatServiceImpl implements ChatService {
     public ChatServiceImpl(ChatSessionMapper chatSessionMapper,
                            ChatMessageMapper chatMessageMapper,
                            KnowledgeBaseService knowledgeBaseService,
-                           KbChatAssistantFactory kbChatAssistantFactory,
-                           DbChatMemoryStore chatMemoryStore,
+                           ConversationPort conversationPort,
                            ObjectMapper objectMapper,
                            @Qualifier("chatExecutor") Executor chatExecutor,
                            AuditLogService auditLogService,
@@ -63,8 +57,7 @@ public class ChatServiceImpl implements ChatService {
         this.chatSessionMapper = chatSessionMapper;
         this.chatMessageMapper = chatMessageMapper;
         this.knowledgeBaseService = knowledgeBaseService;
-        this.kbChatAssistantFactory = kbChatAssistantFactory;
-        this.chatMemoryStore = chatMemoryStore;
+        this.conversationPort = conversationPort;
         this.objectMapper = objectMapper;
         this.chatExecutor = chatExecutor;
         this.auditLogService = auditLogService;
@@ -110,7 +103,7 @@ public class ChatServiceImpl implements ChatService {
         if (session == null || !session.getUserId().equals(UserContext.currentUserId())) {
             throw new BusinessException("会话不存在");
         }
-        chatMemoryStore.deleteMessages(sessionId);
+        conversationPort.deleteMemory(sessionId);
         chatSessionMapper.deleteById(sessionId);
     }
 
@@ -138,46 +131,55 @@ public class ChatServiceImpl implements ChatService {
 
                 final java.util.List<SearchHitVO> sources = new ArrayList<>();
                 final AtomicBoolean firstTokenRecorded = new AtomicBoolean(false);
-                TokenStream tokenStream = kbChatAssistantFactory.stream(
-                        kbId, activeSession.getId(), rewrittenMessage);
-
-                tokenStream
-                        .onRetrieved((List<Content> contents) -> sources.addAll(RetrievedContentMapper.toSearchHits(contents)))
-                        .onPartialResponse(partial -> {
-                            try {
-                                if (firstTokenRecorded.compareAndSet(false, true)) {
-                                    long latency = System.currentTimeMillis() - startTime;
-                                    metricsService.recordFirstTokenLatency(latency);
-                                }
-                                emitter.send(SseEmitter.event().data(partial));
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
+                conversationPort.streamConversation(kbId, activeSession.getId(), rewrittenMessage,
+                        new ConversationPort.ConversationHandler() {
+                            @Override
+                            public void onRetrieved(List<SearchHitVO> retrieved) {
+                                sources.addAll(retrieved);
                             }
-                        })
-                        .onCompleteResponse(response -> {
-                            try {
-                                if (!sources.isEmpty()) {
-                                    chatMemoryStore.attachSources(
-                                            activeSession.getId(),
-                                            objectMapper.writeValueAsString(sources));
+
+                            @Override
+                            public void onPartial(String partial) {
+                                try {
+                                    if (firstTokenRecorded.compareAndSet(false, true)) {
+                                        long latency = System.currentTimeMillis() - startTime;
+                                        metricsService.recordFirstTokenLatency(latency);
+                                    }
+                                    emitter.send(SseEmitter.event().data(partial));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
                                 }
-                                chatSessionMapper.touchSession(
-                                        activeSession.getId(), java.time.LocalDateTime.now());
-
-                                auditLogService.log(AuditActions.CHAT, "SESSION", activeSession.getId(),
-                                        "kbId=" + kbId + ", message=" + truncate(originalMessage, 200));
-
-                                Map<String, Object> done = new HashMap<>();
-                                done.put("sessionId", activeSession.getId());
-                                done.put("sources", sources);
-                                SseEmitterHelper.sendNamed(emitter, "done", objectMapper.writeValueAsString(done));
-                                emitter.complete();
-                            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-                                emitter.completeWithError(e);
                             }
-                        })
-                        .onError(error -> SseEmitterHelper.sendError(emitter, error.getMessage()))
-                        .start();
+
+                            @Override
+                            public void onComplete() {
+                                try {
+                                    if (!sources.isEmpty()) {
+                                        conversationPort.attachSources(
+                                                activeSession.getId(),
+                                                objectMapper.writeValueAsString(sources));
+                                    }
+                                    chatSessionMapper.touchSession(
+                                            activeSession.getId(), java.time.LocalDateTime.now());
+
+                                    auditLogService.log(AuditActions.CHAT, "SESSION", activeSession.getId(),
+                                            "kbId=" + kbId + ", message=" + truncate(originalMessage, 200));
+
+                                    Map<String, Object> done = new HashMap<>();
+                                    done.put("sessionId", activeSession.getId());
+                                    done.put("sources", sources);
+                                    SseEmitterHelper.sendNamed(emitter, "done", objectMapper.writeValueAsString(done));
+                                    emitter.complete();
+                                } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                                    emitter.completeWithError(e);
+                                }
+                            }
+
+                            @Override
+                            public void onError(Throwable error) {
+                                SseEmitterHelper.sendError(emitter, error.getMessage());
+                            }
+                        });
 
                 metricsService.countLlmCall("chat");
             } catch (Exception e) {

@@ -1,33 +1,35 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.port.ChatPort;
+import com.fast.knowledge.ai.orchestration.WriterGraphService;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.common.SseEmitterHelper;
 import com.fast.knowledge.model.dto.WriterRequest;
 import com.fast.knowledge.security.UserContext;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
 import java.util.concurrent.Executor;
 
 @Service
 public class WriterService {
 
     private final RagService ragService;
-    private final StreamingChatModel streamingChatModel;
+    private final ChatPort chatPort;
+    private final com.fast.knowledge.config.KnowledgeProperties properties;
+    private final WriterGraphService writerGraphService;
     private final Executor chatExecutor;
 
     public WriterService(RagService ragService,
-                         StreamingChatModel streamingChatModel,
+                         ChatPort chatPort,
+                         com.fast.knowledge.config.KnowledgeProperties properties,
+                         WriterGraphService writerGraphService,
                          @Qualifier("chatExecutor") Executor chatExecutor) {
         this.ragService = ragService;
-        this.streamingChatModel = streamingChatModel;
+        this.chatPort = chatPort;
+        this.properties = properties;
+        this.writerGraphService = writerGraphService;
         this.chatExecutor = chatExecutor;
     }
 
@@ -50,19 +52,22 @@ public class WriterService {
                         + "目标字数：" + (request.getWordCount() != null ? request.getWordCount() : "800") + "\n\n"
                         + "参考资料：\n" + (context.isBlank() ? "（无）" : context);
 
-                List<dev.langchain4j.data.message.ChatMessage> messages = List.of(
-                        SystemMessage.from(systemPrompt),
-                        UserMessage.from(userPrompt)
-                );
+                // 多步编排（大纲→分节→引用→润色）：开关开启时走 langgraph4j 图，[DONE] 契约不变
+                if (properties.getWriter().isGraphEnabled()) {
+                    writerGraphService.generate(request, emitter, context);
+                    SseEmitterHelper.sendNamed(emitter, "done", "[DONE]");
+                    emitter.complete();
+                    return;
+                }
 
-                streamingChatModel.chat(messages, new StreamingChatResponseHandler() {
+                chatPort.stream(systemPrompt, userPrompt, new ChatPort.StreamHandler() {
                     @Override
-                    public void onPartialResponse(String partialResponse) {
+                    public void onPartial(String partialResponse) {
                         SseEmitterHelper.sendData(emitter, partialResponse);
                     }
 
                     @Override
-                    public void onCompleteResponse(ChatResponse response) {
+                    public void onComplete(String fullText) {
                         SseEmitterHelper.sendNamed(emitter, "done", "[DONE]");
                         emitter.complete();
                     }

@@ -1,5 +1,6 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.orchestration.retrieval.AgenticRetrievalService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

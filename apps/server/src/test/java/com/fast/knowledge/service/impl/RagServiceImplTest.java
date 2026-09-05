@@ -1,5 +1,6 @@
 package com.fast.knowledge.service.impl;
 
+import com.fast.knowledge.ai.port.ChatPort;
 import com.fast.knowledge.common.BusinessException;
 import com.fast.knowledge.model.dto.QaRequest;
 import com.fast.knowledge.model.vo.QaResponseVO;
@@ -7,9 +8,7 @@ import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.AuditLogService;
 import com.fast.knowledge.service.MetricsService;
 import com.fast.knowledge.service.QaHistoryService;
-import com.fast.knowledge.service.WikiAwareRetrievalService;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import com.fast.knowledge.ai.orchestration.retrieval.RetrievalOrchestrator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,8 +31,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RagServiceImplTest {
 
-    @Mock private WikiAwareRetrievalService wikiAwareRetrievalService;
-    @Mock private ChatModel chatModel;
+    @Mock private RetrievalOrchestrator retrievalOrchestrator;
+    @Mock private ChatPort chatPort;
     @Mock private AuditLogService auditLogService;
     @Mock private MetricsService metricsService;
     @Mock private QaHistoryService qaHistoryService;
@@ -42,7 +41,7 @@ class RagServiceImplTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        ragService = new RagServiceImpl(wikiAwareRetrievalService, chatModel, auditLogService, metricsService, qaHistoryService);
+        ragService = new RagServiceImpl(retrievalOrchestrator, chatPort, auditLogService, metricsService, qaHistoryService);
         // timeRag should execute the wrapped Callable (for tests); lenient because validation tests don't reach it
         lenient().when(metricsService.timeRag(any())).thenAnswer(inv -> {
             Callable<?> action = inv.getArgument(0);
@@ -76,11 +75,9 @@ class RagServiceImplTest {
         request.setQuestion("什么是Java");
 
         List<SearchHitVO> hits = List.of(hit("Java简介", "Java是一种编程语言"));
-        when(wikiAwareRetrievalService.retrieve(anyLong(), anyString())).thenReturn(hits);
-        when(chatModel.chat(any(dev.langchain4j.data.message.ChatMessage[].class)))
-                .thenReturn(ChatResponse.builder()
-                        .aiMessage(dev.langchain4j.data.message.AiMessage.from("Java是一种面向对象的编程语言"))
-                        .build());
+        when(retrievalOrchestrator.retrieve(anyLong(), anyString())).thenReturn(hits);
+        when(chatPort.complete(anyString(), anyString()))
+                .thenReturn("Java是一种面向对象的编程语言");
 
         QaResponseVO result = ragService.ask(request);
 
@@ -95,11 +92,9 @@ class RagServiceImplTest {
         request.setKbId(1L);
         request.setQuestion("unknown topic");
 
-        when(wikiAwareRetrievalService.retrieve(anyLong(), anyString())).thenReturn(Collections.emptyList());
-        when(chatModel.chat(any(dev.langchain4j.data.message.ChatMessage[].class)))
-                .thenReturn(ChatResponse.builder()
-                        .aiMessage(dev.langchain4j.data.message.AiMessage.from("知识库中未找到相关内容"))
-                        .build());
+        when(retrievalOrchestrator.retrieve(anyLong(), anyString())).thenReturn(Collections.emptyList());
+        when(chatPort.complete(anyString(), anyString()))
+                .thenReturn("知识库中未找到相关内容");
 
         QaResponseVO result = ragService.ask(request);
         assertThat(result.getAnswer()).contains("知识库中未找到相关内容");

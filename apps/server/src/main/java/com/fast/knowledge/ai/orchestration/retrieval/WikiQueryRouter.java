@@ -1,6 +1,7 @@
-package com.fast.knowledge.service;
+package com.fast.knowledge.ai.orchestration.retrieval;
 
 import com.fast.knowledge.config.KnowledgeProperties;
+import com.fast.knowledge.service.WikiService;
 import com.fast.knowledge.model.entity.WikiPage;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import org.springframework.stereotype.Service;

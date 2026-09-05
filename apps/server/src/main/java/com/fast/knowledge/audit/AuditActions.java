@@ -30,6 +30,7 @@ public final class AuditActions {
     public static final String REVOKE_API_KEY = "REVOKE_API_KEY";
     public static final String WIKI_PUBLISH = "WIKI_PUBLISH";
     public static final String WIKI_REJECT = "WIKI_REJECT";
+    public static final String WIKI_AGENT_MERGE = "WIKI_AGENT_MERGE";
 
     private AuditActions() {
     }
