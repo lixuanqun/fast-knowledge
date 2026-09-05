@@ -7,7 +7,7 @@ Fast Knowledge 在 K8s 上的最小可运行清单，与 [docker-compose.full.ym
 | 文件 | 说明 |
 |------|------|
 | `secrets.example.yaml` | Secret 模板，部署前替换占位值 |
-| `dependencies.yaml` | PostgreSQL（pgvector）、Redis、MinIO |
+| `dependencies.yaml` | MySQL 5.7、Redis、MinIO |
 | `deployment.yaml` | 应用 Deployment + Service |
 | `ingress.yaml` | Ingress 示例（按需修改 host 与 class） |
 

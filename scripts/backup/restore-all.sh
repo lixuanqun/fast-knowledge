@@ -17,9 +17,9 @@ if [ ! -f "$BACKUP_DIR/fast_knowledge.sql" ]; then
   exit 1
 fi
 
-echo "==> 恢复 PostgreSQL..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres \
-  psql -U postgres -d fast_knowledge < "$BACKUP_DIR/fast_knowledge.sql"
+echo "==> 恢复 MySQL..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T mysql \
+  mysql -uroot -proot --default-character-set=utf8mb4 fast_knowledge < "$BACKUP_DIR/fast_knowledge.sql"
 
 if [ -f "$BACKUP_DIR/minio_data.tar.gz" ]; then
   echo "==> 恢复 MinIO 卷..."

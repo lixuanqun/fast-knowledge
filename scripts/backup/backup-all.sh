@@ -9,9 +9,9 @@ mkdir -p "$BACKUP_DIR"
 COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/docker/docker-compose.full.yml}"
 ENV_FILE="${ENV_FILE:-$ROOT/docker/.env}"
 
-echo "==> 备份 PostgreSQL..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres \
-  pg_dump -U postgres fast_knowledge > "$BACKUP_DIR/fast_knowledge.sql"
+echo "==> 备份 MySQL..."
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T mysql \
+  mysqldump -uroot -proot --default-character-set=utf8mb4 --single-transaction fast_knowledge > "$BACKUP_DIR/fast_knowledge.sql"
 
 echo "==> 备份 MinIO 数据卷（若使用 compose 卷 minio_data）..."
 VOLUME=$(docker volume ls -q | grep minio || true)

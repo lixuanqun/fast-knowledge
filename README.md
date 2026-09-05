@@ -35,7 +35,7 @@
 
 ### 知识库与 AI
 
-- **混合检索** — 向量 + 全文（pgvector HNSW 索引），可选本地 ONNX Rerank
+- **智能检索** — 本地向量索引（余弦相似度），可选云端 Rerank
 - **双层缓存** — Caffeine L1 本地 + Redis L2，热查询 <1ms
 - **RAG 问答** — 单次问答、多轮流式对话（含 Query Rewrite 指代消解）、AI 写文档，均附引用来源
 - **多格式文档** — PDF / DOCX / TXT / MD / PPTX / XLSX / HTML，异步索引与分块预览
@@ -55,7 +55,7 @@
 - **不出域模式** — `LLM_ALLOW_EXTERNAL=false` 禁止外连大模型与云端 Rerank
 - **离线交付包** — 气隙/内网环境镜像与安装脚本
 - **API Key** — 服务账号调用，适合后端系统集成
-- **备份恢复** — PostgreSQL + MinIO 一键备份脚本与 Runbook
+- **备份恢复** — MySQL + MinIO 一键备份脚本与 Runbook
 
 ### 部署方式
 
@@ -90,7 +90,7 @@
 | **定位** | 中小企业私有化知识库 | 企业级 RAG + Agent + Wiki 平台 | 低代码知识库问答系统 | 深度文档理解 RAG 引擎 |
 | **技术栈** | **Java 21 + Spring Boot** | Go + Gin | Python + Django | Python |
 | **AI 框架** | LangChain4j | 自研 Pipeline | LangChain | 自研 DeepDoc |
-| **向量库** | pgvector | 8 种可插拔 | pgvector / FAISS / Milvus | ES + Infinity |
+| **向量库** | 本地文件索引 | 8 种可插拔 | FAISS / Milvus | ES + Infinity |
 | **许可协议** | **MIT** | MIT | GPL-3.0 | Apache 2.0 |
 | **部署形态** | **单实例·每企一套** | 多租户 SaaS | 单机到集群 | 容器化私有部署 |
 | **Agent / 工作流** | ❌ 不做通用 Agent | ✅ ReAct + MCP | ✅ DAG 工作流编排 | ✅ 多 Agent 协作 |
