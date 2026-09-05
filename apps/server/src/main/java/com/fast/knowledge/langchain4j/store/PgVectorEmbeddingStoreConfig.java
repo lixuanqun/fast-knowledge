@@ -28,10 +28,12 @@ public class PgVectorEmbeddingStoreConfig {
 
     private final DataSource dataSource;
     private final KnowledgeProperties.PgVector pgConfig;
+    private final KnowledgeProperties properties;
 
     public PgVectorEmbeddingStoreConfig(DataSource dataSource, KnowledgeProperties properties) {
         this.dataSource = dataSource;
         this.pgConfig = properties.getVector().getPgvector();
+        this.properties = properties;
     }
 
     @Bean
@@ -54,6 +56,7 @@ public class PgVectorEmbeddingStoreConfig {
 
     @EventListener(ApplicationReadyEvent.class)
     public void createIndexOnStartup() {
+        validateDimensionConsistency();
         String indexType = pgConfig.getIndexType();
         if (indexType == null || indexType.isBlank()) {
             return;
@@ -87,6 +90,32 @@ public class PgVectorEmbeddingStoreConfig {
             stmt.execute(sql);
         } catch (Exception e) {
             log.warn("Index creation skipped (table may not exist yet): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 校验存量 pgvector 表维度与当前配置一致。pgvector 列维度建表后不可变，
+     * 不一致时索引会以晦涩的「value too long for character varying(N)」失败——
+     * 此处提前给出可操作指引（不同步则后续索引必然失败）。
+     */
+    private void validateDimensionConsistency() {
+        String table = pgConfig.getTable();
+        int configured = properties.getEmbedding().getDimension();
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement();
+             var rs = stmt.executeQuery(
+                     "SELECT atttypmod FROM pg_attribute "
+                     + "WHERE attrelid = '" + table + "'::regclass AND attname = 'embedding' AND atttypmod > 0")) {
+            if (rs.next()) {
+                int tableDim = rs.getInt(1);
+                if (configured > 0 && tableDim != configured) {
+                    log.error("向量维度不一致：{}.embedding=vector({})，当前配置 knowledge.embedding.dimension={}。"
+                            + "pgvector 列维度建表后不可变：请将 EMBEDDING_DIMENSION 设为 {} 以匹配存量表，"
+                            + "或改用新维度并重建向量表后全量重索引。", table, tableDim, configured, tableDim);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("向量维度校验跳过（表可能尚未创建）: {}", e.getMessage());
         }
     }
 }
