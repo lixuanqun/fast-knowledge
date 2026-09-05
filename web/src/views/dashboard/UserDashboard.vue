@@ -50,51 +50,17 @@
                 </el-select>
               </div>
             </template>
-            <svg class="trend-chart" viewBox="0 0 520 200" aria-hidden="true">
-              <defs>
-                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#409eff" stop-opacity="0.25" />
-                  <stop offset="100%" stop-color="#409eff" stop-opacity="0.02" />
-                </linearGradient>
-              </defs>
-              <polyline :points="trendArea" fill="url(#trendFill)" stroke="none" />
-              <polyline :points="trendLine" fill="none" stroke="#409eff" stroke-width="2.5" />
-              <g v-for="(p, i) in trendPoints" :key="i">
-                <circle :cx="p.x" :cy="p.y" r="4" fill="var(--fk-card-bg)" stroke="#409eff" stroke-width="2" />
-              </g>
-            </svg>
+            <TrendChart :values="trendValues" />
           </el-card>
         </el-col>
         <el-col :xs="24" :lg="10">
           <el-card class="chart-card" shadow="never">
             <template #header><span>文档类型分布</span></template>
-            <div class="donut-wrap">
-              <svg class="donut-chart" viewBox="0 0 120 120" aria-hidden="true">
-                <circle
-                  v-for="(seg, i) in donutSegments"
-                  :key="i"
-                  cx="60"
-                  cy="60"
-                  r="42"
-                  fill="none"
-                  :stroke="seg.color"
-                  stroke-width="16"
-                  :stroke-dasharray="`${seg.len} ${264 - seg.len}`"
-                  :stroke-dashoffset="seg.offset"
-                  transform="rotate(-90 60 60)"
-                />
-              </svg>
-              <div class="donut-center">
-                <strong>{{ stats?.documentCount ?? 0 }}</strong>
-                <span>文档总数</span>
-              </div>
-              <ul class="donut-legend">
-                <li v-for="item in typeDistribution" :key="item.type">
-                  <i :style="{ background: item.color }" />
-                  {{ item.type }} {{ item.count }} ({{ item.percent }}%)
-                </li>
-              </ul>
-            </div>
+            <DonutChart
+              :items="typeDistribution"
+              :center-value="stats?.documentCount ?? 0"
+              center-label="文档总数"
+            />
           </el-card>
         </el-col>
       </el-row>
@@ -142,6 +108,8 @@ import {
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import TrendChart from '@/components/charts/TrendChart.vue'
+import DonutChart from '@/components/charts/DonutChart.vue'
 import { formatDateTime } from '@/utils/format'
 import { useAuditsQuery, useDashboardStatsQuery } from '@/composables/queries/useDashboard'
 import { useKbsQuery } from '@/composables/queries/useKbs'
@@ -209,9 +177,9 @@ const typeDistribution = computed(() => {
   const total = stats.value?.documentCount || 0
   if (!total) {
     return [
-      { type: 'PDF', count: 0, percent: 0, color: '#409eff' },
-      { type: 'Word', count: 0, percent: 0, color: '#67c23a' },
-      { type: '其他', count: 0, percent: 0, color: '#e6a23c' }
+      { label: 'PDF', count: 0, percent: 0, color: '#409eff' },
+      { label: 'Word', count: 0, percent: 0, color: '#67c23a' },
+      { label: '其他', count: 0, percent: 0, color: '#e6a23c' }
     ]
   }
   const pdf = Math.round(total * 0.376)
@@ -219,43 +187,16 @@ const typeDistribution = computed(() => {
   const excel = Math.round(total * 0.125)
   const other = total - pdf - word - excel
   return [
-    { type: 'PDF', count: pdf, percent: 37.6, color: '#409eff' },
-    { type: 'Word', count: word, percent: 30.6, color: '#67c23a' },
-    { type: 'Excel', count: excel, percent: 12.5, color: '#e6a23c' },
-    { type: '其他', count: other, percent: 19.3, color: '#909399' }
+    { label: 'PDF', count: pdf, percent: 37.6, color: '#409eff' },
+    { label: 'Word', count: word, percent: 30.6, color: '#67c23a' },
+    { label: 'Excel', count: excel, percent: 12.5, color: '#e6a23c' },
+    { label: '其他', count: other, percent: 19.3, color: '#909399' }
   ]
 })
 
-const donutSegments = computed(() => {
-  const circumference = 2 * Math.PI * 42
-  let offset = 0
-  return typeDistribution.value.map(item => {
-    const len = (item.percent / 100) * circumference
-    const seg = { len, offset: -offset, color: item.color }
-    offset += len
-    return seg
-  })
-})
-
-const docTotal = computed(() => stats.value?.documentCount || 1)
-const trendPoints = computed(() => {
-  const base = docTotal.value
-  const values = [0.62, 0.68, 0.74, 0.8, 0.86, 0.93, 1].map(r => Math.round(base * r))
-  const xs = [40, 120, 200, 280, 360, 440, 500]
-  const max = Math.max(...values, 1)
-  return values.map((v, i) => ({
-    x: xs[i],
-    y: 170 - (v / max) * 130
-  }))
-})
-
-const trendLine = computed(() => trendPoints.value.map(p => `${p.x},${p.y}`).join(' '))
-const trendArea = computed(() => {
-  const pts = trendPoints.value
-  if (!pts.length) return ''
-  const first = pts[0]
-  const last = pts[pts.length - 1]
-  return `${first.x},180 ${trendLine.value} ${last.x},180`
+const trendValues = computed(() => {
+  const base = stats.value?.documentCount || 1
+  return [0.62, 0.68, 0.74, 0.8, 0.86, 0.93, 1].map(r => Math.round(base * r))
 })
 
 const recentDocs = computed(() => {
@@ -364,69 +305,6 @@ const recentDocs = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.trend-chart {
-  width: 100%;
-  height: 200px;
-}
-
-.donut-wrap {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  position: relative;
-}
-
-.donut-chart {
-  width: 120px;
-  height: 120px;
-  flex-shrink: 0;
-}
-
-.donut-center {
-  position: absolute;
-  left: 60px;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
-}
-
-.donut-center strong {
-  display: block;
-  font-size: 16px;
-  color: $fk-text-primary;
-}
-
-.donut-center span {
-  font-size: 11px;
-  color: $fk-text-secondary;
-}
-
-.donut-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 13px;
-  color: $fk-text-regular;
-  flex: 1;
-  min-width: 160px;
-}
-
-.donut-legend li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.donut-legend i {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .section-card {
