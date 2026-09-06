@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { formatDateTime } from '@/utils/format'
@@ -90,22 +90,20 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/vue-query'
 import { createApiKey, listApiKeys, revokeApiKey } from '@/api/api-keys'
 import { listUsers } from '@/api/users'
 import { queryKeys } from '@/lib/query-keys'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useFormDialog } from '@/composables/useFormDialog'
 import { Plus } from '@element-plus/icons-vue'
 
 const queryClient = useQueryClient()
-const showCreate = ref(false)
 const showRawKey = ref(false)
 const rawKey = ref('')
 const creating = ref(false)
-const formRef = ref<FormInstance>()
-
-const form = reactive({
+const { visible: showCreate, formRef, form, open: openFormDialog, validateForm } = useFormDialog({
   name: '',
   userId: undefined as number | undefined
 })
 
-const rules: FormRules = {
+const rules = {
   name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
   userId: [{ required: true, message: '请选择用户', trigger: 'change' }]
 }
@@ -138,17 +136,14 @@ const revokeMutation = useMutation({
 })
 
 function openCreate() {
-  form.name = ''
-  form.userId = undefined
-  showCreate.value = true
+  openFormDialog()
 }
 
 async function submitCreate() {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid || !form.userId) return
+  if (!(await validateForm()) || !form.value.userId) return
   creating.value = true
   try {
-    const res = await createApiKey({ name: form.name, userId: form.userId })
+    const res = await createApiKey({ name: form.value.name, userId: form.value.userId })
     showCreate.value = false
     rawKey.value = res.data.apiKey
     showRawKey.value = true

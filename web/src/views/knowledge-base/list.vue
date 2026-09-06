@@ -65,7 +65,7 @@
     </el-card>
 
     <el-dialog v-model="showDialog" title="新建知识库" width="480px" destroy-on-close align-center>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="88px">
+      <el-form ref="formRef" :model="form" :rules="{ name: [{ required: true, message: '请输入名称', trigger: 'blur' }] }" label-width="88px">
         <el-form-item label="名称" prop="name" required>
           <el-input
             v-model="form.name"
@@ -102,13 +102,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { visibilityLabel } from '@/utils/format'
 import { useCreateKbMutation, useDeleteKbMutation, useKbsQuery } from '@/composables/queries/useKbs'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { useFormDialog } from '@/composables/useFormDialog'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -119,16 +120,11 @@ const deleteMutation = useDeleteKbMutation()
 const keyword = ref('')
 const page = ref(1)
 const pageSize = ref(10)
-const showDialog = ref(false)
-const formRef = ref<FormInstance>()
-const form = reactive({
+const { visible: showDialog, formRef, form, open: openDialog, close: closeDialog, validateForm } = useFormDialog({
   name: '',
   description: '',
   visibility: 'PUBLIC'
 })
-const rules: FormRules = {
-  name: [{ required: true, message: '请输入名称', trigger: 'blur' }]
-}
 
 const filteredKbs = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
@@ -153,19 +149,15 @@ function goSettings(id: number) {
 }
 
 function openCreate() {
-  form.name = ''
-  form.description = ''
-  form.visibility = 'PUBLIC'
-  showDialog.value = true
+  openDialog()
 }
 
 async function handleCreate() {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (!(await validateForm())) return
   try {
-    await createMutation.mutateAsync({ ...form, searchTopK: 8 })
+    await createMutation.mutateAsync({ ...form.value, searchTopK: 8 })
     ElMessage.success('创建成功')
-    showDialog.value = false
+    closeDialog()
   } catch {
     /* 错误已由 axios 拦截器提示 */
   }

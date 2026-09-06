@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { KbUser } from '@/api'
 import PageHeader from '@/components/PageHeader.vue'
 import { formatDateTime } from '@/utils/format'
@@ -99,7 +99,9 @@ import {
   useUpdateUserMutation,
   useUsersQuery
 } from '@/composables/queries/useUsers'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useFormDialog } from '@/composables/useFormDialog'
+import { PASSWORD_MIN_LENGTH } from '@/constants'
 import { Plus } from '@element-plus/icons-vue'
 
 const { data: usersData, isLoading } = useUsersQuery()
@@ -116,8 +118,7 @@ const saving = computed(
 const showForm = ref(false)
 const editing = ref(false)
 const editingId = ref<number>()
-const formRef = ref<FormInstance>()
-const form = reactive({
+const { formRef, form, open: openFormDialog, validateForm } = useFormDialog({
   username: '',
   password: '',
   displayName: '',
@@ -125,11 +126,11 @@ const form = reactive({
   enabled: true
 })
 
-const rules: FormRules = {
+const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '至少 6 位', trigger: 'blur' }
+    { min: PASSWORD_MIN_LENGTH, message: `至少 ${PASSWORD_MIN_LENGTH} 位`, trigger: 'blur' }
   ],
   displayName: [{ required: true, message: '请输入显示名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
@@ -156,20 +157,20 @@ function userRow(row: unknown) {
 function openCreate() {
   editing.value = false
   editingId.value = undefined
-  form.username = ''
-  form.password = ''
-  form.displayName = ''
-  form.role = 'USER'
-  form.enabled = true
+  openFormDialog()
   showForm.value = true
 }
 
 function openEdit(user: KbUser) {
   editing.value = true
   editingId.value = user.id
-  form.displayName = user.displayName
-  form.role = user.role
-  form.enabled = user.status === 1
+  openFormDialog({
+    username: user.username,
+    password: '',
+    displayName: user.displayName,
+    role: user.role,
+    enabled: user.status === 1
+  })
   showForm.value = true
 }
 
@@ -191,25 +192,24 @@ async function openResetPwd(user: KbUser) {
 }
 
 async function submitForm() {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (!(await validateForm())) return
   try {
     if (editing.value && editingId.value != null) {
       await updateMutation.mutateAsync({
         id: editingId.value,
         data: {
-          displayName: form.displayName,
-          role: form.role,
-          status: form.enabled ? 1 : 0
+          displayName: form.value.displayName,
+          role: form.value.role,
+          status: form.value.enabled ? 1 : 0
         }
       })
       ElMessage.success('已保存')
     } else {
       await createMutation.mutateAsync({
-        username: form.username,
-        password: form.password,
-        displayName: form.displayName,
-        role: form.role
+        username: form.value.username,
+        password: form.value.password,
+        displayName: form.value.displayName,
+        role: form.value.role
       })
       ElMessage.success('用户已创建')
     }
