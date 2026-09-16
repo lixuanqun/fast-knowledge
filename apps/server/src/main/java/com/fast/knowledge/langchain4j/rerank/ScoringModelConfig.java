@@ -2,8 +2,10 @@ package com.fast.knowledge.langchain4j.rerank;
 
 
 
+import com.fast.knowledge.ai.port.ChatPort;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.security.ExternalAccessGuard;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.model.cohere.CohereScoringModel;
 
@@ -44,7 +46,9 @@ public class ScoringModelConfig {
     @Bean
 
     public Optional<ScoringModel> scoringModel(KnowledgeProperties properties,
-                                               ExternalAccessGuard externalAccessGuard) {
+                                               ExternalAccessGuard externalAccessGuard,
+                                               ChatPort chatPort,
+                                               ObjectMapper objectMapper) {
 
         KnowledgeProperties.Rerank rerank = properties.getSearch().getRerank();
 
@@ -62,6 +66,8 @@ public class ScoringModelConfig {
 
             case "jina" -> buildJina(rerank, properties, externalAccessGuard);
 
+            case "llm" -> buildLlm(properties, chatPort, objectMapper);
+
             default -> {
 
                 log.warn("Rerank 已启用但 provider={} 不受支持，已忽略", provider);
@@ -72,6 +78,18 @@ public class ScoringModelConfig {
 
         };
 
+    }
+
+    /** WP4：以已配置的对话模型做 Listwise 重排（内网纯离线模式不可用） */
+    private Optional<ScoringModel> buildLlm(KnowledgeProperties properties,
+                                            ChatPort chatPort,
+                                            ObjectMapper objectMapper) {
+        if (!properties.getLlm().isAllowExternal()) {
+            log.warn("Rerank provider=llm 需要外连 LLM API，但 knowledge.llm.allow-external=false，已忽略");
+            return Optional.empty();
+        }
+        log.info("Rerank provider: llm（使用已配置的对话模型做 Listwise 打分）");
+        return Optional.of(new LangChain4jLlmScoringModel(chatPort, objectMapper));
     }
 
 

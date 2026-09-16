@@ -10,18 +10,16 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("kb_document_chunk")
-public class DocumentChunk {
+@TableName("kb_eval_dataset")
+public class EvalDataset {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private String name;
     private Long kbId;
-    private Long documentId;
-    private Integer chunkIndex;
-    private String content;
-    private String sectionTitle;
-    /** WP1 上下文化分块：LLM 生成的上下文前缀（与正文一起向量化），未启用为 null */
-    private String contextPrefix;
-    private Integer tokenCount;
+    private Integer topK;
+    private String description;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
 }

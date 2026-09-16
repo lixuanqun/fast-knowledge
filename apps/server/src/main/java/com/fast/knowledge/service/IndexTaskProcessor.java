@@ -1,5 +1,6 @@
 package com.fast.knowledge.service;
 
+import com.fast.knowledge.ai.port.ChunkContextPort;
 import com.fast.knowledge.ai.port.ConversationPort;
 import com.fast.knowledge.ai.port.IngestPort;
 import com.fast.knowledge.common.BusinessException;
@@ -34,6 +35,8 @@ public class IndexTaskProcessor {
     private final DocumentChunkMapper documentChunkMapper;
     private final IndexTaskMapper indexTaskMapper;
     private final ChunkService chunkService;
+    private final ChunkContextPort chunkContextPort;
+    private final OcrParseService ocrParseService;
     private final IngestPort ingestPort;
     private final ConversationPort conversationPort;
     private final com.fast.knowledge.cache.CacheProvider cacheProvider;
@@ -41,12 +44,17 @@ public class IndexTaskProcessor {
     private final WikiCompileService wikiCompileService;
     private final TextExtractionService textExtractionService;
     private final MetricsService metricsService;
+    private final KnowledgeProperties properties;
     private final int maxRetry;
+    private final int contextBatchSize;
+    private final int contextDocPreviewChars;
 
     public IndexTaskProcessor(DocumentMapper documentMapper,
                                DocumentChunkMapper documentChunkMapper,
                                IndexTaskMapper indexTaskMapper,
                                ChunkService chunkService,
+                               ChunkContextPort chunkContextPort,
+                               OcrParseService ocrParseService,
                                IngestPort ingestPort,
                                ConversationPort conversationPort,
                                com.fast.knowledge.cache.CacheProvider cacheProvider,
@@ -59,6 +67,8 @@ public class IndexTaskProcessor {
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
         this.chunkService = chunkService;
+        this.chunkContextPort = chunkContextPort;
+        this.ocrParseService = ocrParseService;
         this.ingestPort = ingestPort;
         this.conversationPort = conversationPort;
         this.cacheProvider = cacheProvider;
@@ -66,7 +76,10 @@ public class IndexTaskProcessor {
         this.wikiCompileService = wikiCompileService;
         this.textExtractionService = textExtractionService;
         this.metricsService = metricsService;
+        this.properties = properties;
         this.maxRetry = Math.max(1, properties.getIndex().getMaxRetry());
+        this.contextBatchSize = properties.getIngest().getContextBatchSize();
+        this.contextDocPreviewChars = properties.getIngest().getContextDocPreviewChars();
     }
 
     /**
@@ -119,9 +132,17 @@ public class IndexTaskProcessor {
             int chunkCount = metricsService.timeIndex(() -> {
                 try {
                     String text = textExtractionService.extractFullText(doc);
+                    // WP2 扫描件 OCR：无文本层 PDF / 图片文档用视觉模型转 Markdown 后再走常规分块
+                    if (ocrParseService.isEnabled() && ocrParseService.isScanCandidate(doc, text)) {
+                        log.info("docId={} 检测为扫描件/图片，启动 OCR 解析", documentId);
+                        text = ocrParseService.parseToMarkdown(doc);
+                    }
                     List<String> splitSegments = ingestPort.split(text, doc.getKbId(), documentId, doc.getTitle());
                     documentChunkMapper.deleteByDocumentId(documentId);
                     ingestPort.deleteByDocument(doc.getKbId(), documentId);
+
+                    // WP1 上下文化分块：按批为分块生成上下文前缀（失败降级为空串）
+                    List<String> contextPrefixes = generateContextPrefixes(doc.getTitle(), text, splitSegments);
 
                     List<DocumentChunk> chunks = new ArrayList<>();
                     for (int i = 0; i < splitSegments.size(); i++) {
@@ -132,6 +153,7 @@ public class IndexTaskProcessor {
                         chunk.setChunkIndex(i);
                         chunk.setContent(content);
                         chunk.setSectionTitle(chunkService.extractSectionTitle(content));
+                        chunk.setContextPrefix(contextPrefixes.get(i));
                         chunk.setTokenCount(chunkService.countTokens(content));
                         chunks.add(chunk);
                     }
@@ -185,5 +207,34 @@ public class IndexTaskProcessor {
         } finally {
             documentMapper.updateById(doc);
         }
+    }
+
+    /**
+     * WP1 上下文化分块：按批调用 LLM 为每个分块生成上下文前缀。
+     * 开关关闭或分块为空时返回空串占位；LLM 异常按批降级，不阻塞索引。
+     */
+    private List<String> generateContextPrefixes(String docTitle, String fullText, List<String> segments) {
+        List<String> prefixes = new ArrayList<>(segments.size());
+        for (int i = 0; i < segments.size(); i++) {
+            prefixes.add("");
+        }
+        if (!properties.getIngest().isContextualEnabled()) {
+            return prefixes;
+        }
+        int batchSize = Math.max(1, contextBatchSize);
+        String preview = fullText == null ? "" : fullText.substring(0, Math.min(fullText.length(), contextDocPreviewChars));
+        for (int from = 0; from < segments.size(); from += batchSize) {
+            int to = Math.min(from + batchSize, segments.size());
+            try {
+                List<String> batch = chunkContextPort.generateContexts(docTitle, preview, segments.subList(from, to));
+                for (int i = from; i < to && i - from < batch.size(); i++) {
+                    prefixes.set(i, batch.get(i - from));
+                }
+                log.info("上下文前缀生成 批次 [{},{}) 完成 {}/{}", from, to, batch.size(), to - from);
+            } catch (Exception e) {
+                log.warn("上下文前缀生成 批次 [{},{}) 失败，降级为无前缀: {}", from, to, e.getMessage());
+            }
+        }
+        return prefixes;
     }
 }

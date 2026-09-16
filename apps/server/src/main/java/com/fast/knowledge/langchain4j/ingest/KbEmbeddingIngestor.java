@@ -41,6 +41,7 @@ public class KbEmbeddingIngestor {
         KbEmbeddingStore store = embeddingStoreFactory.getStore(doc.getKbId());
         List<String> ids = new ArrayList<>(chunks.size());
         List<TextSegment> segments = new ArrayList<>(chunks.size());
+        List<TextSegment> embedTargets = new ArrayList<>(chunks.size());
         for (DocumentChunk chunk : chunks) {
             String section = chunk.getSectionTitle() != null
                     ? chunk.getSectionTitle()
@@ -56,8 +57,13 @@ public class KbEmbeddingIngestor {
             ));
             ids.add(UUID.randomUUID().toString());
             segments.add(TextSegment.from(chunk.getContent(), metadata));
+            // WP1 上下文化分块：向量用"前缀 + 正文"计算，存储段保留原文用于展示与引用
+            String embedText = chunk.getContextPrefix() != null && !chunk.getContextPrefix().isBlank()
+                    ? chunk.getContextPrefix() + "\n\n" + chunk.getContent()
+                    : chunk.getContent();
+            embedTargets.add(TextSegment.from(embedText, metadata));
         }
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+        List<Embedding> embeddings = embeddingModel.embedAll(embedTargets).content();
         store.addAll(ids, embeddings, segments);
     }
 

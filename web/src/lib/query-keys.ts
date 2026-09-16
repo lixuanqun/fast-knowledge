@@ -38,5 +38,11 @@ export const queryKeys = {
   chat: {
     sessions: ['chat', 'sessions'] as const,
     messages: (sessionId: number) => ['chat', 'sessions', sessionId, 'messages'] as const
+  },
+  evals: {
+    datasets: (kbId?: number) => ['evals', 'datasets', kbId ?? 'all'] as const,
+    cases: (datasetId: number) => ['evals', 'datasets', datasetId, 'cases'] as const,
+    runs: (datasetId: number) => ['evals', 'datasets', datasetId, 'runs'] as const,
+    run: (runId: number) => ['evals', 'runs', runId] as const
   }
 }

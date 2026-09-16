@@ -86,7 +86,8 @@ import {
   Sunny,
   Cpu,
   Document,
-  Key
+  Key,
+  DataAnalysis
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
@@ -114,6 +115,7 @@ const menuItems = [
   { path: '/vision', label: '图片问答', icon: Picture, enterpriseOnly: true },
   { path: '/image-gen', label: '图片生成', icon: PictureRounded, enterpriseOnly: true },
   { path: '/settings/llm', label: '大模型配置', icon: Cpu, adminOnly: true },
+  { path: '/settings/evals', label: '质量评测', icon: DataAnalysis, adminOnly: true },
   { path: '/scenarios', label: '场景模板', icon: Collection, adminOnly: true, enterpriseOnly: true },
   { path: '/users', label: '用户管理', icon: User, adminOnly: true },
   { path: '/api-keys', label: 'API Key', icon: Key, adminOnly: true, enterpriseOnly: true },

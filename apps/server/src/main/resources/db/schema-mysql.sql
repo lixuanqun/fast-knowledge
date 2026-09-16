@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS kb_document_chunk (
     chunk_index INT          NOT NULL,
     content     TEXT         NOT NULL,
     section_title VARCHAR(256) NULL,
+    context_prefix VARCHAR(512) NULL,
     token_count INT          NOT NULL DEFAULT 0,
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY idx_chunk_doc (document_id),
@@ -233,3 +234,54 @@ CREATE TABLE IF NOT EXISTS kb_qa_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
 
 -- 向量存储：Classic 形态由 LocalEmbeddingStore 持久化为 data/vectors/kb-{id}.json（不入库）
+
+-- 评测闭环（WP3）：数据集 / 用例 / 运行 / 运行明细 — 检索质量门禁
+CREATE TABLE IF NOT EXISTS kb_eval_dataset (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(128) NOT NULL,
+    kb_id       BIGINT       NOT NULL,
+    top_k       INT          NOT NULL DEFAULT 8,
+    description VARCHAR(512) DEFAULT '',
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_eval_dataset_kb (kb_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE IF NOT EXISTS kb_eval_case (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    dataset_id          BIGINT        NOT NULL,
+    question            VARCHAR(1024) NOT NULL,
+    expected_chunk_ids  JSON          NULL,
+    expected_keywords   JSON          NULL,
+    enabled             SMALLINT      NOT NULL DEFAULT 1,
+    created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_eval_case_dataset (dataset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE IF NOT EXISTS kb_eval_run (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    dataset_id   BIGINT       NOT NULL,
+    kb_id        BIGINT       NOT NULL,
+    top_k        INT          NOT NULL,
+    status       VARCHAR(32)  NOT NULL DEFAULT 'RUNNING',
+    total_cases  INT          NOT NULL DEFAULT 0,
+    metrics_json JSON         NULL,
+    error        VARCHAR(1024) NULL,
+    started_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at  DATETIME     NULL,
+    KEY idx_eval_run_dataset (dataset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE IF NOT EXISTS kb_eval_run_item (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    run_id         BIGINT        NOT NULL,
+    case_id        BIGINT        NOT NULL,
+    question       VARCHAR(1024) NOT NULL,
+    first_hit_rank INT           NULL,
+    recall         DOUBLE        NULL,
+    keyword_hit    SMALLINT      NULL,
+    latency_ms     INT           NOT NULL DEFAULT 0,
+    hit_chunk_ids  JSON          NULL,
+    created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_eval_run_item_run (run_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;

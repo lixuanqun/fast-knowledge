@@ -12,9 +12,12 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 搜索缓存服务 — L1（Caffeine 本地）+ L2（Redis 远程）双层 Cache-Aside。
@@ -40,6 +43,11 @@ public class SearchCacheService {
     private final Cache<String, float[]> embeddingCache;
     private final boolean l1Enabled;
     private final boolean embeddingCacheEnabled;
+    private final boolean semanticEnabled;
+    private final double semanticThreshold;
+    private final int semanticMaxPerKb;
+    /** WP4 语义缓存索引：kbId -> 条目（查询向量 + 精确缓存 key），命中后走既有 L1/L2 取结果 */
+    private final java.util.concurrent.ConcurrentHashMap<Long, List<SemanticEntry>> semanticIndex = new ConcurrentHashMap<>();
 
     public SearchCacheService(CacheProvider cacheProvider,
                               ObjectMapper objectMapper,
@@ -68,6 +76,11 @@ public class SearchCacheService {
                     .expireAfterWrite(Duration.ofMinutes(10))
                     .build()
                 : null;
+
+        KnowledgeProperties.SemanticCache semantic = properties.getSearch().getSemanticCache();
+        this.semanticEnabled = semantic.isEnabled();
+        this.semanticThreshold = semantic.getThreshold();
+        this.semanticMaxPerKb = Math.max(1, semantic.getMaxEntriesPerKb());
     }
 
     // ---- Search result cache ----
@@ -121,6 +134,121 @@ public class SearchCacheService {
         }
     }
 
+    // ---- WP4 语义缓存 ----
+
+    /**
+     * 语义缓存查找：精确 key 未命中时，按查询向量近邻（余弦 ≥ 阈值）匹配缓存条目。
+     * 仅匹配相同参数（topK/rerank/docType/版本）的条目；命中后从既有 L1/L2 取结果。
+     */
+    public Optional<List<SearchHitVO>> getSemantic(Long kbId, float[] queryVec, int topK,
+                                                   boolean rerank, String docType) {
+        if (!semanticEnabled || queryVec == null) {
+            return Optional.empty();
+        }
+        long version = getVersion(kbId);
+        long now = System.currentTimeMillis();
+        String bestKey = null;
+        double bestScore = 0;
+        List<SemanticEntry> entries = semanticIndex.get(kbId);
+        if (entries == null) {
+            return Optional.empty();
+        }
+        synchronized (entries) {
+            Iterator<SemanticEntry> it = entries.iterator();
+            while (it.hasNext()) {
+                SemanticEntry e = it.next();
+                if (e.expireAt < now) {
+                    it.remove();
+                    continue;
+                }
+                if (e.topK != topK || e.rerank != rerank || !Objects.equals(e.docType, docType) || e.version != version) {
+                    continue;
+                }
+                double sim = cosine(queryVec, e.vec);
+                if (sim >= semanticThreshold && sim > bestScore) {
+                    bestScore = sim;
+                    bestKey = e.key;
+                }
+            }
+        }
+        if (bestKey == null) {
+            return Optional.empty();
+        }
+        Optional<List<SearchHitVO>> hit = fetchByKey(bestKey);
+        if (hit.isPresent()) {
+            log.info("语义缓存命中 kbId={} sim={} key={}", kbId, String.format("%.3f", bestScore), bestKey);
+        }
+        return hit;
+    }
+
+    /** 结果写入缓存并登记语义索引（供近邻命中） */
+    public void putWithVector(Long kbId, String query, float[] queryVec, int topK,
+                              boolean rerank, String docType, List<SearchHitVO> hits) {
+        long version = getVersion(kbId);
+        String key = buildKey(kbId, version, query, topK, rerank, docType);
+        try {
+            String json = objectMapper.writeValueAsString(hits);
+            cacheProvider.set(key, json, l2Ttl);
+            if (l1Enabled) {
+                l1Cache.put(key, List.copyOf(hits));
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize search cache entry for kbId={}", kbId, e);
+            return;
+        }
+        if (semanticEnabled && queryVec != null) {
+            long expireAt = System.currentTimeMillis() + l2Ttl.toMillis();
+            List<SemanticEntry> entries = semanticIndex.computeIfAbsent(kbId, k -> new ArrayList<>());
+            synchronized (entries) {
+                entries.removeIf(e -> e.key.equals(key));
+                entries.add(new SemanticEntry(key, queryVec.clone(), topK, rerank, docType, version, expireAt));
+                while (entries.size() > semanticMaxPerKb) {
+                    entries.remove(0);
+                }
+            }
+        }
+    }
+
+    private Optional<List<SearchHitVO>> fetchByKey(String key) {
+        if (l1Enabled) {
+            List<SearchHitVO> l1 = l1Cache.getIfPresent(key);
+            if (l1 != null) {
+                metricsService.recordCacheHit();
+                return Optional.of(l1);
+            }
+        }
+        return cacheProvider.get(key)
+                .flatMap(json -> {
+                    try {
+                        List<SearchHitVO> hits = objectMapper.readValue(json, HIT_LIST_TYPE);
+                        if (l1Enabled) {
+                            l1Cache.put(key, List.copyOf(hits));
+                        }
+                        metricsService.recordCacheHit();
+                        return Optional.of(hits);
+                    } catch (JsonProcessingException e) {
+                        return Optional.empty();
+                    }
+                });
+    }
+
+    private static double cosine(float[] a, float[] b) {
+        if (a == null || b == null || a.length != b.length) {
+            return 0;
+        }
+        double dot = 0, na = 0, nb = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += (double) a[i] * b[i];
+            na += (double) a[i] * a[i];
+            nb += (double) b[i] * b[i];
+        }
+        return na == 0 || nb == 0 ? 0 : dot / (Math.sqrt(na) * Math.sqrt(nb));
+    }
+
+    private record SemanticEntry(String key, float[] vec, int topK, boolean rerank,
+                                 String docType, long version, long expireAt) {
+    }
+
     // ---- Embedding cache ----
 
     public Optional<float[]> getEmbedding(String query) {
@@ -150,6 +278,7 @@ public class SearchCacheService {
             if (l1Enabled) {
                 l1Cache.asMap().keySet().removeIf(k -> k.startsWith(SEARCH_PREFIX + kbId + ":"));
             }
+            semanticIndex.remove(kbId);
         }
     }
 

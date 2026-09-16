@@ -9,19 +9,24 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 评测运行：status = RUNNING / DONE / FAILED；
+ * metricsJson 为聚合指标（recall@k、MRR、关键词命中率等）。
+ */
 @Data
-@TableName("kb_document_chunk")
-public class DocumentChunk {
+@TableName("kb_eval_run")
+public class EvalRun {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long datasetId;
     private Long kbId;
-    private Long documentId;
-    private Integer chunkIndex;
-    private String content;
-    private String sectionTitle;
-    /** WP1 上下文化分块：LLM 生成的上下文前缀（与正文一起向量化），未启用为 null */
-    private String contextPrefix;
-    private Integer tokenCount;
+    private Integer topK;
+    private String status;
+    private Integer totalCases;
+    /** JSON 对象字符串 */
+    private String metricsJson;
+    private String error;
     @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
+    private LocalDateTime startedAt;
+    private LocalDateTime finishedAt;
 }

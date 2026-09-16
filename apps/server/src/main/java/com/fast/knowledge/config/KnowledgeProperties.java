@@ -28,6 +28,7 @@ public class KnowledgeProperties {
     private QueryRewrite queryRewrite = new QueryRewrite();
     private Index index = new Index();
     private Agentic agentic = new Agentic();
+    private Ingest ingest = new Ingest();
     /**
      * 发行版：community（默认）| enterprise。
      * 可用环境变量 KNOWLEDGE_EDITION 覆盖；enterprise profile 默认 enterprise。
@@ -212,11 +213,42 @@ public class KnowledgeProperties {
         private int overlap = 50;
     }
 
+    /**
+     * 摄入增强（WP1 上下文化分块）：入库时用 LLM 为每个 chunk 生成上下文前缀，
+     * 前缀与正文一起向量化以提升跨 chunk 语义检索（Anthropic Contextual Retrieval 思路）。
+     */
+    @Data
+    public static class Ingest {
+        /** 是否启用上下文化分块（默认关；开启后索引用量增加 LLM 调用） */
+        private boolean contextualEnabled = false;
+        /** 单次 LLM 调用批量生成的 chunk 数 */
+        private int contextBatchSize = 8;
+        /** 生成上下文时提供给 LLM 的全文摘录 token 上限 */
+        private int contextDocPreviewChars = 3000;
+        /** WP2 扫描件 OCR：抽取文本过短的 PDF / 图片文档，用视觉模型逐页转 Markdown（默认关） */
+        private boolean ocrEnabled = false;
+        /** 单文档最大解析页数（费用护栏） */
+        private int ocrMaxPages = 50;
+        /** PDF 转图 DPI */
+        private int ocrDpi = 144;
+    }
+
     @Data
     public static class Search {
         private int defaultTopK = 8;
         private int cacheTtlMinutes = 5;
         private Rerank rerank = new Rerank();
+        /** WP4 语义缓存：查询向量近邻命中（余弦 ≥ 阈值）直接返回缓存结果 */
+        private SemanticCache semanticCache = new SemanticCache();
+    }
+
+    @Data
+    public static class SemanticCache {
+        private boolean enabled = true;
+        /** 命中阈值（余弦相似度） */
+        private double threshold = 0.95;
+        /** 每知识库最大语义索引条数（LRU 淘汰） */
+        private int maxEntriesPerKb = 64;
     }
 
     @Data

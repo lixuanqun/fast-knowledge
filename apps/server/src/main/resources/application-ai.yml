@@ -17,9 +17,22 @@ knowledge:
   chunk:
     size: 512
     overlap: 50
+  ingest:
+    # WP1 上下文化分块：入库时用 LLM 为每个 chunk 生成上下文前缀再向量化（默认关）
+    contextual-enabled: ${KNOWLEDGE_INGEST_CONTEXTUAL_ENABLED:false}
+    context-batch-size: ${KNOWLEDGE_INGEST_CONTEXT_BATCH_SIZE:8}
+    context-doc-preview-chars: ${KNOWLEDGE_INGEST_CONTEXT_DOC_PREVIEW_CHARS:3000}
+    # WP2 扫描件 OCR：无文本层 PDF / 图片文档用 qwen-vl 逐页转 Markdown
+    ocr-enabled: ${KNOWLEDGE_INGEST_OCR_ENABLED:false}
+    ocr-max-pages: ${KNOWLEDGE_INGEST_OCR_MAX_PAGES:50}
+    ocr-dpi: ${KNOWLEDGE_INGEST_OCR_DPI:144}
   search:
     default-top-k: 8
     cache-ttl-minutes: 5
+    semantic-cache:
+      enabled: ${SEARCH_SEMANTIC_CACHE_ENABLED:true}
+      threshold: ${SEARCH_SEMANTIC_CACHE_THRESHOLD:0.95}
+      max-entries-per-kb: ${SEARCH_SEMANTIC_CACHE_MAX_PER_KB:64}
     rerank:
       enabled: ${RERANK_ENABLED:false}
       # 仅云端：cohere | jina（内网纯离线模式下必须关闭，见 ProductionConfigValidator）

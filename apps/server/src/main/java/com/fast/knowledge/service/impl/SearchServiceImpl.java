@@ -62,8 +62,22 @@ public class SearchServiceImpl implements SearchService {
         int topK = request.getTopK() != null ? request.getTopK() : kb.getSearchTopK();
         boolean rerank = rerankPort.isActive();
 
-        // Cache check (L1 + L2)
+        // Segment 1: Embedding (with cache) — 提前计算供语义缓存近邻匹配与向量检索复用
+        float[] queryVector = metricsService.timeEmbedding(() -> {
+            var cachedVec = searchCacheService.getEmbedding(request.getQuery());
+            if (cachedVec.isPresent()) {
+                return cachedVec.get();
+            }
+            float[] vec = embeddingProvider.embed(request.getQuery());
+            searchCacheService.putEmbedding(request.getQuery(), vec);
+            return vec;
+        });
+
+        // Cache check: L1 + L2 精确 key，未命中走 WP4 语义缓存（向量近邻）
         var cached = searchCacheService.get(kb.getId(), request.getQuery(), topK, rerank, request.getDocType());
+        if (cached.isEmpty()) {
+            cached = searchCacheService.getSemantic(kb.getId(), queryVector, topK, rerank, request.getDocType());
+        }
         if (cached.isPresent()) {
             List<SearchHitVO> hits = cached.get();
             metricsService.countSearch();
@@ -80,17 +94,6 @@ public class SearchServiceImpl implements SearchService {
 
         // Full search pipeline with segmented timing
         List<SearchHitVO> hits = metricsService.timeSearch(() -> {
-            // Segment 1: Embedding (with cache)
-            float[] queryVector = metricsService.timeEmbedding(() -> {
-                var cachedVec = searchCacheService.getEmbedding(request.getQuery());
-                if (cachedVec.isPresent()) {
-                    return cachedVec.get();
-                }
-                float[] vec = embeddingProvider.embed(request.getQuery());
-                searchCacheService.putEmbedding(request.getQuery(), vec);
-                return vec;
-            });
-
             // Segment 2: Vector search
             List<SearchHitVO> rawHits = metricsService.timeVectorSearch(() ->
                     vectorSearchPort.search(kb.getId(), queryVector, request.getQuery(), fetchK, request.getDocType()));
@@ -109,7 +112,7 @@ public class SearchServiceImpl implements SearchService {
         metricsService.countSearch();
         metricsService.countSearchHits(hits.size());
 
-        searchCacheService.put(kb.getId(), request.getQuery(), topK, rerank, request.getDocType(), hits);
+        searchCacheService.putWithVector(kb.getId(), request.getQuery(), queryVector, topK, rerank, request.getDocType(), hits);
         auditLogService.log(AuditActions.SEARCH, "KB", kb.getId(),
                 "query=" + StringUtils.truncate(request.getQuery(), 200)
                         + ", hits=" + hits.size() + ", cache=miss");

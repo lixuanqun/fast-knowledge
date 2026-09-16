@@ -46,6 +46,11 @@ public class AppConfig implements WebMvcConfigurer {
         return createExecutor("chat-", 4, 8, 200);
     }
 
+    @Bean(name = "evalExecutor")
+    public Executor evalExecutor() {
+        return createExecutor("eval-", 1, 2, 20);
+    }
+
     private static Executor createExecutor(String threadPrefix, int core, int max, int queue) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(core);

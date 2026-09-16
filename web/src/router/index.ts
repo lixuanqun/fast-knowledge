@@ -69,6 +69,11 @@ const router = createRouter({
           meta: { adminOnly: true, title: '大模型配置' }
         },
         {
+          path: 'settings/evals',
+          component: () => import('@/views/settings/evals.vue'),
+          meta: { adminOnly: true, title: '质量评测' }
+        },
+        {
           path: 'users',
           component: () => import('@/views/users/index.vue'),
           meta: { keepAlive: true, adminOnly: true, title: '用户管理' }
