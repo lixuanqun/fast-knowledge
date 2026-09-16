@@ -8,9 +8,9 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 应用启动后对 Embedding 模型做一次预热推理，消除首次查询的冷启动延迟。
+ * 应用启动后对 Embedding 模型做一次预热调用，消除首次查询的冷启动延迟。
  *
- * <p>ONNX 模型首次推理需要加载计算图、分配 GPU/CPU 缓冲，耗时 ~100-300ms。
+ * <p>云端 Embedding 首次调用需要建立连接、完成鉴权握手，耗时 ~100-300ms。
  * 预热后首次用户查询可直接命中热路径。
  */
 @Component

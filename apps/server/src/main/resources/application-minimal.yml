@@ -1,4 +1,4 @@
-# 演示叠加配置：使用 hash 伪向量，无需 ONNX 模型
+# 演示叠加配置：使用 hash 伪向量，无需外部 Embedding 服务
 # 启动：mvn spring-boot:run -Dspring-boot.run.profiles=minimal,bundle
 
 knowledge:

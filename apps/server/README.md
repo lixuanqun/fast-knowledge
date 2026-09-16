@@ -21,7 +21,7 @@ Java 21 + Spring Boot 3.5 知识库 API 服务，RAG 基于 **LangChain4j 1.17**
 | 缓存 | Redis |
 | 文件存储 | MinIO |
 | LLM | OpenAI 兼容 API / Ollama（UI 或环境变量配置） |
-| Embedding | ONNX 本地（默认）/ Ollama / hash |
+| Embedding | OpenAI 兼容 API（默认）/ Ollama / hash |
 
 ## 快速启动
 
@@ -52,7 +52,7 @@ mvn -pl apps/server spring-boot:run -Dspring-boot.run.profiles=bundle
 | Profile | 用途 |
 |---------|------|
 | `bundle` | 单 Jar 托管前端 |
-| `minimal` | hash 伪向量，免 ONNX |
+| `minimal` | hash 伪向量，免外部 Embedding 服务 |
 
 ## 测试
 

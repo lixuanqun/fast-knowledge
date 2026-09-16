@@ -17,7 +17,6 @@
 
 # Runtime data
 **/data/uploads/
-**/data/models/*.onnx
 apps/server/data/
 
 # Env & secrets
@@ -34,3 +33,6 @@ Thumbs.db
 # E2E 临时导出（保留 json 报告与脚本）
 test-assets/audit-export-*.csv
 test-assets/e2e-run*.log
+
+# ZCode CLI workspace
+.zcode/

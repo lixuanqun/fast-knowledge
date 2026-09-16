@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 当 ONNX/Ollama 不可用时的降级实现，保证系统可启动与联调。
- * 生产环境请配置 ONNX 模型或 Ollama Embedding。
+ * 无外部 Embedding 服务（OpenAI 兼容接口/Ollama）时的降级实现，保证系统可启动与联调。
+ * 生产环境请配置 OpenAI 兼容 Embedding 或 Ollama。
  */
 @Slf4j
 @Component
@@ -20,7 +20,7 @@ public class HashEmbeddingProvider implements EmbeddingProvider {
 
     public HashEmbeddingProvider(KnowledgeProperties properties) {
         this.dimension = properties.getEmbedding().getDimension();
-        log.warn("使用 HashEmbeddingProvider 降级模式，语义检索质量有限，请配置 ONNX 或 Ollama");
+        log.warn("使用 HashEmbeddingProvider 降级模式，语义检索质量有限，请配置 OpenAI 兼容 Embedding 或 Ollama");
     }
 
     @Override
