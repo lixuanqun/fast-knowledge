@@ -39,6 +39,10 @@
   --fk-chat-user-bg: var(--fk-primary);
   --fk-chat-user-text: #fff;
   --fk-hit-score-bg: var(--fk-primary-light);
+  --fk-hit-mark-bg: #ffef9e;
+  --fk-hit-mark-text: #303133;
+  --fk-skeleton-base: #eef1f6;
+  --fk-skeleton-shine: rgba(255, 255, 255, 0.65);
   color-scheme: light;
 }
 
@@ -80,5 +84,9 @@
   --fk-chat-user-bg: #1f6feb;
   --fk-chat-user-text: #e6edf3;
   --fk-hit-score-bg: rgba(64, 158, 255, 0.18);
+  --fk-hit-mark-bg: rgba(255, 214, 102, 0.26);
+  --fk-hit-mark-text: #ffd666;
+  --fk-skeleton-base: #21262d;
+  --fk-skeleton-shine: rgba(255, 255, 255, 0.06);
   color-scheme: dark;
 }
