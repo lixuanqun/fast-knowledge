@@ -135,7 +135,7 @@ const currentConfig = ref<LlmConfig | null>(null)
 const formRef = ref<FormInstance>()
 
 const form = reactive({
-  provider: 'ollama',
+  provider: 'dashscope',
   baseUrl: '',
   apiKey: '',
   model: '',
@@ -156,7 +156,7 @@ const apiKeyPlaceholder = computed(() => {
   if (currentConfig.value?.apiKeyConfigured && currentConfig.value.apiKeyMask) {
     return `已配置 ${currentConfig.value.apiKeyMask}，留空不修改`
   }
-  return '请输入 API Key（Ollama 可填 ollama）'
+  return '请输入 API Key'
 })
 
 const modelPlaceholder = computed(() => selectedProvider.value?.defaultModel || '模型名称或 Endpoint ID')

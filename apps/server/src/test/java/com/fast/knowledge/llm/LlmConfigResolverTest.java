@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -88,7 +89,9 @@ class LlmConfigResolverTest {
     }
 
     @Test
-    void listsAllPresetsIncludingCustom() {
-        assertEquals(7, resolver.listProviderPresets().size());
+    void listsPresetsExcludingOllama() {
+        var presets = resolver.listProviderPresets();
+        assertEquals(6, presets.size());
+        assertTrue(presets.stream().noneMatch(p -> "ollama".equals(p.get("id"))));
     }
 }
