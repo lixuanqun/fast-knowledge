@@ -11,6 +11,7 @@ declare module 'vue' {
     ChangePasswordDialog: typeof import('./components/ChangePasswordDialog.vue')['default']
     DashboardStatCard: typeof import('./components/design/DashboardStatCard.vue')['default']
     DocumentPreviewDrawer: typeof import('./components/DocumentPreviewDrawer.vue')['default']
+    DonutChart: typeof import('./components/charts/DonutChart.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElBadge: typeof import('element-plus/es')['ElBadge']
@@ -70,6 +71,8 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SourceList: typeof import('./components/SourceList.vue')['default']
     StreamingIndicator: typeof import('./components/StreamingIndicator.vue')['default']
+    TablePager: typeof import('./components/TablePager.vue')['default']
+    TrendChart: typeof import('./components/charts/TrendChart.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
