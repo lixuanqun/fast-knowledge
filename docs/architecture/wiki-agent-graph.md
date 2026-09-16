@@ -51,7 +51,7 @@
 | **LangChain4j**（本项目） | 1.17.x | 框架中立、组件粒度细；AI Services、RetrievalAugmentor、agentic 模块 |
 | Spring AI Alibaba | 1.0 GA | 国内主流；Spring AI 之上加 Graph 运行时（DAG、持久化、长任务） |
 
-开源 Java 同类产品（对标）：[langchain4j-aideepin](https://github.com/moyangzhan/langchain4j-aideepin)（LangChain4j + pgvector/Neo4j + workflow + MCP）、MaxKB4J 等。**本项目技术底座（LangChain4j + pgvector 混合检索 + 本地 ONNX Embedding/Rerank + Ollama + 审计 + 离线交付）与业界 Java 主流路径一致**，企业层完成度更高；差距集中在文档生产的 agentic 编排层。
+开源 Java 同类产品（对标）：[langchain4j-aideepin](https://github.com/moyangzhan/langchain4j-aideepin)（LangChain4j + pgvector/Neo4j + workflow + MCP）、MaxKB4J 等。**本项目技术底座（LangChain4j + 本地向量索引混合检索 + 云端 Embedding/Rerank + Ollama + 审计 + 离线交付）与业界 Java 主流路径一致**，企业层完成度更高；差距集中在文档生产的 agentic 编排层。
 
 ### 2.2 编排层选型对比
 

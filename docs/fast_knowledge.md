@@ -10,14 +10,14 @@
 | 目标用户 | 中小企业、团队、部门级知识管理 |
 | 部署模式 | 单实例私有化（Single Instance） |
 | 数据规模 | 万级文档、数百用户 |
-| 隐私 | Privacy by Default：PG + MinIO 存文档与向量；Embedding/Rerank 可 ONNX 本地；`LLM_ALLOW_EXTERNAL=false` 禁止外连 LLM |
+| 隐私 | Privacy by Default：MySQL + MinIO 存文档与向量；Embedding/Rerank 默认云端、可自建 Ollama；`LLM_ALLOW_EXTERNAL=false` 禁止外连 LLM |
 
 与产品定位对齐的**技术设计原则**：
 
-1. **Privacy by Default** — 文档、向量、对话默认留在服务器；Embedding/Rerank 可 ONNX 本地
+1. **Privacy by Default** — 文档、向量、对话默认留在服务器；Embedding/Rerank 支持云端或自建 Ollama
 2. **Single Instance** — 单租户，轻量工作区 + 知识库 ACL，无多租户运维
 3. **Unified Stack** — MySQL 5.7 承载业务表；向量索引为本地文件（应用进程内）
-4. **Docker First** — 本地 `docker compose`，生产 K8s，无 SQLite 双轨
+4. **Linux First** — 生产为 Linux 服务器裸机部署（单 Jar + systemd），无 SQLite 双轨
 5. **LangChain4j Native** — 摄入、检索、RAG、流式对话均走官方组件
 6. **LLM Neutral** — OpenAI 兼容；`kb_system_config` + `LlmModelRegistry` 支持 UI 热更新
 
@@ -35,7 +35,7 @@ Vue3 前端 ──► Spring Boot API（JWT）
               LLM API（Ollama / OpenAI 兼容）
 ```
 
-本地开发与生产使用**同一套镜像与环境变量**：`docker compose` 拉起依赖，应用通过 `application.yml` + 环境变量配置。
+本地开发与生产使用**同一套环境变量契约**（根目录 `.env.example`），应用通过 `application.yml` + 环境变量配置。
 
 ## 数据模型
 
@@ -71,7 +71,7 @@ knowledge:
     default-top-k: 8
     rerank:
       enabled: false
-      provider: onnx        # onnx | cohere | jina
+      provider: cohere      # cohere | jina（仅云端，内网模式必须关闭）
       candidate-multiplier: 3
 ```
 
@@ -93,8 +93,8 @@ knowledge:
 
 | provider | 场景 |
 |----------|------|
-| `onnx` | 生产离线，`bge-small-zh-v1.5` |
-| `ollama` | 演示 / 全本地栈 |
+| `openai` | 生产默认，OpenAI 兼容 /v1/embeddings（DashScope、硅基流动等） |
+| `ollama` | 自建 Ollama / 内网全本地栈 |
 | `hash` | 开发联调（`minimal` profile） |
 
 ## LangChain4j 组件
@@ -105,18 +105,18 @@ knowledge:
 | 向量索引 | `LocalEmbeddingStore`（内存余弦 + JSON 落盘） |
 | RAG | `DefaultRetrievalAugmentor` + `KbHybridContentRetriever` |
 | 对话记忆 | `MessageWindowChatMemory` + `DbChatMemoryStore` |
-| Rerank | `ScoringModel`：ONNX / Cohere / Jina |
+| Rerank | `ScoringModel`：Cohere / Jina（仅云端） |
 
 ## 部署
 
 | 场景 | 命令 |
 |------|------|
-| 本地开发 | `scripts/dev.ps1` 或 `docker compose up -d` + `mvn ... -Dspring-boot.run.profiles=bundle` |
-| 演示（无 ONNX） | `-Dspring-boot.run.profiles=minimal,bundle` |
+| 本地开发 | `scripts/dev.ps1` 或 `mvn ... -Dspring-boot.run.profiles=bundle` |
+| 演示（无外部 Embedding） | `-Dspring-boot.run.profiles=minimal,bundle` |
 | 单 Jar + 静态前端 | profile `bundle` |
-| K8s | `k8s/deployment.yaml` |
 
-详见 [deployment/docker.md](./deployment/docker.md)、[deployment/llm-providers.md](./deployment/llm-providers.md)。
+
+详见 [deployment/linux.md](./deployment/linux.md)、[deployment/llm-providers.md](./deployment/llm-providers.md)。
 
 ## 环境变量
 
@@ -126,7 +126,7 @@ knowledge:
 
 自 SQLite / sqlite-vec / 自研 `VectorStore` SPI 升级后：
 
-1. 使用 MySQL 5.7 + Docker Compose
+1. 准备 MySQL 5.7（自建或云托管）
 2. 配置 `.env`
 3. 对已有知识库执行**全量 re-index**
 

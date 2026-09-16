@@ -16,7 +16,7 @@
 | **Privacy by Default** | 数据落 MySQL 5.7 + MinIO；Embedding 走云端 API；`LLM_ALLOW_EXTERNAL` 控制 LLM 外连 |
 | **Single Instance** | 无多租户隔离层；工作区 + 知识库 ACL 做权限边界 |
 | **Unified Stack** | 业务表与 `kb_embeddings` 同库；LangChain4j 统一摄入/检索/RAG |
-| **Docker First** | 依赖 PG/Redis/MinIO；开发与生产同一 env 契约 |
+| **Linux First** | 依赖 MySQL/Redis/MinIO；开发与生产同一 env 契约 |
 
 新功能与接口变更前，先对照产品说明中的**适用/不适用场景**，避免向 SaaS 平台或十万级以上搜索平台方向蔓延。
 
@@ -61,7 +61,7 @@ apps/server/src/main/java/com/fast/knowledge/
 │   └── vo/         # 响应出参（与 api.md 中 TypeScript 类型对齐）
 ├── security/       # JWT 认证、UserContext、ExternalAccessGuard
 ├── langchain4j/    # LangChain4j：向量库、摄入、检索、RAG、对话、Rerank
-├── embedding/      # ONNX / Ollama / Hash EmbeddingProvider
+├── embedding/      # OpenAI 兼容 / Ollama / Hash EmbeddingProvider
 ├── storage/        # MinioStorageProvider
 ├── cache/          # RedisCacheProvider
 ├── llm/            # LlmConfigResolver、提供商预设
@@ -590,7 +590,7 @@ DocumentIngestService
 
 SearchService / KbHybridContentRetriever
   → KbEmbeddingStore.search()
-  → [可选] SearchRerankService（ONNX / Cohere / Jina）
+  → [可选] SearchRerankService（Cohere / Jina，仅云端；内网模式关闭）
 
 RagService.ask → 单次 searchService.search + ChatModel（与 sources 一致）
 ChatService.chatStream → KbChatAssistant（CompressingQueryTransformer + DbChatMemoryStore）

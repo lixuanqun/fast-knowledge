@@ -122,13 +122,13 @@ interface SystemConfig {
   instanceName: string
   setupComplete: boolean
   vectorProvider: string       // 固定为 "local"
-  embeddingProvider: string    // onnx | ollama | hash
+  embeddingProvider: string    // openai | ollama | hash
   llmProvider?: string
   llmProviderName?: string
   llmModel: string
   llmAllowExternal: boolean
   rerankEnabled: boolean
-  rerankProvider: string       // onnx | cohere | jina
+  rerankProvider: string       // cohere | jina（仅云端）
 }
 ```
 

@@ -2,32 +2,49 @@
 
 ## 适用场景
 
-目标服务器**无法访问公网**，或处于气隙/专网环境。
+目标服务器**无法访问公网**，或处于气隙/专网环境。部署形态为 Linux 服务器裸机（非容器化）。
 
-## 准备（有网环境）
+## 一、制作离线包（有网构建机）
 
 ```bash
-# 构建或拉取应用镜像后
 bash scripts/offline/prepare-bundle.sh
+# 或部署现成 JAR：bash scripts/offline/prepare-bundle.sh --jar apps/server/target/fast-knowledge-server-*.jar
 ```
 
 产物目录 `dist/offline-bundle/` 包含：
 
-- `images/*.tar` — MySQL 5.7、Redis、MinIO、应用镜像
-- `models/` — ONNX 模型文件（需事先放入 `data/models/`）
-- `docker-compose.full.yml`
-- `install-offline.sh`
+- `fast-knowledge.jar` — 单 Jar（含前端）
+- `install.sh` — 安装器（与 `scripts/install.sh` 一致）
+- `.env.example` — 配置模板
+- `models/` — 本地模型文件（需事先放入 `data/models/`，若有）
+- `nginx/` — Nginx 反代配置（可选）
 - `data-residency-checklist.md`
 
-## 内网安装
+内网服务器需自行具备：Java 21、MySQL 5.7+、MinIO 二进制（`--with-local-minio` 时）。
+
+## 二、内网安装
 
 ```bash
-# 复制整个 offline-bundle 到目标机
-cd offline-bundle
-bash install-offline.sh
+# 整体拷贝 offline-bundle 到目标机，例如 /opt/fk-bundle
+cd /opt/fk-bundle
+
+# 1. 环境体检
+bash install.sh doctor
+
+# 2. 配置（内网纯离线模式）
+cp .env.example .env && vim .env
+#   LLM_PROVIDER=ollama  LLM_BASE_URL=http://<内网ollama>:11434/v1
+#   LLM_ALLOW_EXTERNAL=false  RERANK_ENABLED=false
+
+# 3. 安装（install-offline.sh 会强制不出域配置后调用 install.sh）
+sudo bash install-offline.sh --env-file .env --with-local-minio
+#   等价于：sudo bash install.sh install --env-file .env \
+#             --jar ./fast-knowledge.jar --with-local-minio
 ```
 
-## 推荐资源配置
+`install-offline.sh` 额外做一件事：强制 `LLM_ALLOW_EXTERNAL=false`、`RERANK_ENABLED=false`，防止误配外连。
+
+## 三、推荐资源配置
 
 | 规模 | CPU | 内存 | 磁盘 |
 |------|-----|------|------|
@@ -37,7 +54,7 @@ bash install-offline.sh
 
 ## 企业 Profile
 
-生产建议启用：
+生产建议在 `.env` 中启用：
 
 ```bash
 SPRING_PROFILES_ACTIVE=enterprise,bundle

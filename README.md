@@ -2,7 +2,7 @@
 
 **面向中小企业的 Java 私有化知识库** — 把制度、工艺、设备文档变成可检索、可问答、可审计的企业知识资产。
 
-**Fast = 部署快（Docker 5 分钟）+ 检索快（双层缓存 <50ms）+ 交付快（离线圈 + 审计验收）。**
+**Fast = 部署快（Linux 一键脚本 5 分钟）+ 检索快（双层缓存 <50ms）+ 交付快（离线圈 + 审计验收）。**
 
 [![CI](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml/badge.svg)](https://github.com/lixuanqun/fast-knowledge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -10,7 +10,7 @@
 [![Spring Boot 3.5](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](apps/server/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.5-brightgreen)](web/)
 
-[产品说明](docs/产品说明.md) · [v1.0.0 功能范围](docs/releases/v1.0.0.md) · [**自动化测试报告**](docs/testing/automation-report.md) · [快速部署](docs/deployment/docker.md) · [API](docs/api.md)
+[产品说明](docs/产品说明.md) · [v1.0.0 功能范围](docs/releases/v1.0.0.md) · [**自动化测试报告**](docs/testing/automation-report.md) · [快速部署](docs/deployment/linux.md) · [API](docs/api.md)
 
 ---
 
@@ -40,7 +40,7 @@
 - **RAG 问答** — 单次问答、多轮流式对话（含 Query Rewrite 指代消解）、AI 写文档，均附引用来源
 - **多格式文档** — PDF / DOCX / TXT / MD / PPTX / XLSX / HTML，异步索引与分块预览
 - **LLM 中立** — Ollama、DeepSeek、智谱、百炼等 OpenAI 兼容接口，管理界面配置即生效
-- **本地 Embedding** — 默认 ONNX `bge-small-zh-v1.5`，启动预热，可纯内网运行
+- **Embedding 中立** — 默认 OpenAI 兼容接口（DashScope / 硅基流动等），可切自建 Ollama，启动预热；纯内网可运行
 
 ### 制造 / 国企场景（v1.0.0）
 
@@ -53,25 +53,28 @@
 - **LDAP + OIDC** — 对接企业统一身份，保留本地管理员兜底
 - **全链路审计** — 登录、检索、问答、对话可查可导出 CSV
 - **不出域模式** — `LLM_ALLOW_EXTERNAL=false` 禁止外连大模型与云端 Rerank
-- **离线交付包** — 气隙/内网环境镜像与安装脚本
+- **离线交付包** — 气隙/内网环境 Jar 安装包与安装脚本
 - **API Key** — 服务账号调用，适合后端系统集成
 - **备份恢复** — MySQL + MinIO 一键备份脚本与 Runbook
 
-### 部署方式
+### 部署方式（Linux 服务器，非容器化）
 
 ```bash
-# Docker 全栈（推荐）
-./scripts/install.sh          # Linux/macOS 一键 Docker 全栈
-# .\scripts\install.ps1       # Windows
+# 一键部署（构建 + systemd 服务 + 健康检查）
+cp .env.example .env.ecs          # 编辑 MySQL / MinIO / LLM 凭据
+sudo ./scripts/install.sh install --env-file .env.ecs
 
-# ECS / 裸金属（非容器化）
-cp .env.example .env.ecs      # 编辑凭据
-./scripts/ecs-deploy.sh .env.ecs
+# 环境体检 / 日常运维
+./scripts/install.sh doctor
+./scripts/install.sh update       # 升级（健康检查失败自动回滚）
+./scripts/install.sh rollback
 ```
 
-访问 http://localhost:8088 · 默认账号 `admin` / `admin123`
+可选参数：`--with-nginx`（80 端口反代）· `--with-local-minio`（本机托管 MinIO）· `--jar xxx.jar`（部署现成 JAR，免构建）
 
-也支持：单 Jar（`-Pbundle`）· K8s 清单 · [离线安装](docs/deployment/offline-install.md) · [企业配置](apps/server/src/main/resources/application-enterprise.yml)
+访问 http://<服务器IP>:8088 · 默认账号 `admin` / `admin123`
+
+也支持：单 Jar 手动部署（`-Pbundle`）· [离线安装包](docs/deployment/offline-install.md) · [企业配置](apps/server/src/main/resources/application-enterprise.yml)
 
 ---
 
@@ -82,7 +85,7 @@ cp .env.example .env.ecs      # 编辑凭据
 | 国企、金融、制造等需**私有化部署**的组织 | 多租户 SaaS 运营平台 |
 | 万级文档、数百用户的部门/企业知识库 | 十万级文档、千人并发搜索中台 |
 | 技术栈以 **Java** 为主、需 REST 集成的团队 | 要可视化工作流 / MCP / 多模态 Agent 平台 |
-| 合同要写清「**数据不出域、行为可审计**」的项目 | 不愿自建任何 AI 组件且不接受 ONNX/Ollama |
+| 合同要写清「**数据不出域、行为可审计**」的项目 | 不愿自建任何 AI 组件且不接受 Ollama/云端 Embedding |
 
 ---
 
@@ -209,7 +212,7 @@ LLM（OpenAI 兼容，可纯内网 Ollama）
 | 了解完整功能清单 | [产品说明](docs/产品说明.md) |
 | 看 v1.0.0 已交付什么 | [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) |
 | **查看自动化测试报告** | [**docs/testing/automation-report.md**](docs/testing/automation-report.md) |
-| 部署与运维 | [Docker](docs/deployment/docker.md) · [备份恢复](docs/deployment/backup-restore.md) · [K8s](k8s/README.md) |
+| 部署与运维 | [Linux 部署](docs/deployment/linux.md) · [备份恢复](docs/deployment/backup-restore.md) |
 | 对接 API | [docs/api.md](docs/api.md) |
 | 数据不出域验收 | [合规清单](docs/compliance/data-residency-checklist.md) |
 
@@ -220,7 +223,7 @@ LLM（OpenAI 兼容，可纯内网 Ollama）
 ```
 apps/server/   后端（Spring Boot + LangChain4j）
 web/           前端（Vue 3）
-docker/        Docker Compose
+deploy/        Nginx 等部署配置
 scripts/       安装、开发、备份、离线交付
 docs/          产品、架构、部署、合规
 ```

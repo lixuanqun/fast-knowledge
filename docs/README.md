@@ -15,7 +15,7 @@
 | **隐私** | Privacy by Default |
 | **AI** | LLM 中立；本地 Embedding/Rerank 可选 |
 
-**设计原则**：Privacy by Default · Single Instance · Unified Stack · Docker First · LangChain4j Native
+**设计原则**：Privacy by Default · Single Instance · Unified Stack · Linux 裸机部署 · LangChain4j Native
 
 **完整定位与功能特性清单** → **[产品说明.md](./产品说明.md)**（含分模块 ✓ 能力表）
 
@@ -29,7 +29,7 @@
 | 产品 / 功能清单 | [产品说明.md](./产品说明.md) |
 | 前端开发 | [api.md](./api.md) |
 | 后端开发 | [backend-design.md](./backend-design.md) + [api.md](./api.md) |
-| 运维 / 部署 | [deployment/docker.md](./deployment/docker.md) + [../.env.example](../.env.example) |
+| 运维 / 部署 | [deployment/linux.md](./deployment/linux.md) + [../.env.example](../.env.example) |
 | AI / 模型 | [deployment/llm-providers.md](./deployment/llm-providers.md) |
 | 架构 | [fast_knowledge.md](./fast_knowledge.md) · [architecture/README.md](./architecture/README.md) |
 | GitHub 仓库展示 | [../.github/ABOUT.md](../.github/ABOUT.md) |
@@ -47,8 +47,9 @@
 | [architecture/README.md](./architecture/README.md) | Monorepo 与包职责 |
 | [architecture/wiki-agent-graph.md](./architecture/wiki-agent-graph.md) | 文档生产流水线设计：Wiki 维护 Agent 与写文档多步编排（评审中） |
 | [architecture/ai-layer-refactor.md](./architecture/ai-layer-refactor.md) | 知识智能层分层重构蓝图：端口化 + Agentic 化（M0/M1 实施中） |
-| [deployment/docker.md](./deployment/docker.md) | Docker Compose 部署 |
+| [deployment/linux.md](./deployment/linux.md) | Linux 服务器部署（非容器化） |
 | [deployment/llm-providers.md](./deployment/llm-providers.md) | LLM / Embedding / Rerank |
+| [deployment/ztgwyc.md](./deployment/ztgwyc.md) | 政通环境部署对照（阿里云呼和浩特） |
 
 ## 模块 README
 
@@ -57,7 +58,6 @@
 | [../README.md](../README.md) | 项目入口（GitHub 首屏） |
 | [../apps/server/README.md](../apps/server/README.md) | 服务端与 LangChain4j |
 | [../web/README.md](../web/README.md) | 前端开发与页面 |
-| [../data/models/README.md](../data/models/README.md) | ONNX 模型准备 |
 
 ---
 

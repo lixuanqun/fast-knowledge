@@ -2,7 +2,7 @@
 
 > **产品定位**：中小企业私有化知识库 — 单实例、**LLM 中立**、Privacy by Default。功能清单见 [产品说明.md](../产品说明.md)。
 
-Monorepo 采用 **Maven 父工程 + Spring Boot 服务端 + Vue Web 前端** 架构，与「Unified Stack + Docker First」设计原则一致。
+Monorepo 采用 **Maven 父工程 + Spring Boot 服务端 + Vue Web 前端** 架构，与「Unified Stack + Linux 裸机部署」设计原则一致。
 
 ## 仓库布局
 
@@ -12,9 +12,8 @@ fast-knowledge/
 ├── apps/
 │   └── server/              # Spring Boot 应用（com.fast.knowledge）
 ├── web/                     # Vue 3 管理界面
-├── docker/                  # 容器与 Compose
-├── k8s/                     # Kubernetes 部署清单
-├── data/models/             # ONNX 模型（gitignore，运行时挂载）
+├── deploy/                  # Nginx 等部署配置
+├── data/vectors/            # 本地向量索引（运行时生成）
 ├── docs/
 ├── scripts/
 ├── .env.example             # 环境变量契约
@@ -39,12 +38,12 @@ web (npm build) ──dist──► apps/server/target/classes/static ──► 
 | `config` | 配置与启动 | `KnowledgeProperties`, `DataInitializer` |
 | `model` | DTO / Entity / VO | `KbUser`, `SearchRequest` |
 | `mapper` | MyBatis Plus 数据访问 | `UserMapper extends BaseMapper` |
-| `embedding` | 向量化 SPI | `OnnxEmbeddingProvider`, `OllamaEmbeddingProvider` |
+| `embedding` | 向量化 SPI | `OpenAiEmbeddingProvider`, `OllamaEmbeddingProvider` |
 | `cache` | 缓存 SPI | `RedisCacheProvider` |
 | `storage` | 对象存储 | `MinioStorageProvider` |
 | `llm` | LLM 中立配置与热刷新 | `LlmProvider`, `LlmConfigResolver`, `LlmModelRegistry`, `LlmSettingsService` |
 | `langchain4j` | LangChain4j 适配 | `LangChain4jConfig`, `KbEmbeddingStore`, `KbRetrievalAugmentorFactory` |
-| `langchain4j.rerank` | 检索重排序 | `SearchRerankService`, `OnnxRerankScoringModel`, `ScoringModelConfig` |
+| `langchain4j.rerank` | 检索重排序 | `SearchRerankService`, `LangChain4jRerankAdapter`, `ScoringModelConfig` |
 | `common` | 通用工具与异常 | `ApiResponse`, `BusinessException` |
 
 ## 数据流
@@ -65,7 +64,7 @@ web (npm build) ──dist──► apps/server/target/classes/static ──► 
 | 向量索引 | 本地文件存储 `data/vectors/kb-{id}.json` | LocalEmbeddingStore 余弦检索 |
 | 缓存 | `knowledge.cache.provider` | `redis` |
 | 对象存储 | `knowledge.storage.provider` | `minio` |
-| Embedding | `knowledge.embedding.provider` | `onnx` |
+| Embedding | `knowledge.embedding.provider` | `openai` |
 | Reranker | `knowledge.search.rerank.*` | 关闭 |
 | LLM | `knowledge.llm.provider` | `ollama` |
 

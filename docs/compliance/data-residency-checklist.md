@@ -16,11 +16,11 @@
 
 | 序号 | 检查项 | 配置项 | 验收 |
 |------|--------|--------|------|
-| 6 | Embedding 本地推理 | `EMBEDDING_PROVIDER=onnx` | ☐ |
-| 7 | Rerank 本地推理 | `RERANK_PROVIDER=onnx` | ☐ |
+| 6 | Embedding 内网推理（或客户书面认可云端） | `EMBEDDING_PROVIDER=ollama`（自建）；选 `openai` 云端需客户认可 | ☐ |
+| 7 | Rerank 已禁用 | `RERANK_ENABLED=false`（Rerank 仅云端，无本地推理） | ☐ |
 | 8 | LLM 内网或本地 | `LLM_BASE_URL` 指向内网 Ollama/vLLM | ☐ |
 | 9 | 禁止外连大模型 | `LLM_ALLOW_EXTERNAL=false` | ☐ |
-| 10 | 云端 Rerank 已禁用 | 非 onnx 时启动应失败或忽略 | ☐ |
+| 10 | 云端 AI 密钥已清理 | `EMBEDDING_API_KEY` / `COHERE_API_KEY` / `JINA_API_KEY` 为空 | ☐ |
 
 ## 三、安全基线
 

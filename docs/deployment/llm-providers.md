@@ -102,51 +102,56 @@ LLM_ALLOW_EXTERNAL=false
 
 ## Embedding 与 LLM 分离
 
-向量化、重排序与对话可独立配置：
+向量化、重排序与对话可独立配置（Embedding 走云端、对话走自建 Ollama）：
 
 ```env
-EMBEDDING_PROVIDER=onnx
-RERANK_ENABLED=true
-RERANK_PROVIDER=onnx
-LLM_PROVIDER=dashscope
+EMBEDDING_PROVIDER=openai
+EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+EMBEDDING_API_KEY=<你的Key>
+EMBEDDING_MODEL=text-embedding-v3
+EMBEDDING_DIMENSION=1024
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen2.5:7b
 ```
 
-或全部本地：
+或全部本地（自建 Ollama，纯内网）：
 
 ```env
-EMBEDDING_PROVIDER=onnx
-RERANK_ENABLED=true
-RERANK_PROVIDER=onnx
+EMBEDDING_PROVIDER=ollama
+OLLAMA_EMBED_URL=http://localhost:11434
+OLLAMA_EMBED_MODEL=nomic-embed-text
+EMBEDDING_DIMENSION=768
+RERANK_ENABLED=false
 LLM_PROVIDER=ollama
 LLM_MODEL=qwen2.5:7b
 LLM_ALLOW_EXTERNAL=false
 ```
 
-## Reranker（检索重排序）
+## Reranker（检索重排序，仅云端）
 
 ```env
 RERANK_ENABLED=true
-RERANK_PROVIDER=onnx
-RERANK_ONNX_MODEL_PATH=./data/models/bge-reranker-base.onnx
-RERANK_ONNX_TOKENIZER_PATH=./data/models/bge-reranker-tokenizer.json
+RERANK_PROVIDER=cohere
+COHERE_API_KEY=<你的Key>
 ```
 
 | provider | 说明 |
 |----------|------|
-| `onnx` | 本地 Cross-Encoder，推荐内网部署 |
 | `cohere` | 需 `COHERE_API_KEY` |
 | `jina` | 需 `JINA_API_KEY` |
 
-模型准备见 [data/models/README.md](../../data/models/README.md)。
+> 本地 ONNX 推理已移除（模型全云端化）。内网纯离线模式必须保持 `RERANK_ENABLED=false`（见 `ProductionConfigValidator`）。
 
-## Docker Compose 示例
+## 环境变量示例（.env）
 
-```yaml
-environment:
-  LLM_PROVIDER: dashscope
-  LLM_API_KEY: ${LLM_API_KEY}
-  LLM_MODEL: qwen-plus
-  EMBEDDING_PROVIDER: onnx
+```env
+LLM_PROVIDER=dashscope
+LLM_API_KEY=<你的Key>
+LLM_MODEL=qwen-plus
+EMBEDDING_PROVIDER=openai
+EMBEDDING_API_KEY=<你的Key>
+EMBEDDING_MODEL=text-embedding-v3
+EMBEDDING_DIMENSION=1024
 ```
 
 ## 故障排查
