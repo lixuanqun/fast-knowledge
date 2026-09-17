@@ -241,6 +241,12 @@ async function send() {
       role: 'user',
       content: messages.value[lastUserMsgIndex].content
     }
+    // 错误气泡持久化进会话，避免 toast 消失后无从得知失败原因
+    messages.value.push({
+      role: 'assistant',
+      content: `⚠️ 回复失败：${errorMsg}（请检查大模型配置与网络连通性后重试）`,
+      sources: []
+    })
   } finally {
     streaming.value = false
     streamText.value = ''

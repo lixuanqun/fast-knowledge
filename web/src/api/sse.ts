@@ -45,7 +45,14 @@ export async function consumeSse(
   })
   if (!res.ok) {
     const errText = await res.text()
-    throw new Error(errText || `请求失败 (${res.status})`)
+    let msg = errText || `请求失败 (${res.status})`
+    try {
+      const j = JSON.parse(errText)
+      if (j?.message) msg = j.message
+    } catch {
+      /* 非 JSON 错误体原样保留 */
+    }
+    throw new Error(msg)
   }
   const reader = res.body?.getReader()
   if (!reader) return
