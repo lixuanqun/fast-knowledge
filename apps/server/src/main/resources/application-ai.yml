@@ -56,6 +56,9 @@ knowledge:
   query-rewrite:
     enabled: ${QUERY_REWRITE_ENABLED:true}
     history-rounds: ${QUERY_REWRITE_HISTORY:5}
+  mcp:
+    # WP8 MCP Server：/mcp 端点（工具 list_kbs/search/qa/fetch_chunk，API Key 鉴权）
+    enabled: ${KNOWLEDGE_MCP_ENABLED:false}
   kg:
     # WP7 知识图谱：索引后 LLM 抽取实体关系，检索时邻居 chunk 扩展召回
     enabled: ${KNOWLEDGE_KG_ENABLED:false}

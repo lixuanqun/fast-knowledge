@@ -30,6 +30,7 @@ public class KnowledgeProperties {
     private Agentic agentic = new Agentic();
     private Ingest ingest = new Ingest();
     private Kg kg = new Kg();
+    private Mcp mcp = new Mcp();
     /**
      * 发行版：community（默认）| enterprise。
      * 可用环境变量 KNOWLEDGE_EDITION 覆盖；enterprise profile 默认 enterprise。
@@ -280,6 +281,13 @@ public class KnowledgeProperties {
         private boolean enabled = true;
         /** 用于改写的对话历史轮数 */
         private int historyRounds = 5;
+    }
+
+    /** WP8 MCP Server 配置 */
+    @Data
+    public static class Mcp {
+        /** MCP 端点开关（默认关） */
+        private boolean enabled = false;
     }
 
     /** WP7 知识图谱（GraphRAG 轻量版）配置 */
