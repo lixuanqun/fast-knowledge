@@ -36,3 +36,6 @@ test-assets/e2e-run*.log
 
 # ZCode CLI workspace
 .zcode/
+
+# GUI 测试截图（验证产物，不入库）
+gui-test-screenshots/
