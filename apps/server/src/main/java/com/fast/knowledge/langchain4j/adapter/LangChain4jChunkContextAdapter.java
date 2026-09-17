@@ -37,6 +37,7 @@ public class LangChain4jChunkContextAdapter implements ChunkContextPort {
 
     @Override
     public List<String> generateContexts(String docTitle, String fullTextPreview, List<String> chunks) {
+        chatPort.withContext("chunk_context", null);
         List<String> result = new ArrayList<>(chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             result.add("");
@@ -64,8 +65,9 @@ public class LangChain4jChunkContextAdapter implements ChunkContextPort {
                 result.set(i, ctx == null ? "" : clip(ctx.trim(), 300));
             }
         } catch (Exception e) {
-            // 降级：本批前缀为空，索引照常
             log.warn("上下文生成失败（降级为无前缀）: {}", e.getMessage());
+        } finally {
+            chatPort.clearContext();
         }
         return result;
     }

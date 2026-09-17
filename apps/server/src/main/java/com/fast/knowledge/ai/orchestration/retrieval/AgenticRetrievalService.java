@@ -246,6 +246,7 @@ public class AgenticRetrievalService {
     }
 
     private List<String> llmDecompose(String query, int max) throws Exception {
+        chatPort.withContext("agentic_decompose", null);
         String raw = chatPort.complete(DECOMPOSE_PROMPT, "用户问题：" + query + "\nJSON数组：");
         if (raw == null || raw.isBlank()) {
             return List.of();

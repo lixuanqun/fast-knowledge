@@ -102,6 +102,7 @@ public class KnowledgeGraphService {
         }
         String userPrompt = "文档标题：" + (title == null ? "（无标题）" : title) + "\n\n文档内容：\n"
                 + preview + "\n\n请输出 JSON（entities 最多 " + maxEntities + " 个）：";
+        chatPort.withContext("kg_extract", String.valueOf(docId));
         String raw = chatPort.complete(String.format(EXTRACT_PROMPT, maxEntities), userPrompt);
 
         Matcher m = JSON_OBJECT(raw);

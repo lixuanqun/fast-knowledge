@@ -12,6 +12,16 @@ public interface ChatPort {
     /** 流式生成；调用即启动，回调在实现方线程上触发 */
     void stream(String systemPrompt, String userPrompt, StreamHandler handler);
 
+    /**
+     * WP10：设置调用场景与关联 ID（供 TraceableChatPort 埋点；非装饰器实现为空方法）。
+     * 调用方在 complete() 前设置、finally 里 clearContext()。
+     */
+    default void withContext(String scene, String correlationId) {
+    }
+
+    default void clearContext() {
+    }
+
     interface StreamHandler {
         void onPartial(String token);
         void onComplete(String fullText);

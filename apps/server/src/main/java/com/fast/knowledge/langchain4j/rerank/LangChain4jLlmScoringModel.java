@@ -35,6 +35,7 @@ public class LangChain4jLlmScoringModel implements ScoringModel {
 
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
+        chatPort.withContext("rerank", null);
         List<Double> scores = new ArrayList<>(segments.size());
         for (int i = 0; i < segments.size(); i++) {
             scores.add(0.5);
@@ -59,6 +60,8 @@ public class LangChain4jLlmScoringModel implements ScoringModel {
             }
         } catch (Exception e) {
             log.warn("LLM 重排打分失败（降级为中性分保序）: {}", e.getMessage());
+        } finally {
+            chatPort.clearContext();
         }
         return Response.from(scores);
     }
