@@ -8,5 +8,7 @@ public class DocumentChunkVO {
     private Integer chunkIndex;
     private String content;
     private String sectionTitle;
+    private Integer pageNo;
+    private String anchorType;
     private Integer tokenCount;
 }

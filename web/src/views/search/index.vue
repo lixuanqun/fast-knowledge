@@ -99,9 +99,11 @@
             <span class="hit-card__rank">#{{ (page - 1) * pageSize + i + 1 }}</span>
           </div>
 
-          <div v-if="hit.docNo || hit.section" class="hit-card__meta">
+          <div v-if="hit.docNo || hit.section || hit.pageNo || hit.anchorType === 'table'" class="hit-card__meta">
             <span v-if="hit.docNo" class="hit-chip">{{ hit.docNo }}</span>
             <span v-if="hit.section" class="hit-chip">{{ hit.section }}</span>
+            <span v-if="hit.pageNo" class="hit-chip hit-chip--page">第 {{ hit.pageNo }} 页</span>
+            <span v-if="hit.anchorType === 'table'" class="hit-chip hit-chip--table">表格</span>
           </div>
 
           <p class="hit-card__content">
@@ -459,6 +461,18 @@ const HighlightText = defineComponent({
   color: $fk-text-secondary;
   background: $fk-surface-muted;
   border: 1px solid $fk-border;
+}
+
+.hit-chip--page {
+  color: $fk-primary;
+  border-color: $fk-primary;
+  background: transparent;
+}
+
+.hit-chip--table {
+  color: var(--fk-warning);
+  border-color: var(--fk-warning);
+  background: transparent;
 }
 
 .hit-card__content {

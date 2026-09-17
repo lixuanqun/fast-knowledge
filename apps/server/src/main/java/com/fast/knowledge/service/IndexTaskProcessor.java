@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 索引任务异步处理器 — 独立 Bean 确保 {@code @Async} 和 {@code @Transactional} AOP 代理生效。
@@ -30,6 +32,12 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class IndexTaskProcessor {
+
+    /** OCR 全文页标记（OcrParseService 拼接格式） */
+    private static final Pattern PAGE_MARK_PATTERN = Pattern.compile("<!--\\s*page\\s+(\\d+)\\s*-->");
+    /** Markdown 表格：表头行后跟分隔行（| --- | --- |） */
+    private static final Pattern MD_TABLE_PATTERN =
+            Pattern.compile("(?m)^\\s*\\|.*\\|\\s*\\r?\\n\\s*\\|[ :\\-|]+\\|\\s*$");
 
     private final DocumentMapper documentMapper;
     private final DocumentChunkMapper documentChunkMapper;
@@ -144,6 +152,10 @@ public class IndexTaskProcessor {
                     // WP1 上下文化分块：按批为分块生成上下文前缀（失败降级为空串）
                     List<String> contextPrefixes = generateContextPrefixes(doc.getTitle(), text, splitSegments);
 
+                    // WP5 溯源：页码标记预扫描（OCR 文档含 <!-- page N -->），逐块推算页码与锚点类型
+                    List<Integer> pageMarks = scanPageMarks(text);
+                    int pageCursor = 0;
+
                     List<DocumentChunk> chunks = new ArrayList<>();
                     for (int i = 0; i < splitSegments.size(); i++) {
                         String content = splitSegments.get(i);
@@ -154,6 +166,9 @@ public class IndexTaskProcessor {
                         chunk.setContent(content);
                         chunk.setSectionTitle(chunkService.extractSectionTitle(content));
                         chunk.setContextPrefix(contextPrefixes.get(i));
+                        pageCursor = resolvePageNo(content, pageMarks, pageCursor);
+                        chunk.setPageNo(pageCursor > 0 ? pageCursor : null);
+                        chunk.setAnchorType(hasMarkdownTable(content) ? "table" : "text");
                         chunk.setTokenCount(chunkService.countTokens(content));
                         chunks.add(chunk);
                     }
@@ -236,5 +251,38 @@ public class IndexTaskProcessor {
             }
         }
         return prefixes;
+    }
+
+    /** OCR 全文中的页标记（<!-- page N -->）出现位置 → 页码序列（按文本顺序） */
+    private List<Integer> scanPageMarks(String text) {
+        List<Integer> marks = new ArrayList<>();
+        if (text == null) {
+            return marks;
+        }
+        Matcher m = PAGE_MARK_PATTERN.matcher(text);
+        while (m.find()) {
+            marks.add(Integer.parseInt(m.group(1)));
+        }
+        return marks;
+    }
+
+    /**
+     * 推算分块所在页码：分块内容携带页标记（OCR 拼接文本按页分块，起始标记可靠）取标记页码；
+     * 不携带标记的延续块沿用前一分块页码。非分页文档返回 0（调用方落 null）。
+     */
+    private int resolvePageNo(String content, List<Integer> pageMarks, int prevPage) {
+        if (pageMarks.isEmpty()) {
+            return 0;
+        }
+        Matcher m = PAGE_MARK_PATTERN.matcher(content == null ? "" : content);
+        return m.find() ? Integer.parseInt(m.group(1)) : prevPage;
+    }
+
+    /** Markdown 表格检测：表头行 + 分隔行（| --- |） */
+    private boolean hasMarkdownTable(String content) {
+        if (content == null) {
+            return false;
+        }
+        return MD_TABLE_PATTERN.matcher(content).find();
     }
 }

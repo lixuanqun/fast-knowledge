@@ -9,6 +9,10 @@ export interface SearchHit {
   section?: string
   docType?: string
   docNo?: string
+  /** WP5 溯源：所在页码（OCR/分页文档） */
+  pageNo?: number
+  /** WP5 溯源：锚点类型 text / table */
+  anchorType?: string
 }
 
 export function search(kbId: number, query: string, topK?: number, docType?: string) {

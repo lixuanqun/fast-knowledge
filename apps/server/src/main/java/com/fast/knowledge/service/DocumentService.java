@@ -212,6 +212,8 @@ public class DocumentService {
         vo.setContent(chunk.getContent());
         vo.setTokenCount(chunk.getTokenCount());
         vo.setSectionTitle(chunk.getSectionTitle());
+        vo.setPageNo(chunk.getPageNo());
+        vo.setAnchorType(chunk.getAnchorType());
         return vo;
     }
 

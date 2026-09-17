@@ -22,6 +22,8 @@ public final class SearchHitMapper {
         private String docType;
         private String docNo;
         private String section;
+        private Integer pageNo;
+        private String anchorType;
         private String content;
         private double score;
     }
@@ -34,6 +36,8 @@ public final class SearchHitMapper {
         vo.setDocType(hit.getDocType());
         vo.setDocNo(hit.getDocNo());
         vo.setSection(hit.getSection());
+        vo.setPageNo(hit.getPageNo());
+        vo.setAnchorType(hit.getAnchorType());
         vo.setContent(hit.getContent());
         vo.setScore(hit.getScore());
         return vo;

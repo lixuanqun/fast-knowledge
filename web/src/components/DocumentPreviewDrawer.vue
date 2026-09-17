@@ -73,6 +73,8 @@
                 <div class="chunk-title">
                   <span class="chunk-title__index">#{{ chunk.chunkIndex + 1 }}</span>
                   <span v-if="chunk.sectionTitle" class="chunk-title__section">{{ chunk.sectionTitle }}</span>
+                  <span v-if="chunk.pageNo" class="chunk-title__page">第 {{ chunk.pageNo }} 页</span>
+                  <span v-if="chunk.anchorType === 'table'" class="chunk-title__anchor">表格</span>
                   <span class="chunk-title__meta">{{ chunk.tokenCount }} 字</span>
                   <span class="chunk-title__preview">{{ chunkPreview(chunk.content) }}</span>
                 </div>
@@ -270,6 +272,18 @@ watch(hasError, failed => {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+}
+
+.chunk-title__page {
+  color: var(--fk-primary);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.chunk-title__anchor {
+  color: var(--fk-warning);
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .chunk-title__section {

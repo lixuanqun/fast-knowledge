@@ -32,6 +32,10 @@ export interface DocumentChunk {
   content: string
   tokenCount: number
   sectionTitle?: string
+  /** WP5 溯源：所在页码（OCR/分页文档） */
+  pageNo?: number
+  /** WP5 溯源：锚点类型 text / table */
+  anchorType?: string
 }
 
 export function getDocumentPreview(kbId: number, docId: number, chunkId?: number) {

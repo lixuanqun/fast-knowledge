@@ -46,15 +46,22 @@ public class KbEmbeddingIngestor {
             String section = chunk.getSectionTitle() != null
                     ? chunk.getSectionTitle()
                     : "";
-            Metadata metadata = Metadata.from(Map.of(
-                    KbEmbeddingStore.META_KB_ID, doc.getKbId(),
-                    KbEmbeddingStore.META_DOC_ID, doc.getId(),
-                    KbEmbeddingStore.META_CHUNK_ID, chunk.getId(),
-                    KbEmbeddingStore.META_TITLE, doc.getTitle() != null ? doc.getTitle() : "",
-                    KbEmbeddingStore.META_DOC_TYPE, doc.getDocType() != null ? doc.getDocType() : "",
-                    KbEmbeddingStore.META_DOC_NO, doc.getDocNo() != null ? doc.getDocNo() : "",
-                    KbEmbeddingStore.META_SECTION, section
-            ));
+            // WP5 溯源元数据：页码与锚点类型可能为 null，Map.of 不允许 null 值，用条件 put
+            java.util.Map<String, Object> metaMap = new java.util.LinkedHashMap<>();
+            metaMap.put(KbEmbeddingStore.META_KB_ID, doc.getKbId());
+            metaMap.put(KbEmbeddingStore.META_DOC_ID, doc.getId());
+            metaMap.put(KbEmbeddingStore.META_CHUNK_ID, chunk.getId());
+            metaMap.put(KbEmbeddingStore.META_TITLE, doc.getTitle() != null ? doc.getTitle() : "");
+            metaMap.put(KbEmbeddingStore.META_DOC_TYPE, doc.getDocType() != null ? doc.getDocType() : "");
+            metaMap.put(KbEmbeddingStore.META_DOC_NO, doc.getDocNo() != null ? doc.getDocNo() : "");
+            metaMap.put(KbEmbeddingStore.META_SECTION, section);
+            if (chunk.getPageNo() != null) {
+                metaMap.put(KbEmbeddingStore.META_PAGE_NO, chunk.getPageNo());
+            }
+            if (chunk.getAnchorType() != null) {
+                metaMap.put(KbEmbeddingStore.META_ANCHOR_TYPE, chunk.getAnchorType());
+            }
+            Metadata metadata = Metadata.from(metaMap);
             ids.add(UUID.randomUUID().toString());
             segments.add(TextSegment.from(chunk.getContent(), metadata));
             // WP1 上下文化分块：向量用"前缀 + 正文"计算，存储段保留原文用于展示与引用

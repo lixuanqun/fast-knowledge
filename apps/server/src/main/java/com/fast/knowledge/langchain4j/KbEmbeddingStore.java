@@ -28,6 +28,8 @@ public class KbEmbeddingStore implements dev.langchain4j.store.embedding.Embeddi
     public static final String META_DOC_TYPE = "docType";
     public static final String META_DOC_NO = "docNo";
     public static final String META_SECTION = "section";
+    public static final String META_PAGE_NO = "pageNo";
+    public static final String META_ANCHOR_TYPE = "anchorType";
 
     private final Long kbId;
     private final EmbeddingStore<TextSegment> delegate;
@@ -172,6 +174,8 @@ public class KbEmbeddingStore implements dev.langchain4j.store.embedding.Embeddi
         hit.setDocType(metadata.getString(META_DOC_TYPE));
         hit.setDocNo(metadata.getString(META_DOC_NO));
         hit.setSection(metadata.getString(META_SECTION));
+        hit.setPageNo(metadata.getInteger(META_PAGE_NO));
+        hit.setAnchorType(metadata.getString(META_ANCHOR_TYPE));
         hit.setContent(segment.text());
         hit.setScore(match.score());
         return hit;

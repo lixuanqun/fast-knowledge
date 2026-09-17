@@ -10,3 +10,15 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- WP5 引用溯源：分块页码与锚点类型
+SET @ddl2 = (
+    SELECT IF(COUNT(*) = 0,
+        'ALTER TABLE kb_document_chunk ADD COLUMN page_no INT NULL AFTER context_prefix, ADD COLUMN anchor_type VARCHAR(16) NULL AFTER page_no',
+        'SELECT 1')
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'kb_document_chunk' AND COLUMN_NAME = 'page_no'
+);
+PREPARE stmt2 FROM @ddl2;
+EXECUTE stmt2;
+DEALLOCATE PREPARE stmt2;

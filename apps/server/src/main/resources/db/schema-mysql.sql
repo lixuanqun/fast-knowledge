@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS kb_document_chunk (
     content     TEXT         NOT NULL,
     section_title VARCHAR(256) NULL,
     context_prefix VARCHAR(512) NULL,
+    page_no        INT          NULL,
+    anchor_type    VARCHAR(16)  NULL,
     token_count INT          NOT NULL DEFAULT 0,
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY idx_chunk_doc (document_id),
