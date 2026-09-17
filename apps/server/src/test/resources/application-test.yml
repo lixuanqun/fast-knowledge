@@ -5,6 +5,9 @@ spring:
       schema-locations: classpath:db/schema-mysql.sql
 
 knowledge:
+  security:
+    # 集成测试连续 login 会触发 @RateLimit(10/60s)，测试环境关闭限流
+    rate-limit-enabled: false
   cache:
     provider: redis
   embedding:

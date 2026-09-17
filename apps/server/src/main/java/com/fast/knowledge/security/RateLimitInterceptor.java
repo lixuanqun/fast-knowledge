@@ -20,6 +20,10 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final CacheProvider cacheProvider;
 
+    /** 限流总开关；内网受信任环境或集成测试可关闭 */
+    @org.springframework.beans.factory.annotation.Value("${knowledge.security.rate-limit-enabled:true}")
+    private boolean rateLimitEnabled;
+
     public RateLimitInterceptor(CacheProvider cacheProvider) {
         this.cacheProvider = cacheProvider;
     }
@@ -27,6 +31,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
+        if (!rateLimitEnabled) {
+            return true;
+        }
         if (!(handler instanceof HandlerMethod hm)) {
             return true;
         }
