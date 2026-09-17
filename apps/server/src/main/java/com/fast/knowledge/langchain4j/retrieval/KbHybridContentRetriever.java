@@ -26,7 +26,9 @@ public class KbHybridContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
         try {
-            return retrievalOrchestrator.retrieve(kbId, query.text()).stream()
+            // WP6：桥接流式接口注册的检索步骤回调（同线程同步检索，ThreadLocal 可达）
+            return retrievalOrchestrator.retrieve(kbId, query.text(),
+                    com.fast.knowledge.ai.orchestration.retrieval.RetrievalStepBridge.get()).stream()
                     .map(this::toContent)
                     .toList();
         } catch (Exception e) {

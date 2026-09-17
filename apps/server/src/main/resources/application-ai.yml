@@ -60,6 +60,9 @@ knowledge:
     enabled: ${AGENTIC_RETRIEVAL_ENABLED:true}
     max-sub-queries: ${AGENTIC_MAX_SUB_QUERIES:3}
     llm-decompose: ${AGENTIC_LLM_DECOMPOSE:true}
+    # WP6：自评充分性 + 补充检索轮数
+    self-critique: ${AGENTIC_SELF_CRITIQUE:true}
+    max-rounds: ${AGENTIC_MAX_ROUNDS:2}
   index:
     pubsub-enabled: ${INDEX_PUBSUB_ENABLED:true}
     max-retry: ${INDEX_MAX_RETRY:3}

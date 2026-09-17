@@ -34,10 +34,22 @@ public class RetrievalOrchestrator {
     }
 
     public List<SearchHitVO> retrieve(Long kbId, String query) throws Exception {
+        return retrieve(kbId, query, null);
+    }
+
+    /** WP6：带检索步骤回调的重载（流式接口透出进度用；可为 null） */
+    public List<SearchHitVO> retrieve(Long kbId, String query, java.util.function.Consumer<RetrievalStep> steps) throws Exception {
         if (agenticRetrievalService.shouldUseAgentic(query)) {
-            return agenticRetrievalService.retrieveMultiHop(kbId, query, this::retrieveOnce);
+            return agenticRetrievalService.retrieveMultiHop(kbId, query, this::retrieveOnce, steps);
         }
-        return retrieveOnce(kbId, query);
+        List<SearchHitVO> hits = retrieveOnce(kbId, query);
+        if (steps != null) {
+            try {
+                steps.accept(new RetrievalStep(1, "single", List.of(query), hits.size()));
+            } catch (Exception ignored) {
+            }
+        }
+        return hits;
     }
 
     /** 单轮：Wiki 优先 + HYBRID（供多跳子查询调用，避免递归进 Agentic）。 */

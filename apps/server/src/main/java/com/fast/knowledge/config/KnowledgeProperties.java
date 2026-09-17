@@ -289,6 +289,10 @@ public class KnowledgeProperties {
         private int maxSubQueries = 3;
         /** 是否用 LLM 拆解子查询；false 则仅启发式拆分 */
         private boolean llmDecompose = true;
+        /** WP6：检索后 LLM 自评充分性，不充分则补充检索 */
+        private boolean selfCritique = true;
+        /** WP6：最大检索轮数（含首轮） */
+        private int maxRounds = 2;
     }
 
     @Data

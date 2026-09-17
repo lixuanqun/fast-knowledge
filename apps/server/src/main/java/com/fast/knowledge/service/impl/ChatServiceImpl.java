@@ -115,6 +115,14 @@ public class ChatServiceImpl implements ChatService {
 
         chatExecutor.execute(UserContext.wrap(() -> {
             long startTime = System.currentTimeMillis();
+            // WP6：检索步骤 → SSE 事件（ContentRetriever 在同线程同步检索，ThreadLocal 桥可达）
+            com.fast.knowledge.ai.orchestration.retrieval.RetrievalStepBridge.set(step -> {
+                try {
+                    SseEmitterHelper.sendNamed(emitter, "retrieval-step",
+                            objectMapper.writeValueAsString(step));
+                } catch (Exception ignored) {
+                }
+            });
             try {
                 ChatSession session = resolveSession(request, userId);
                 Long kbId = request.getKbId() != null ? request.getKbId() : session.getKbId();
@@ -182,6 +190,8 @@ public class ChatServiceImpl implements ChatService {
             } catch (Exception e) {
                 log.error("Chat stream failed sessionId={}", resolveSessionIdSafely(request), e);
                 SseEmitterHelper.sendError(emitter, e.getMessage());
+            } finally {
+                com.fast.knowledge.ai.orchestration.retrieval.RetrievalStepBridge.clear();
             }
         }));
 

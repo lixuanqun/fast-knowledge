@@ -64,8 +64,15 @@
               <el-icon><Cpu /></el-icon>
             </div>
             <div class="msg-bubble assistant is-streaming">
+              <div v-if="retrievalSteps.length && !streamText" class="retrieval-steps">
+                <div v-for="(s, i) in retrievalSteps" :key="i" class="retrieval-steps__item">
+                  <el-icon><Search /></el-icon>
+                  <span>{{ s }}</span>
+                </div>
+                <StreamingIndicator text="分析检索结果..." />
+              </div>
               <MarkdownBody v-if="streamText" :content="streamText" />
-              <div v-else>
+              <div v-if="!streamText && !retrievalSteps.length">
                 <StreamingIndicator text="思考中..." />
               </div>
             </div>
@@ -138,6 +145,7 @@ const messages = ref<ChatMessage[]>([])
 const input = ref('')
 const streaming = ref(false)
 const streamText = ref('')
+const retrievalSteps = ref<string[]>([])
 const pendingSources = ref<ChatMessage['sources']>([])
 const messagesRef = ref<HTMLElement>()
 const skipMessagesSync = ref(false)
@@ -194,6 +202,7 @@ async function send() {
   input.value = ''
   streaming.value = true
   streamText.value = ''
+  retrievalSteps.value = []
   pendingSources.value = []
   scrollToBottom()
 
@@ -209,7 +218,14 @@ async function send() {
         if (meta?.sessionId) sessionId.value = meta.sessionId
         pendingSources.value = meta?.sources
       },
-      streamAbort.signal
+      streamAbort.signal,
+      step => {
+        const modeLabel = step.mode === 'agentic' ? '多路检索' : step.mode === 'refine' ? '补充检索' : '检索'
+        retrievalSteps.value.push(
+          `第 ${step.round} 轮${modeLabel} · ${step.queries.length} 个查询 · 累计 ${step.totalHits} 条候选`
+        )
+        scrollToBottom()
+      }
     )
     messages.value.push({
       role: 'assistant',
@@ -416,5 +432,20 @@ async function send() {
 
 .btn-icon {
   margin-right: 4px;
+}
+
+.retrieval-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.retrieval-steps__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fk-text-secondary);
 }
 </style>

@@ -16,13 +16,22 @@ export interface WriterStep {
   title?: string
 }
 
+/** WP6 Agentic 检索步骤事件载荷（event: retrieval-step） */
+export interface RetrievalStep {
+  round: number
+  mode: 'single' | 'agentic' | 'refine'
+  queries: string[]
+  totalHits: number
+}
+
 export async function consumeSse(
   url: string,
   body: object,
   onChunk: (text: string) => void,
   onDone?: (meta?: StreamDoneMeta) => void,
   onStep?: (step: WriterStep) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRetrievalStep?: (step: RetrievalStep) => void
 ): Promise<void> {
   const token = getToken()
   const res = await fetch(url, {
@@ -75,6 +84,14 @@ export async function consumeSse(
         }
         continue
       }
+      if (eventName === 'retrieval-step') {
+        try {
+          onRetrievalStep?.(JSON.parse(data))
+        } catch {
+          /* 非法载荷忽略 */
+        }
+        continue
+      }
       if (eventName === 'done') {
         if (data !== '[DONE]') {
           try {
@@ -96,9 +113,10 @@ export async function streamChat(
   body: object,
   onChunk: (text: string) => void,
   onDone?: (meta?: StreamDoneMeta) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRetrievalStep?: (step: RetrievalStep) => void
 ): Promise<void> {
-  return consumeSse(`${API_BASE}/chat/messages/stream`, body, onChunk, onDone, undefined, signal)
+  return consumeSse(`${API_BASE}/chat/messages/stream`, body, onChunk, onDone, undefined, signal, onRetrievalStep)
 }
 
 export async function streamWriter(

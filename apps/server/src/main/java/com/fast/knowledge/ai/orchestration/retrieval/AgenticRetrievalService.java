@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.function.Consumer;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -37,6 +39,18 @@ public class AgenticRetrievalService {
             4. 子查询数量不超过 3 个""";
 
     private static final Pattern JSON_ARRAY = Pattern.compile("\\[.*]", Pattern.DOTALL);
+    private static final Pattern JSON_OBJECT = Pattern.compile("\\{.*}", Pattern.DOTALL);
+
+    private static final String SUFFICIENCY_PROMPT = """
+            你是检索质量评估器。给定用户问题与已召回片段的摘要，判断这些片段是否足以完整、准确地回答问题。
+            规则：
+            1. 只输出 JSON 对象：{"sufficient": true|false, "missing": ["缺失要点", ...]}
+            2. missing 列出回答问题还缺的具体信息点（最多 3 个；足够时为空数组）
+            3. 宁可判充分也不要臆造缺失点；片段间信息互补即可判充分""";
+
+    /** 充分性自评结果 */
+    record Sufficiency(boolean sufficient, List<String> missing) {
+    }
 
     private final KnowledgeProperties properties;
     private final ChatPort chatPort;
@@ -64,29 +78,138 @@ public class AgenticRetrievalService {
                                               String query,
                                               BiFunctionThrowing<Long, String, List<SearchHitVO>> singlePass)
             throws Exception {
-        List<String> subQueries = planSubQueries(query);
-        metricsService.countAgentic(subQueries.size());
+        return retrieveMultiHop(kbId, query, singlePass, null);
+    }
 
-        Map<String, SearchHitVO> merged = new LinkedHashMap<>();
-        for (String sub : subQueries) {
+    /**
+     * WP6 完整闭环：分解多路召回 → LLM 自评充分性 → 不充分则构造补充查询再检索（≤ maxRounds 轮）。
+     *
+     * @param steps 检索步骤回调（可为 null），供流式接口透出进度
+     */
+    public List<SearchHitVO> retrieveMultiHop(Long kbId,
+                                              String query,
+                                              BiFunctionThrowing<Long, String, List<SearchHitVO>> singlePass,
+                                              Consumer<RetrievalStep> steps)
+            throws Exception {
+        int maxRounds = Math.max(1, properties.getAgentic().getMaxRounds());
+
+        List<String> queries = planSubQueries(query);
+        Map<String, SearchHitVO> merged = collect(kbId, queries, singlePass);
+        metricsService.countAgentic(queries.size());
+        notifyStep(steps, 1, "agentic", queries, merged.size());
+
+        // 自评 → 补充检索循环（round 2..maxRounds）
+        for (int round = 2; round <= maxRounds; round++) {
+            if (!properties.getAgentic().isSelfCritique() || merged.isEmpty()) {
+                break;
+            }
+            Sufficiency s = evaluateSufficiency(query, new ArrayList<>(merged.values()));
+            if (s.sufficient()) {
+                break;
+            }
+            String refine = buildRefineQuery(query, s.missing());
+            if (refine == null || queries.contains(refine)) {
+                break;
+            }
+            List<String> refineQueries = List.of(refine);
+            merged = collectInto(merged, kbId, refineQueries, singlePass);
+            notifyStep(steps, round, "refine", refineQueries, merged.size());
+            queries = refineQueries;
+            metricsService.countAgentic(1);
+        }
+
+        if (merged.isEmpty()) {
+            return singlePass.apply(kbId, query);
+        }
+        return new ArrayList<>(merged.values()).subList(0, Math.min(12, merged.size()));
+    }
+
+    private Map<String, SearchHitVO> collect(Long kbId, List<String> queries,
+                                             BiFunctionThrowing<Long, String, List<SearchHitVO>> singlePass)
+            throws Exception {
+        return collectInto(new LinkedHashMap<>(), kbId, queries, singlePass);
+    }
+
+    private Map<String, SearchHitVO> collectInto(Map<String, SearchHitVO> merged, Long kbId, List<String> queries,
+                                                 BiFunctionThrowing<Long, String, List<SearchHitVO>> singlePass)
+            throws Exception {
+        for (String sub : queries) {
             List<SearchHitVO> hits = singlePass.apply(kbId, sub);
             if (hits == null) {
                 continue;
             }
             for (SearchHitVO hit : hits) {
                 merged.putIfAbsent(StringUtils.dedupeKey(hit.getDocType(), hit.getDocumentId(), hit.getChunkId()), hit);
-                if (merged.size() >= 16) {
+            }
+            if (merged.size() >= 16) {
+                return merged;
+            }
+        }
+        return merged;
+    }
+
+    private void notifyStep(Consumer<RetrievalStep> steps, int round, String mode,
+                            List<String> queries, int totalHits) {
+        if (steps != null) {
+            try {
+                steps.accept(new RetrievalStep(round, mode, queries, totalHits));
+            } catch (Exception e) {
+                log.debug("检索步骤回调失败: {}", e.getMessage());
+            }
+        }
+    }
+
+    /** LLM 自评召回是否充分；评估失败按充分处理（不重检，保守省成本） */
+    Sufficiency evaluateSufficiency(String query, List<SearchHitVO> hits) {
+        try {
+            StringBuilder userPrompt = new StringBuilder("用户问题：").append(query).append("\n\n已召回片段摘要：\n");
+            int i = 1;
+            for (SearchHitVO hit : hits) {
+                String content = hit.getContent() == null ? "" : hit.getContent();
+                userPrompt.append("【片段 ").append(i++).append("】")
+                        .append(content, 0, Math.min(content.length(), 160)).append("\n");
+                if (i > 6) {
                     break;
                 }
             }
-            if (merged.size() >= 16) {
-                break;
+            userPrompt.append("\n请输出 JSON 对象：");
+            String raw = chatPort.complete(SUFFICIENCY_PROMPT, userPrompt.toString());
+            if (raw == null || raw.isBlank()) {
+                return new Sufficiency(true, List.of());
             }
+            Matcher m = JSON_OBJECT.matcher(raw.trim());
+            if (!m.find()) {
+                return new Sufficiency(true, List.of());
+            }
+            Map<String, Object> parsed = objectMapper.readValue(m.group(),
+                    new TypeReference<Map<String, Object>>() {
+                    });
+            boolean sufficient = Boolean.TRUE.equals(parsed.get("sufficient"))
+                    || "true".equalsIgnoreCase(String.valueOf(parsed.get("sufficient")));
+            List<String> missing = new ArrayList<>();
+            Object rawMissing = parsed.get("missing");
+            if (rawMissing instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o != null && !String.valueOf(o).isBlank()) {
+                        missing.add(String.valueOf(o));
+                    }
+                }
+            }
+            log.info("Agentic 自评: sufficient={} missing={}", sufficient, missing);
+            return new Sufficiency(sufficient, missing);
+        } catch (Exception e) {
+            log.debug("Agentic 自评失败（按充分处理）: {}", e.getMessage());
+            return new Sufficiency(true, List.of());
         }
-        if (merged.isEmpty()) {
-            return singlePass.apply(kbId, query);
+    }
+
+    /** 用缺失要点构造补充查询；无可用要点返回 null */
+    String buildRefineQuery(String query, List<String> missing) {
+        if (missing == null || missing.isEmpty()) {
+            return null;
         }
-        return new ArrayList<>(merged.values()).subList(0, Math.min(12, merged.size()));
+        String joined = String.join(" ", missing).trim();
+        return joined.isBlank() ? null : query + " " + joined;
     }
 
     List<String> planSubQueries(String query) {
