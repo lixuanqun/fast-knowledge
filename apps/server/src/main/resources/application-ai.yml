@@ -56,6 +56,12 @@ knowledge:
   query-rewrite:
     enabled: ${QUERY_REWRITE_ENABLED:true}
     history-rounds: ${QUERY_REWRITE_HISTORY:5}
+  kg:
+    # WP7 知识图谱：索引后 LLM 抽取实体关系，检索时邻居 chunk 扩展召回
+    enabled: ${KNOWLEDGE_KG_ENABLED:false}
+    max-entities-per-doc: ${KNOWLEDGE_KG_MAX_ENTITIES_PER_DOC:20}
+    neighbor-chunk-limit: ${KNOWLEDGE_KG_NEIGHBOR_CHUNK_LIMIT:8}
+    doc-preview-chars: ${KNOWLEDGE_KG_DOC_PREVIEW_CHARS:8000}
   agentic:
     enabled: ${AGENTIC_RETRIEVAL_ENABLED:true}
     max-sub-queries: ${AGENTIC_MAX_SUB_QUERIES:3}

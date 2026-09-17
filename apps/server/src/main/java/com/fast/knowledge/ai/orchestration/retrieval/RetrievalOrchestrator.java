@@ -24,13 +24,16 @@ public class RetrievalOrchestrator {
     private final SearchService searchService;
     private final WikiQueryRouter wikiQueryRouter;
     private final AgenticRetrievalService agenticRetrievalService;
+    private final com.fast.knowledge.service.KnowledgeGraphService knowledgeGraphService;
 
     public RetrievalOrchestrator(SearchService searchService,
                                      WikiQueryRouter wikiQueryRouter,
-                                     AgenticRetrievalService agenticRetrievalService) {
+                                     AgenticRetrievalService agenticRetrievalService,
+                                     com.fast.knowledge.service.KnowledgeGraphService knowledgeGraphService) {
         this.searchService = searchService;
         this.wikiQueryRouter = wikiQueryRouter;
         this.agenticRetrievalService = agenticRetrievalService;
+        this.knowledgeGraphService = knowledgeGraphService;
     }
 
     public List<SearchHitVO> retrieve(Long kbId, String query) throws Exception {
@@ -60,12 +63,28 @@ public class RetrievalOrchestrator {
             request.setKbId(kbId);
             request.setQuery(query);
             List<SearchHitVO> hybrid = searchService.search(request);
-            return merge(wikiHits, hybrid, 12);
+            return expandWithGraph(kbId, query, merge(wikiHits, hybrid, 12));
         }
         SearchRequest request = new SearchRequest();
         request.setKbId(kbId);
         request.setQuery(query);
-        return searchService.search(request);
+        return expandWithGraph(kbId, query, searchService.search(request));
+    }
+
+    /** WP7：KG 实体链接 + 1 跳邻居证据 chunk 扩展召回（低权重，去重交给 merge） */
+    private List<SearchHitVO> expandWithGraph(Long kbId, String query, List<SearchHitVO> hits) {
+        if (!knowledgeGraphService.isEnabled() || hits == null || hits.isEmpty()) {
+            return hits;
+        }
+        try {
+            List<SearchHitVO> kgExt = knowledgeGraphService.expandForQuery(kbId, query, 8);
+            if (kgExt.isEmpty()) {
+                return hits;
+            }
+            return merge(hits, kgExt, hits.size() + kgExt.size());
+        } catch (Exception e) {
+            return hits;
+        }
     }
 
     private static List<SearchHitVO> merge(List<SearchHitVO> primary, List<SearchHitVO> secondary, int limit) {

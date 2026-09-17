@@ -28,6 +28,7 @@ public class KnowledgeBaseService {
     private final AuditLogService auditLogService;
     private final WorkspaceService workspaceService;
     private final SearchCacheService searchCacheService;
+    private final KnowledgeGraphService knowledgeGraphService;
 
     public KnowledgeBaseService(KnowledgeBaseMapper knowledgeBaseMapper,
                                 DocumentMapper documentMapper,
@@ -37,7 +38,8 @@ public class KnowledgeBaseService {
                                 KnowledgeProperties properties,
                                 AuditLogService auditLogService,
                                 WorkspaceService workspaceService,
-                                SearchCacheService searchCacheService) {
+                                SearchCacheService searchCacheService,
+                                KnowledgeGraphService knowledgeGraphService) {
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
@@ -47,6 +49,7 @@ public class KnowledgeBaseService {
         this.auditLogService = auditLogService;
         this.workspaceService = workspaceService;
         this.searchCacheService = searchCacheService;
+        this.knowledgeGraphService = knowledgeGraphService;
     }
 
     public List<KnowledgeBase> listMine() {
@@ -122,6 +125,7 @@ public class KnowledgeBaseService {
         documentChunkMapper.deleteByKbId(id);
         documentMapper.deleteByKbId(id);
         kbMemberMapper.deleteByKbId(id);
+        knowledgeGraphService.deleteByKb(id);
         ingestPort.deleteKb(id);
         knowledgeBaseMapper.deleteById(id);
         searchCacheService.invalidateForKb(id);

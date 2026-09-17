@@ -40,6 +40,7 @@ public class DocumentService {
     private final SearchCacheService searchCacheService;
     private final TextExtractionService textExtractionService;
     private final IndexEventPublisher indexEventPublisher;
+    private final KnowledgeGraphService knowledgeGraphService;
 
     public DocumentService(DocumentMapper documentMapper,
                            DocumentChunkMapper documentChunkMapper,
@@ -51,7 +52,8 @@ public class DocumentService {
                            AuditLogService auditLogService,
                            SearchCacheService searchCacheService,
                            TextExtractionService textExtractionService,
-                           IndexEventPublisher indexEventPublisher) {
+                           IndexEventPublisher indexEventPublisher,
+                           KnowledgeGraphService knowledgeGraphService) {
         this.documentMapper = documentMapper;
         this.documentChunkMapper = documentChunkMapper;
         this.indexTaskMapper = indexTaskMapper;
@@ -63,6 +65,7 @@ public class DocumentService {
         this.searchCacheService = searchCacheService;
         this.textExtractionService = textExtractionService;
         this.indexEventPublisher = indexEventPublisher;
+        this.knowledgeGraphService = knowledgeGraphService;
     }
 
     public List<KbDocument> listByKb(Long kbId) {
@@ -248,6 +251,7 @@ public class DocumentService {
         knowledgeBaseService.checkWritePermission(kb);
         ingestPort.deleteByDocument(doc.getKbId(), docId);
         documentChunkMapper.deleteByDocumentId(docId);
+        knowledgeGraphService.deleteEdgesByDocument(doc.getKbId(), docId);
         try {
             storageProvider.delete(doc.getFilePath());
         } catch (IOException e) {

@@ -287,3 +287,28 @@ CREATE TABLE IF NOT EXISTS kb_eval_run_item (
     created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY idx_eval_run_item_run (run_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+-- WP7 知识图谱（GraphRAG 轻量版）：MySQL 邻接表实现，实体 KB 级隔离，查询限 1-2 跳
+CREATE TABLE IF NOT EXISTS kg_entity (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    kb_id       BIGINT       NOT NULL,
+    name        VARCHAR(128) NOT NULL,
+    type        VARCHAR(32)  NOT NULL DEFAULT '其他',
+    description VARCHAR(512) DEFAULT '',
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_kg_entity (kb_id, name),
+    KEY idx_kg_entity_kb (kb_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE IF NOT EXISTS kg_edge (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    kb_id            BIGINT       NOT NULL,
+    src_id           BIGINT       NOT NULL,
+    dst_id           BIGINT       NOT NULL,
+    relation         VARCHAR(128) NOT NULL DEFAULT '相关',
+    evidence_doc_id  BIGINT       NULL,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_kg_edge (kb_id, src_id, dst_id, relation),
+    KEY idx_kg_edge_src (kb_id, src_id),
+    KEY idx_kg_edge_dst (kb_id, dst_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;

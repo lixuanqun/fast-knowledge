@@ -29,6 +29,7 @@ public class KnowledgeProperties {
     private Index index = new Index();
     private Agentic agentic = new Agentic();
     private Ingest ingest = new Ingest();
+    private Kg kg = new Kg();
     /**
      * 发行版：community（默认）| enterprise。
      * 可用环境变量 KNOWLEDGE_EDITION 覆盖；enterprise profile 默认 enterprise。
@@ -279,6 +280,19 @@ public class KnowledgeProperties {
         private boolean enabled = true;
         /** 用于改写的对话历史轮数 */
         private int historyRounds = 5;
+    }
+
+    /** WP7 知识图谱（GraphRAG 轻量版）配置 */
+    @Data
+    public static class Kg {
+        /** 构建与检索扩展总开关（默认关） */
+        private boolean enabled = false;
+        /** 单文档抽取实体数上限（LLM 成本护栏） */
+        private int maxEntitiesPerDoc = 20;
+        /** 检索时邻居 chunk 扩展上限 */
+        private int neighborChunkLimit = 8;
+        /** 抽取时提供给 LLM 的全文长度上限（字符） */
+        private int docPreviewChars = 8000;
     }
 
     @Data

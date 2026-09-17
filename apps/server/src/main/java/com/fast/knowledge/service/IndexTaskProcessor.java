@@ -45,6 +45,7 @@ public class IndexTaskProcessor {
     private final ChunkService chunkService;
     private final ChunkContextPort chunkContextPort;
     private final OcrParseService ocrParseService;
+    private final KnowledgeGraphService knowledgeGraphService;
     private final IngestPort ingestPort;
     private final ConversationPort conversationPort;
     private final com.fast.knowledge.cache.CacheProvider cacheProvider;
@@ -63,6 +64,7 @@ public class IndexTaskProcessor {
                                ChunkService chunkService,
                                ChunkContextPort chunkContextPort,
                                OcrParseService ocrParseService,
+                               KnowledgeGraphService knowledgeGraphService,
                                IngestPort ingestPort,
                                ConversationPort conversationPort,
                                com.fast.knowledge.cache.CacheProvider cacheProvider,
@@ -77,6 +79,7 @@ public class IndexTaskProcessor {
         this.chunkService = chunkService;
         this.chunkContextPort = chunkContextPort;
         this.ocrParseService = ocrParseService;
+        this.knowledgeGraphService = knowledgeGraphService;
         this.ingestPort = ingestPort;
         this.conversationPort = conversationPort;
         this.cacheProvider = cacheProvider;
@@ -137,6 +140,7 @@ public class IndexTaskProcessor {
         documentMapper.updateById(doc);
 
         try {
+            final String[] fullTextRef = new String[1];
             int chunkCount = metricsService.timeIndex(() -> {
                 try {
                     String text = textExtractionService.extractFullText(doc);
@@ -176,6 +180,7 @@ public class IndexTaskProcessor {
                         documentChunkMapper.batchInsert(chunks);
                         List<DocumentChunk> saved = documentChunkMapper.findByDocumentId(documentId);
                         ingestPort.embedChunks(doc, saved);
+                        fullTextRef[0] = text;
                         return saved.size();
                     }
                     return 0;
@@ -199,6 +204,10 @@ public class IndexTaskProcessor {
                 searchCacheService.invalidateForKb(doc.getKbId());
                 conversationPort.evictAssistant(doc.getKbId());
                 wikiCompileService.scheduleCompile(doc.getId());
+                // WP7：知识图谱构建（内部异步，LLM 抽取失败仅记日志）
+                if (knowledgeGraphService.isEnabled()) {
+                    knowledgeGraphService.scheduleBuild(doc.getKbId(), documentId, doc.getTitle(), fullTextRef[0]);
+                }
             } catch (Exception postEx) {
                 log.warn("Post-indexing cleanup failed docId={}: {}", documentId, postEx.getMessage());
             }
