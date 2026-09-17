@@ -10,6 +10,7 @@ import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.AuditLogService;
+import com.fast.knowledge.service.KnowledgeOpsService;
 import com.fast.knowledge.service.DocumentLifecycleFilter;
 import com.fast.knowledge.service.DocumentRecallPolicy;
 import com.fast.knowledge.service.KnowledgeBaseService;
@@ -28,6 +29,7 @@ public class SearchServiceImpl implements SearchService {
     private final VectorSearchPort vectorSearchPort;
     private final RerankPort rerankPort;
     private final SearchCacheService searchCacheService;
+    private final KnowledgeOpsService knowledgeOpsService;
     private final DocumentLifecycleFilter documentLifecycleFilter;
     private final AuditLogService auditLogService;
     private final MetricsService metricsService;
@@ -37,6 +39,7 @@ public class SearchServiceImpl implements SearchService {
                              VectorSearchPort vectorSearchPort,
                              RerankPort rerankPort,
                              SearchCacheService searchCacheService,
+                             KnowledgeOpsService knowledgeOpsService,
                              DocumentLifecycleFilter documentLifecycleFilter,
                              AuditLogService auditLogService,
                              MetricsService metricsService) {
@@ -45,6 +48,7 @@ public class SearchServiceImpl implements SearchService {
         this.vectorSearchPort = vectorSearchPort;
         this.rerankPort = rerankPort;
         this.searchCacheService = searchCacheService;
+        this.knowledgeOpsService = knowledgeOpsService;
         this.documentLifecycleFilter = documentLifecycleFilter;
         this.auditLogService = auditLogService;
         this.metricsService = metricsService;
@@ -113,6 +117,9 @@ public class SearchServiceImpl implements SearchService {
         metricsService.countSearchHits(hits.size());
 
         searchCacheService.putWithVector(kb.getId(), request.getQuery(), queryVector, topK, rerank, request.getDocType(), hits);
+        // WP9：低命中或低分缺口采集（不阻塞主流程）
+        double topScore = hits.isEmpty() ? 0 : hits.get(0).getScore();
+        knowledgeOpsService.recordGap(kb.getId(), request.getQuery(), hits.size(), topScore);
         auditLogService.log(AuditActions.SEARCH, "KB", kb.getId(),
                 "query=" + StringUtils.truncate(request.getQuery(), 200)
                         + ", hits=" + hits.size() + ", cache=miss");

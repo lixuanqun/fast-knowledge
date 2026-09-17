@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS kb_user (
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_user_username (username),
-    UNIQUE KEY uk_user_auth_external (auth_source, external_id)
+    -- external_id 取 159 字符前缀：兼容 innodb_large_prefix=OFF 的 MySQL 5.7（索引键 ≤767B）
+    UNIQUE KEY uk_user_auth_external (auth_source, external_id(159))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE IF NOT EXISTS kb_workspace (
@@ -177,7 +178,8 @@ CREATE TABLE IF NOT EXISTS kb_wiki_page (
     version       INT          NOT NULL DEFAULT 1,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_wiki_kb_slug (kb_id, slug),
+    -- slug 取 189 字符前缀：兼容 innodb_large_prefix=OFF 的 MySQL 5.7（索引键 ≤767B）
+    UNIQUE KEY uk_wiki_kb_slug (kb_id, slug(189)),
     KEY idx_wiki_page_kb (kb_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
 
@@ -311,4 +313,17 @@ CREATE TABLE IF NOT EXISTS kg_edge (
     UNIQUE KEY uk_kg_edge (kb_id, src_id, dst_id, relation),
     KEY idx_kg_edge_src (kb_id, src_id),
     KEY idx_kg_edge_dst (kb_id, dst_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+-- WP9 主动知识运营：无结果/低分检索查询缺口采集（运营聚类→补文档建议）
+CREATE TABLE IF NOT EXISTS kb_gap_query (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    kb_id       BIGINT       NOT NULL,
+    query       VARCHAR(512) NOT NULL,
+    hit_count   INT          NOT NULL DEFAULT 0,
+    status      VARCHAR(32)  NOT NULL DEFAULT 'OPEN',
+    cluster_id  INT          NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_gap_kb_status (kb_id, status),
+    KEY idx_gap_cluster (cluster_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
