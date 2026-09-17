@@ -10,19 +10,19 @@ Fast Knowledge 复用**政通项目**的云基础设施部署，**演示与生�
 
 ## 环境与配置文件
 
-| 环境 | 安装目录 / systemd 服务 | 端口 | 配置文件 | 数据标识 |
-|------|--------------------------|------|----------|----------|
-| 演示 | `/opt/fast-knowledge` / `fast-knowledge` | 8088 | `.env.ztgwyc1` | 库 `fk_dev`，Redis db `2` |
-| 生产 | `/opt/fast-knowledge-prod` / `fast-knowledge-prod` | 8089 | `.env.ztgwyc2` | 库 `fk_prd`，Redis db `3` |
+| 环境 | 安装目录 / systemd 服务 | 端口 | 配置文件 | 数据标识 | 状态 |
+|------|--------------------------|------|----------|----------|------|
+| 演示 | `/opt/fast-knowledge` / `fast-knowledge` | **8080** | `.env.ztgwyc1` | 库 `fk_dev`，Redis db `2` | **已部署（2026-09-17）** |
+| 生产 | `/opt/fast-knowledge-prod` / `fast-knowledge-prod` | 8089 | `.env.ztgwyc2` | 库 `fk_prd`，Redis db `3` | 暂缓，配置已就绪 |
 
-> 两份 env 文件含真实凭据，随交付渠道传递，禁止提交仓库或外传。
+> 无域名阶段直接 `http://39.104.73.41:8080` 访问演示环境（安全组放行 8080）；两份 env 文件含真实凭据，禁止提交仓库或外传。
 
 ## 基础设施复用与变量映射
 
 | 基础设施 | 复用方式 | 对应变量 |
 |----------|----------|----------|
 | MySQL（阿里云 RDS，与政通业务共用实例） | FK 使用**独立数据库**，与政通业务库隔离 | `DB_URL` / `DB_USER` / `DB_PASSWORD` |
-| Redis（阿里云，账号模式） | 密码用「账号:密码」格式；FK 使用政通未占用的 db 号（演示 `2`、生产 `3`，政通现用 6/7/14/15） | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB` |
+| Redis（阿里云，账号模式 `zt_redis:密码`） | FK 使用政通未占用的 db 号（演示 `2`、生产 `3`，政通现用 6/7/14/15） | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB` |
 | OSS（阿里云，政通主 Bucket） | 复用既有 Bucket 与 AccessKey，FK 对象统一放 `knowledge/` 前缀下，与政通 `contract/` 等业务目录互不干扰 | `STORAGE_PROVIDER=oss` + `OSS_ENDPOINT` / `OSS_BUCKET` / `OSS_ACCESS_KEY` / `OSS_SECRET_KEY` / `OSS_REGION` / `OSS_PREFIX` |
 | 大模型 | 阿里云百炼 DashScope 兼容模式（API Key 需自备） | `LLM_*` / `EMBEDDING_*` |
 
@@ -36,17 +36,17 @@ Fast Knowledge 复用**政通项目**的云基础设施部署，**演示与生�
 2. **RDS 版本**：项目 schema 面向 MySQL 5.7，确认 RDS 为 5.7（若为 8.0 需先做 Schema 回归）。
 3. **白名单**：RDS 与 Redis 实例白名单需包含 ztgwyc3 的内网/公网出口 IP。
 4. **Redis db 占用**：与运维确认 db `2` / `3` 未被其他服务使用。
-5. **安全组**：放行 8088（演示）与 8089（生产）。
+5. **安全组**：放行 8080（演示）；生产暂缓部署（届时放行 8089）。
 6. **JDK 21**：该机未装 Java，`install.sh` 会自动安装（Alibaba Cloud Linux 走 `dnf install java-21-openjdk-headless`），无需手动操作。
 7. **DashScope API Key**：填入两份 env 文件的 `EMBEDDING_API_KEY` 与 `LLM_API_KEY`。
 
 ## 部署
 
 ```bash
-# 演示实例（fast-knowledge / 8088）
+# 演示实例（fast-knowledge / 8080）
 sudo bash scripts/install.sh install --env-file .env.ztgwyc1
 
-# 生产实例（fast-knowledge-prod / 8089，独立目录 /opt/fast-knowledge-prod）
+# 生产实例（暂缓；fast-knowledge-prod / 8089，独立目录 /opt/fast-knowledge-prod）
 sudo bash scripts/install.sh install --env-file .env.ztgwyc2
 ```
 
@@ -54,7 +54,7 @@ sudo bash scripts/install.sh install --env-file .env.ztgwyc2
 
 ## 部署后验证
 
-- 演示 `http://<ECS>:8088`、生产 `http://<ECS>:8089`，首次进入安装向导并修改默认口令 `admin/admin123`
+- 演示 `http://39.104.73.41:8080`（生产暂缓；届时 `:8089`），首次进入安装向导并修改默认口令 `admin/admin123`
 - 上传一份文档，到 OSS 控制台确认对象落在 `knowledge/` 前缀下
 - `systemctl status fast-knowledge fast-knowledge-prod` 均正常；`journalctl -u fast-knowledge-prod -f` 无报错
 - 问答附带引用来源，说明 RDS / Redis / OSS / DashScope 链路全部打通

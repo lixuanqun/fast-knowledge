@@ -57,6 +57,10 @@ public class ProductionConfigValidator {
     }
 
     private void validateMinioCredentials() {
+        // OSS 模式下不会用到 MinIO 凭据，跳过校验避免默认值误报
+        if (!"minio".equals(properties.getStorage().getProvider())) {
+            return;
+        }
         String accessKey = properties.getStorage().getMinio().getAccessKey();
         if (accessKey != null && WEAK_MINIO_KEYS.contains(accessKey.toLowerCase())) {
             throw new IllegalStateException("生产环境 MinIO ACCESS_KEY 不得使用默认值 minioadmin，请更换");
