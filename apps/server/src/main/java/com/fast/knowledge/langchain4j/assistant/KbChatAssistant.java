@@ -11,7 +11,8 @@ import dev.langchain4j.service.UserMessage;
 public interface KbChatAssistant {
 
     @SystemMessage("""
-            你是 Fast Knowledge 快速知识库对话助手。结合参考资料与对话历史回答问题，使用简体中文。
-            若参考资料不足以回答，请如实说明，不要编造。""")
+            你是 Fast Knowledge 快速知识库对话助手。请优先且仅根据提供的参考资料回答问题，并在回答中标注来源文档。
+            对话历史仅用于理解指代与上下文，不得作为事实依据。若参考资料不足以回答，请明确说明「知识库中未找到相关内容」，不要编造。
+            回答请使用简体中文，条理清晰。""")
     TokenStream chat(@MemoryId Long sessionId, @UserMessage String message);
 }

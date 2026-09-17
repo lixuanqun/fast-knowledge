@@ -17,14 +17,17 @@ import java.util.List;
 @Component
 public class DbChatMemoryStore implements ChatMemoryStore {
 
-    private static final int MEMORY_WINDOW = 10;
+    private final int memoryWindow;
 
     private final ChatMessageMapper chatMessageMapper;
     private final ChatSessionMapper chatSessionMapper;
 
-    public DbChatMemoryStore(ChatMessageMapper chatMessageMapper, ChatSessionMapper chatSessionMapper) {
+    public DbChatMemoryStore(ChatMessageMapper chatMessageMapper,
+                             ChatSessionMapper chatSessionMapper,
+                             com.fast.knowledge.config.KnowledgeProperties properties) {
         this.chatMessageMapper = chatMessageMapper;
         this.chatSessionMapper = chatSessionMapper;
+        this.memoryWindow = Math.max(1, properties.getChat().getMemoryWindow());
     }
 
     @Override
@@ -32,7 +35,7 @@ public class DbChatMemoryStore implements ChatMemoryStore {
         Long sessionId = toSessionId(memoryId);
         List<com.fast.knowledge.model.entity.ChatMessage> rows =
                 chatMessageMapper.findMessagesBySessionId(sessionId);
-        int start = Math.max(0, rows.size() - MEMORY_WINDOW);
+        int start = Math.max(0, rows.size() - memoryWindow);
         List<dev.langchain4j.data.message.ChatMessage> messages = new ArrayList<>();
         for (int i = start; i < rows.size(); i++) {
             dev.langchain4j.data.message.ChatMessage lc = toLcMessage(rows.get(i));

@@ -1,23 +1,19 @@
 package com.fast.knowledge.langchain4j.retrieval;
 
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
-import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import org.springframework.stereotype.Component;
 
 /**
- * 统一构建 LangChain4j RetrievalAugmentor：单轮问答用直通检索，多轮对话用查询压缩。
+ * 统一构建 LangChain4j RetrievalAugmentor：单轮问答与多轮对话均直通检索，
+ * 查询改写由各调用方自行控制（QA 不改写，对话由 LlmQueryRewriter 统一改写）。
  */
 @Component
 public class KbRetrievalAugmentorFactory {
 
-    private final ChatModel chatModel;
     private final KbContentRetrieverFactory contentRetrieverFactory;
 
-    public KbRetrievalAugmentorFactory(ChatModel chatModel,
-                                       KbContentRetrieverFactory contentRetrieverFactory) {
-        this.chatModel = chatModel;
+    public KbRetrievalAugmentorFactory(KbContentRetrieverFactory contentRetrieverFactory) {
         this.contentRetrieverFactory = contentRetrieverFactory;
     }
 
@@ -28,12 +24,12 @@ public class KbRetrievalAugmentorFactory {
                 .build();
     }
 
-    /** 多轮对话 RAG：结合历史将追问压缩为独立检索查询。 */
+    /**
+     * 多轮对话 RAG：查询改写由 ChatServiceImpl 的 LlmQueryRewriter 统一完成，
+     * 此处不再叠加 CompressingQueryTransformer，避免双重 LLM 压缩导致关键词丢失、召回偏移。
+     */
     public RetrievalAugmentor forChat(Long kbId) {
         return DefaultRetrievalAugmentor.builder()
-                .queryTransformer(CompressingQueryTransformer.builder()
-                        .chatModel(chatModel)
-                        .build())
                 .contentRetriever(contentRetrieverFactory.forKb(kbId))
                 .build();
     }
