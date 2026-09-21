@@ -1,6 +1,7 @@
 # 文件存储与向量基础设施
 knowledge:
   storage:
+    # minio（分布式/已有对象存储）| oss（阿里云）| local（本地目录，单机极简部署，零外部依赖）
     provider: ${STORAGE_PROVIDER:minio}
     minio:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
@@ -16,7 +17,11 @@ knowledge:
       secret-key: ${OSS_SECRET_KEY:}
       region: ${OSS_REGION:}
       prefix: ${OSS_PREFIX:knowledge/}
+    local:
+      base-dir: ${STORAGE_LOCAL_DIR:./data/files}
+      prefix: ${STORAGE_LOCAL_PREFIX:knowledge/}
   cache:
-    provider: redis
+    # redis（默认，双层缓存 L2 + 跨实例事件）| caffeine（单机极简：纯 Caffeine，多实例不可用）
+    provider: ${CACHE_PROVIDER:redis}
   setup:
     instance-name: Fast Knowledge

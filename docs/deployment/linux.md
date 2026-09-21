@@ -1,6 +1,6 @@
 # Linux 服务器部署指南（非容器化）
 
-Fast Knowledge 面向**中小企业私有化部署**（Single Instance）：单 Jar（bundle profile）在 `8088` 端口同时托管前端与 API，MySQL / Redis / MinIO 使用外部服务（本机自建或云托管）。产品定位见 [产品说明.md](../产品说明.md)。
+Fast Knowledge 面向**中小企业私有化部署**（Single Instance）：单 Jar（bundle profile）在 `8088` 端口同时托管前端与 API。MySQL 为必需外部服务；Redis / MinIO / OSS 均可选——单机场景可用 [极简单机模式](#六极简单机模式仅-mysql--本地盘)（仅 MySQL + 本地盘）。产品定位见 [产品说明.md](../产品说明.md)。
 
 ## 一、前置要求
 
@@ -10,8 +10,8 @@ Fast Knowledge 面向**中小企业私有化部署**（Single Instance）：单 
 | Java | 21 | 运行时必需；`--install-java` 可自动安装 |
 | Maven + JDK 21 | 3.9+ | 仅**构建机**需要；部署现成 JAR 可不装 |
 | MySQL | 5.7+ | 必需，推荐云数据库 RDS；首次启动自动建表 |
-| Redis | 7+ | 可选；不用时设 `CACHE_PROVIDER=caffeine` |
-| MinIO / OSS | — | 文档文件存储；`STORAGE_PROVIDER=minio\|oss` |
+| Redis | 7+ | 可选；单机不用时设 `CACHE_PROVIDER=caffeine`（进程内缓存） |
+| MinIO / OSS | — | 可选；`STORAGE_PROVIDER=minio\|oss\|local`，`local` 直接落本地目录，无需部署 |
 | LLM | OpenAI 兼容 | DashScope / DeepSeek / 智谱 / 内网 Ollama 均可 |
 
 资源配置参考：
@@ -90,7 +90,30 @@ CACHE_PROVIDER=caffeine         # 无 Redis 时可选
 
 验收清单见 [data-residency-checklist.md](./data-residency-checklist.md)。
 
-## 六、常见问题
+## 六、极简单机模式（仅 MySQL + 本地盘）
+
+POC、小团队或单机内网场景，可以只保留 **MySQL 一个外部依赖**：文件落本地目录、缓存用进程内 Caffeine、模型走本机 Ollama（或任一云端 API），开箱即可用。
+
+```bash
+# .env 关键项（其余按默认）
+STORAGE_PROVIDER=local            # 文档存本地目录，无需 MinIO / OSS
+STORAGE_LOCAL_DIR=/opt/fast-knowledge/runtime/files
+CACHE_PROVIDER=caffeine           # 进程内缓存替代 Redis
+LLM_PROVIDER=ollama               # 内网模型；云端 OpenAI 兼容 API 亦可
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=qwen2.5:7b
+```
+
+| 事项 | 说明 |
+|------|------|
+| 外部依赖 | 仅 MySQL；Redis / MinIO / OSS 全部不需要 |
+| 索引调度 | 上传后即时异步索引（无 Redis 时直接调度，另有 5 分钟轮询兜底） |
+| 实例数 | 仅支持单实例：会话、Token 黑名单、检索缓存只在本进程内，多实例必须回到 `CACHE_PROVIDER=redis` |
+| 重启影响 | 进程重启后用户需重新登录（会话在内存中） |
+| 迁移 | 存储对象键与 MinIO/OSS 同形态（`knowledge/{kbId}/…`），同步目录即可切换 provider |
+
+## 七、常见问题
 
 | 现象 | 排查 |
 |------|------|

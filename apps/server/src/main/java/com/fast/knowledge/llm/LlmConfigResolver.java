@@ -74,9 +74,7 @@ public class LlmConfigResolver {
     }
 
     public List<Map<String, Object>> listProviderPresets() {
-        // Ollama 不再作为 UI 预设提供商（存量配置与环境变量部署仍可解析）
         return Arrays.stream(LlmProvider.values())
-                .filter(p -> p != LlmProvider.OLLAMA)
                 .map(p -> {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("id", p.getId());

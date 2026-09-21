@@ -89,9 +89,9 @@ class LlmConfigResolverTest {
     }
 
     @Test
-    void listsPresetsExcludingOllama() {
+    void listsAllPresetsIncludingOllama() {
         var presets = resolver.listProviderPresets();
-        assertEquals(6, presets.size());
-        assertTrue(presets.stream().noneMatch(p -> "ollama".equals(p.get("id"))));
+        assertEquals(7, presets.size());
+        assertTrue(presets.stream().anyMatch(p -> "ollama".equals(p.get("id"))));
     }
 }

@@ -133,8 +133,11 @@ public class KnowledgeProperties {
 
     @Data
     public static class Cache {
+        /** redis（双层缓存 L2 + 跨实例事件）| caffeine（单机极简，进程内缓存兜底） */
         private String provider = "redis";
         private L1 l1 = new L1();
+        /** provider=none 时 Caffeine 单机缓存的最大条目数 */
+        private int localMaxSize = 65536;
     }
 
     @Data
@@ -165,10 +168,19 @@ public class KnowledgeProperties {
 
     @Data
     public static class Storage {
-        /** minio（私有化/离线）| oss（阿里云对象存储） */
+        /** minio（分布式/已有对象存储）| oss（阿里云对象存储）| local（本地目录，极简单机部署） */
         private String provider = "minio";
         private Minio minio = new Minio();
         private Oss oss = new Oss();
+        private LocalStorage local = new LocalStorage();
+    }
+
+    @Data
+    public static class LocalStorage {
+        /** 本地文件存储根目录（provider=local 时生效） */
+        private String baseDir = "./data/files";
+        /** 对象键前缀，与 MinIO/OSS 的 key 形态保持一致，便于换算迁移 */
+        private String prefix = "knowledge/";
     }
 
     @Data
