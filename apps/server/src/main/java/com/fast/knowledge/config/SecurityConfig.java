@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/ldap/login",
+                                "/auth/setup",
                                 "/auth/oidc/authorize",
                                 "/auth/oidc/callback",
                                 "/system/config",

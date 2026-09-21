@@ -1,2 +1,2 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-  com.fast.knowledge.config.CacheModeEnvironmentPostProcessor
+  com.fast.knowledge.config.InfraHealthGuardEnvironmentPostProcessor

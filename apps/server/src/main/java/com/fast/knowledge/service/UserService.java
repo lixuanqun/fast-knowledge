@@ -118,6 +118,17 @@ public class UserService {
         auditLogService.log("INITIAL_SETUP", "USER", userId, user.getUsername());
     }
 
+    /** 首启匿名初始化：定位 DataInitializer 创建的唯一初始管理员完成密码设置（完成即关闭匿名窗口） */
+    @Transactional
+    public void completeInitialSetupForInitialAdmin(String newPassword) {
+        KbUser admin = userMapper.findByUsername("admin");
+        if (admin == null) {
+            throw new BusinessException("初始管理员账号不存在");
+        }
+        userMapper.updatePassword(admin.getId(), passwordEncoder.encode(newPassword));
+        auditLogService.log("INITIAL_SETUP", "USER", admin.getId(), admin.getUsername());
+    }
+
     @Transactional
     public void resetPassword(Long id, AdminResetPasswordRequest request) {
         requireAdmin();

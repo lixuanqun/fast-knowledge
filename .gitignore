@@ -39,3 +39,6 @@ test-assets/e2e-run*.log
 
 # GUI 测试截图（验证产物，不入库）
 gui-test-screenshots/
+
+# 本地自测工件
+.local-test/
