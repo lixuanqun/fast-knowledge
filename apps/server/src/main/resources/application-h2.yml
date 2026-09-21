@@ -1,0 +1,24 @@
+# h2 profile — 单机极简模式：java -jar 即可启动，零外部中间件（评估 / POC / 小团队单机）
+# 生产部署不要使用本 profile，回到 MySQL（application-db.yml 默认）。
+# 依赖：仅本机 Ollama 或任一 OpenAI 兼容 API（LLM/Embedding）；文件落本地目录，缓存走进程内 Caffeine。
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/db/fast_knowledge;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:always}
+      schema-locations: classpath:db/schema-h2.sql
+
+knowledge:
+  cache:
+    # 单实例进程内缓存（多实例部署请回到 redis）
+    provider: ${CACHE_PROVIDER:caffeine}
+  storage:
+    # 文档落本地目录，无需 MinIO / OSS
+    provider: ${STORAGE_PROVIDER:local}
+  search:
+    # H2 不支持 MySQL FULLTEXT，关键词支路关闭，检索走纯向量
+    keyword-enabled: false

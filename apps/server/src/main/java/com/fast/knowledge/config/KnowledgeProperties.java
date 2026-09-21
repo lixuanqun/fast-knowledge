@@ -251,6 +251,8 @@ public class KnowledgeProperties {
     public static class Search {
         private int defaultTopK = 8;
         private int cacheTtlMinutes = 5;
+        /** 混合检索关键词支路（MySQL FULLTEXT）。H2 等不支持 FULLTEXT 的库置 false，检索退化为纯向量 */
+        private boolean keywordEnabled = true;
         private Rerank rerank = new Rerank();
         /** WP4 语义缓存：查询向量近邻命中（余弦 ≥ 阈值）直接返回缓存结果 */
         private SemanticCache semanticCache = new SemanticCache();

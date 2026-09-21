@@ -10,6 +10,8 @@ import com.fast.knowledge.model.dto.SearchRequest;
 import com.fast.knowledge.model.entity.KnowledgeBase;
 import com.fast.knowledge.model.vo.SearchHitVO;
 import com.fast.knowledge.service.AuditLogService;
+import com.fast.knowledge.service.HybridFusion;
+import com.fast.knowledge.service.KeywordSearchService;
 import com.fast.knowledge.service.KnowledgeOpsService;
 import com.fast.knowledge.service.DocumentLifecycleFilter;
 import com.fast.knowledge.service.DocumentRecallPolicy;
@@ -33,6 +35,7 @@ public class SearchServiceImpl implements SearchService {
     private final DocumentLifecycleFilter documentLifecycleFilter;
     private final AuditLogService auditLogService;
     private final MetricsService metricsService;
+    private final KeywordSearchService keywordSearchService;
 
     public SearchServiceImpl(KnowledgeBaseService knowledgeBaseService,
                              EmbeddingProvider embeddingProvider,
@@ -42,7 +45,8 @@ public class SearchServiceImpl implements SearchService {
                              KnowledgeOpsService knowledgeOpsService,
                              DocumentLifecycleFilter documentLifecycleFilter,
                              AuditLogService auditLogService,
-                             MetricsService metricsService) {
+                             MetricsService metricsService,
+                             KeywordSearchService keywordSearchService) {
         this.knowledgeBaseService = knowledgeBaseService;
         this.embeddingProvider = embeddingProvider;
         this.vectorSearchPort = vectorSearchPort;
@@ -52,6 +56,7 @@ public class SearchServiceImpl implements SearchService {
         this.documentLifecycleFilter = documentLifecycleFilter;
         this.auditLogService = auditLogService;
         this.metricsService = metricsService;
+        this.keywordSearchService = keywordSearchService;
     }
 
     @Override
@@ -102,8 +107,15 @@ public class SearchServiceImpl implements SearchService {
             List<SearchHitVO> rawHits = metricsService.timeVectorSearch(() ->
                     vectorSearchPort.search(kb.getId(), queryVector, request.getQuery(), fetchK, request.getDocType()));
 
-            // Segment 2b: 排除禁用 / 未生效 / 已过期文档（Search / RAG / Chat 共用）
-            List<SearchHitVO> eligible = documentLifecycleFilter.filter(rawHits);
+            // Segment 2a: Keyword search（FULLTEXT 支路，失败/关闭时为空，融合退化为纯向量）
+            List<SearchHitVO> keywordHits = keywordSearchService.recall(
+                    kb.getId(), request.getQuery(), request.getDocType(), fetchK);
+
+            // Segment 2b: 加权融合（kb.search_alpha，0.6=偏向量）
+            List<SearchHitVO> fused = HybridFusion.fuse(rawHits, keywordHits, kb.getSearchAlpha(), fetchK);
+
+            // Segment 2c: 排除禁用 / 未生效 / 已过期文档（Search / RAG / Chat 共用）
+            List<SearchHitVO> eligible = documentLifecycleFilter.filter(fused);
 
             // Segment 3: Rerank (optional)
             if (rerank) {

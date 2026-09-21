@@ -1,6 +1,6 @@
 # Linux 服务器部署指南（非容器化）
 
-Fast Knowledge 面向**中小企业私有化部署**（Single Instance）：单 Jar（bundle profile）在 `8088` 端口同时托管前端与 API。MySQL 为必需外部服务；Redis / MinIO / OSS 均可选——单机场景可用 [极简单机模式](#六极简单机模式仅-mysql--本地盘)（仅 MySQL + 本地盘）。产品定位见 [产品说明.md](../产品说明.md)。
+Fast Knowledge 面向**中小企业私有化部署**（Single Instance）：单 Jar（bundle profile）在 `8088` 端口同时托管前端与 API。MySQL 为生产推荐数据库；Redis / MinIO / OSS 均可选——评估场景可用 [极简单机模式](#六极简单机模式)（h2 profile 零外部依赖，或仅 MySQL + 本地盘）。产品定位见 [产品说明.md](../产品说明.md)。
 
 ## 一、前置要求
 
@@ -90,9 +90,28 @@ CACHE_PROVIDER=caffeine         # 无 Redis 时可选
 
 验收清单见 [data-residency-checklist.md](./data-residency-checklist.md)。
 
-## 六、极简单机模式（仅 MySQL + 本地盘）
+## 六、极简单机模式
 
-POC、小团队或单机内网场景，可以只保留 **MySQL 一个外部依赖**：文件落本地目录、缓存用进程内 Caffeine、模型走本机 Ollama（或任一云端 API），开箱即可用。
+两个档位，按需选择：
+
+### 档位 A：零外部依赖（h2 profile，评估 / 演示首选）
+
+`java -jar` 一条命令即可启动，无 MySQL / Redis / MinIO：数据库用嵌入式 H2（MySQL 兼容模式）、文档落本地目录、缓存走进程内 Caffeine。
+
+```bash
+SPRING_PROFILES_ACTIVE=bundle,h2 java -jar fast-knowledge.jar
+```
+
+| 事项 | 说明 |
+|------|------|
+| 适用 | 评估、演示、POC、单机小团队 |
+| 限制 | 仅单实例；不支持 FULLTEXT 关键词支路（检索走纯向量）；`knowledge.search.keyword-enabled=false` 已在 profile 内置 |
+| 数据备份 | 全部在 `./data/`（db / files / vectors），备份即拷目录 |
+| 承诺边界 | 不做生产承诺；生产与多实例请用档位 B 或标准部署 |
+
+### 档位 B：仅 MySQL（单机生产推荐）
+
+MySQL 是唯一外部依赖：文件落本地目录、缓存用进程内 Caffeine、模型走本机 Ollama（或任一云端 API）。
 
 ```bash
 # .env 关键项（其余按默认）
