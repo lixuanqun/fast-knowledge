@@ -35,8 +35,8 @@
 
 ### 知识库与 AI
 
-- **智能检索** — 本地向量索引（余弦相似度），可选云端 Rerank
-- **双层缓存** — Caffeine L1 本地 + Redis L2，热查询 <1ms
+- **混合检索** — 向量（本地文件索引，余弦相似度）+ MySQL FULLTEXT 关键词双路召回，按知识库 `search_alpha` 加权融合；可选云端 Rerank
+- **双层缓存** — Caffeine L1 本地 + Redis L2，热查询 <1ms；单机模式可退化为纯 Caffeine（`CACHE_PROVIDER=caffeine`）
 - **RAG 问答** — 单次问答、多轮流式对话（含 Query Rewrite 指代消解）、AI 写文档，均附引用来源
 - **多格式文档** — PDF / DOCX / TXT / MD / PPTX / XLSX / HTML，异步索引与分块预览
 - **LLM 中立** — Ollama、DeepSeek、智谱、百炼等 OpenAI 兼容接口，管理界面配置即生效
@@ -59,6 +59,16 @@
 
 ### 部署方式（Linux 服务器，非容器化）
 
+**极简单机模式（评估 / 演示，零外部中间件）**——嵌入式 H2 + 本地文件存储 + 进程内缓存，一条命令启动：
+
+```bash
+mvn -pl apps/server -am clean package -DskipTests -Pbundle
+SPRING_PROFILES_ACTIVE=bundle,h2 java -jar apps/server/target/fast-knowledge-server-*.jar
+# 本机装好 Ollama 并 ollama pull qwen2.5:7b 即可完整体验；数据全在 ./data/
+```
+
+**标准模式（生产推荐）**——MySQL + 可选 Redis / MinIO / OSS：
+
 ```bash
 # 一键部署（构建 + systemd 服务 + 健康检查）
 cp .env.example .env.ecs          # 编辑 MySQL / MinIO / LLM 凭据
@@ -74,7 +84,7 @@ sudo ./scripts/install.sh install --env-file .env.ecs
 
 访问 http://<服务器IP>:8088 · 默认账号 `admin` / `admin123`
 
-也支持：单 Jar 手动部署（`-Pbundle`）· [离线安装包](docs/deployment/offline-install.md) · [企业配置](apps/server/src/main/resources/application-enterprise.yml)
+也支持：单 Jar 手动部署（`-Pbundle`）· [离线安装包](docs/deployment/offline-install.md) · [企业配置](apps/server/src/main/resources/application-enterprise.yml) · [极简单机模式](docs/deployment/linux.md#六极简单机模式)
 
 ---
 
