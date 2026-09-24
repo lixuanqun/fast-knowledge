@@ -8,7 +8,7 @@
           width="200px"
           :auto-default="false"
           clearable
-          placeholder="产品知识库"
+          placeholder="选择知识库"
         />
       </template>
     </PageHeader>

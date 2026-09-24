@@ -25,6 +25,11 @@ public final class RetrievedContentMapper {
             vo.setSection(metadata.getString(KbEmbeddingStore.META_SECTION));
         }
         vo.setContent(segment.text());
+        // 混合检索分数存在元数据 "score" 字段（向量余弦 / 融合分），未存时默认 0
+        Double score = metadata != null ? metadata.getDouble("score") : null;
+        if (score != null) {
+            vo.setScore(score);
+        }
         return vo;
     }
 
