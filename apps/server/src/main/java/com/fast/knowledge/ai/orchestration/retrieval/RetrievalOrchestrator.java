@@ -71,13 +71,13 @@ public class RetrievalOrchestrator {
         return expandWithGraph(kbId, query, searchService.search(request));
     }
 
-    /** WP7：KG 实体链接 + 1 跳邻居证据 chunk 扩展召回（低权重，去重交给 merge） */
+    /** WP7.1：双层关键词链接 + PPR 邻居证据 chunk 扩展召回（低权重，去重交给 merge；失败内部退化为子串链接） */
     private List<SearchHitVO> expandWithGraph(Long kbId, String query, List<SearchHitVO> hits) {
         if (!knowledgeGraphService.isEnabled() || hits == null || hits.isEmpty()) {
             return hits;
         }
         try {
-            List<SearchHitVO> kgExt = knowledgeGraphService.expandForQuery(kbId, query, 8);
+            List<SearchHitVO> kgExt = knowledgeGraphService.expandDualLevel(kbId, query, 8);
             if (kgExt.isEmpty()) {
                 return hits;
             }

@@ -29,12 +29,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * WP7 知识图谱（GraphRAG 轻量版）— 存储为 MySQL 邻接表，查询限 1 跳扩展。
+ * WP7 知识图谱（GraphRAG 轻量版）— 存储为 MySQL 邻接表，检索经 WP7.1 双层链接 + PPR 扩散。
  *
  * <p>构建：索引完成后 LLM 抽取实体/关系（单文档单次调用），实体按 (kbId, name) 幂等合并，
  * 边按 (kbId, src, dst, relation) 幂等合并并记录证据文档。
- * 检索：问题做实体链接（名称子串匹配）→ 1 跳邻居的证据文档 chunk 进入扩展召回，
- * 由 RetrievalOrchestrator 与向量/关键词结果融合。
+ * 检索（WP7.1，LightRAG 式双层 + HippoRAG 式 PPR）：LLM 派生低层（实体）/高层（主题）关键词，
+ * 与问题原文子串链接合并为种子实体 → 个性化 PageRank 扩散取 top 邻居 → 证据文档 chunk
+ * 进入扩展召回，由 RetrievalOrchestrator 与向量/关键词结果融合。
  *
  * <p>升级预留：切换 TuGraph 时仅替换本类存储/查询实现（见 docs/architecture/graph-storage-selection.md）。
  */
@@ -62,6 +63,13 @@ public class KnowledgeGraphService {
     private final KgEdgeMapper edgeMapper;
     private final DocumentChunkMapper documentChunkMapper;
     private final DocumentMapper documentMapper;
+
+    /** WP7.1 双层关键词派生缓存（kbId:query → 关键词对，10 分钟） */
+    private final com.github.benmanes.caffeine.cache.Cache<String, KeywordPair> keywordCache =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .maximumSize(512)
+                    .expireAfterWrite(java.time.Duration.ofMinutes(10))
+                    .build();
 
     public KnowledgeGraphService(KnowledgeProperties properties, ChatPort chatPort, ObjectMapper objectMapper,
                                  KgEntityMapper entityMapper, KgEdgeMapper edgeMapper,
@@ -188,45 +196,86 @@ public class KnowledgeGraphService {
     // ---- 检索扩展 ----
 
     /**
-     * 问题实体链接 → 1 跳邻居的证据文档 chunk 构造扩展召回（score 固定低权重 0.3）。
+     * 问题实体链接 → PPR 邻居的证据文档 chunk 构造扩展召回（低权重分数）。
      * 命中实体为空或扩展超出上限时返回空列表。
      */
     public List<SearchHitVO> expandForQuery(Long kbId, String query, int limit) {
-        List<KgEntity> linked = linkEntities(kbId, query);
-        if (linked.isEmpty()) {
+        Set<Long> seeds = new LinkedHashSet<>();
+        linkEntities(kbId, query).forEach(e -> seeds.add(e.getId()));
+        return expandFromSeeds(kbId, seeds, query, limit);
+    }
+
+    /**
+     * WP7.1 双层检索（LightRAG 式）：LLM 单次调用派生低层（实体词）/高层（主题词）关键词，
+     * 与问题原文子串链接合并为种子实体，再经 PPR 扩散召回证据 chunk。
+     * 关键词派生失败/关闭时自动退化为纯子串链接（expandForQuery 同路径）。
+     */
+    public List<SearchHitVO> expandDualLevel(Long kbId, String query, int limit) {
+        Set<Long> seeds = new LinkedHashSet<>();
+        linkEntities(kbId, query).forEach(e -> seeds.add(e.getId()));
+        KeywordPair keywords = properties.getKg().isDualLevelEnabled() ? deriveKeywords(kbId, query) : null;
+        if (keywords != null) {
+            seeds.addAll(linkByKeywords(kbId, keywords));
+        }
+        return expandFromSeeds(kbId, seeds, query, limit);
+    }
+
+    /** 种子实体 → PPR 扩散 → top 邻居实体的证据文档 chunk（score = 0.15 + 0.15·(ppr/max)，保持低权重语义） */
+    List<SearchHitVO> expandFromSeeds(Long kbId, Set<Long> seedIds, String query, int limit) {
+        if (seedIds.isEmpty()) {
             return List.of();
         }
-        Set<Long> entityIds = new LinkedHashSet<>();
-        linked.forEach(e -> entityIds.add(e.getId()));
+        List<KgEdge> allEdges = edgeMapper.selectList(Wrappers.<KgEdge>lambdaQuery()
+                .eq(KgEdge::getKbId, kbId));
 
-        // 1 跳邻居
-        List<KgEdge> edges = edgeMapper.selectList(Wrappers.<KgEdge>lambdaQuery()
-                .eq(KgEdge::getKbId, kbId)
-                .and(w -> w.in(KgEdge::getSrcId, entityIds).or().in(KgEdge::getDstId, entityIds)));
-        Set<Long> neighborIds = new LinkedHashSet<>();
+        // 无向邻接表：节点 → 相邻节点；边引用按端点索引，供证据文档回溯
+        Map<Long, LinkedHashSet<Long>> adjacency = new LinkedHashMap<>();
+        for (KgEdge edge : allEdges) {
+            if (edge.getSrcId() == null || edge.getDstId() == null) {
+                continue;
+            }
+            adjacency.computeIfAbsent(edge.getSrcId(), k -> new LinkedHashSet<>()).add(edge.getDstId());
+            adjacency.computeIfAbsent(edge.getDstId(), k -> new LinkedHashSet<>()).add(edge.getSrcId());
+        }
+        Map<Long, List<Long>> adj = new LinkedHashMap<>();
+        adjacency.forEach((k, v) -> adj.put(k, List.copyOf(v)));
+
+        Map<Long, Double> ppr = PersonalizedPageRank.compute(adj, seedIds,
+                properties.getKg().getPprTeleport(), 30);
+        // top 邻居（排除种子自身）
+        List<Long> topNeighbors = ppr.entrySet().stream()
+                .filter(e -> !seedIds.contains(e.getKey()))
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .limit(Math.max(1, properties.getKg().getPprTopNeighbors()))
+                .map(Map.Entry::getKey)
+                .toList();
+        if (topNeighbors.isEmpty()) {
+            return List.of();
+        }
+        double maxNeighborPpr = topNeighbors.stream().mapToDouble(id -> ppr.getOrDefault(id, 0.0)).max().orElse(1);
+
+        // top 邻居相关边的证据文档
+        Set<Long> relevantNodes = new LinkedHashSet<>(seedIds);
+        relevantNodes.addAll(topNeighbors);
         Set<Long> evidenceDocIds = new LinkedHashSet<>();
-        for (KgEdge edge : edges) {
-            boolean linkedSrc = entityIds.contains(edge.getSrcId());
-            neighborIds.add(linkedSrc ? edge.getDstId() : edge.getSrcId());
-            if (edge.getEvidenceDocId() != null) {
+        for (KgEdge edge : allEdges) {
+            if (edge.getEvidenceDocId() != null
+                    && (relevantNodes.contains(edge.getSrcId()) && relevantNodes.contains(edge.getDstId()))) {
                 evidenceDocIds.add(edge.getEvidenceDocId());
             }
+        }
+        if (evidenceDocIds.isEmpty()) {
+            return List.of();
         }
 
         int chunkLimit = Math.max(1, properties.getKg().getNeighborChunkLimit());
         List<SearchHitVO> out = new ArrayList<>();
-        if (evidenceDocIds.isEmpty()) {
-            return out;
-        }
-        // 邻居实体的证据文档 chunks → 扩展候选（去重由调用方 merge 保证）
-        Map<Long, String> docTitles = new HashMap<>();
         for (Long evidenceDocId : evidenceDocIds) {
             if (out.size() >= chunkLimit) {
                 break;
             }
             KbDocument doc = documentMapper.selectById(evidenceDocId);
             String docTitle = doc != null && doc.getTitle() != null ? doc.getTitle() : "";
-            docTitles.put(evidenceDocId, docTitle);
             List<DocumentChunk> chunks = documentChunkMapper.findByDocumentId(evidenceDocId);
             for (DocumentChunk chunk : chunks) {
                 if (out.size() >= chunkLimit) {
@@ -238,20 +287,26 @@ public class KnowledgeGraphService {
                 vo.setDocumentTitle(docTitle);
                 vo.setSection(chunk.getSectionTitle());
                 vo.setContent(chunk.getContent());
-                vo.setScore(0.3);
+                vo.setScore(0.15 + 0.15 * (pprOf(topNeighbors, ppr) / maxNeighborPpr));
                 out.add(vo);
             }
         }
         if (!out.isEmpty()) {
-            log.info("KG 扩展召回 kbId={} 命中实体={} 邻居={} 扩展chunk={}", kbId,
-                    linked.stream().map(KgEntity::getName).toList(),
-                    neighborIds.stream().map(id -> {
-                        KgEntity e = entityMapper.selectById(id);
-                        return e != null ? e.getName() : String.valueOf(id);
-                    }).toList(),
-                    out.size());
+            log.info("KG 扩展召回 kbId={} 种子={} pprTop={} 扩展chunk={}", kbId,
+                    entityNames(seedIds), topNeighbors.size(), out.size());
         }
         return out;
+    }
+
+    private double pprOf(List<Long> ids, Map<Long, Double> ppr) {
+        return ids.stream().mapToDouble(id -> ppr.getOrDefault(id, 0.0)).max().orElse(0);
+    }
+
+    private List<String> entityNames(Set<Long> ids) {
+        return ids.stream().map(id -> {
+            KgEntity e = entityMapper.selectById(id);
+            return e != null ? e.getName() : String.valueOf(id);
+        }).toList();
     }
 
     /** 实体链接：问题文本包含实体名（≥2 字）即命中 */
@@ -268,6 +323,114 @@ public class KnowledgeGraphService {
             }
         }
         return linked;
+    }
+
+    // ---- WP7.1 双层关键词派生 ----
+
+    private static final String KEYWORD_PROMPT = """
+            你是检索查询分析器。针对用户问题派生两组检索关键词：
+            1. low：问题中的具体实体词（制度名、部门、设备、岗位、文号等，≤4 个，每个 ≥2 字）；
+            2. high：问题的主题与概念词（≤4 个，每个 ≥2 字）。
+            严格输出 JSON：{"low":["..."],"high":["..."]}，不要输出任何解释或代码块标记。""";
+
+    /** 低层/高层关键词对 */
+    record KeywordPair(List<String> low, List<String> high) {
+    }
+
+    /**
+     * LLM 派生双层关键词（带 10 分钟查询级缓存，一次调用覆盖缓存命中的重复问法）。
+     * 失败返回 null（调用方退化为纯子串链接）。
+     */
+    KeywordPair deriveKeywords(Long kbId, String query) {
+        if (query == null || query.length() < 2) {
+            return null;
+        }
+        KeywordPair cached = keywordCache.getIfPresent(kbId + ":" + query);
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            chatPort.withContext("kg_keywords", String.valueOf(kbId));
+            String raw = chatPort.complete(KEYWORD_PROMPT, query);
+            KeywordPair pair = parseKeywordJson(raw);
+            if (pair != null) {
+                keywordCache.put(kbId + ":" + query, pair);
+            }
+            return pair;
+        } catch (Exception e) {
+            log.warn("KG 双层关键词派生失败 kbId={}（退化为子串链接）: {}", kbId, e.getMessage());
+            return null;
+        } finally {
+            chatPort.clearContext();
+        }
+    }
+
+    /** 解析 LLM 输出的 {"low":[...],"high":[...]}，字段缺失/非法时为 null */
+    static KeywordPair parseKeywordJson(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        Matcher m = JSON_OBJECT_PATTERN.matcher(raw);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            Map<String, Object> parsed = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(m.group(), new TypeReference<Map<String, Object>>() {
+                    });
+            List<String> low = normalizeKeywords(parsed.get("low"));
+            List<String> high = normalizeKeywords(parsed.get("high"));
+            if (low.isEmpty() && high.isEmpty()) {
+                return null;
+            }
+            return new KeywordPair(low, high);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static List<String> normalizeKeywords(Object rawList) {
+        List<String> out = new ArrayList<>();
+        if (rawList instanceof List<?> list) {
+            for (Object o : list) {
+                String word = o == null ? null : str(o);
+                if (word != null && word.length() >= 2) {
+                    out.add(word.length() > 32 ? word.substring(0, 32) : word);
+                }
+                if (out.size() >= 4) {
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    /** 关键词扩展链接：low 词与实体名双向子串匹配；high 词匹配实体 description（子串任一方向） */
+    Set<Long> linkByKeywords(Long kbId, KeywordPair keywords) {
+        Set<Long> hits = new LinkedHashSet<>();
+        List<KgEntity> all = entityMapper.selectList(Wrappers.<KgEntity>lambdaQuery()
+                .eq(KgEntity::getKbId, kbId));
+        for (KgEntity e : all) {
+            String name = e.getName();
+            if (name == null || name.length() < 2) {
+                continue;
+            }
+            for (String word : keywords.low()) {
+                if (name.contains(word) || word.contains(name)) {
+                    hits.add(e.getId());
+                    break;
+                }
+            }
+            if (!hits.contains(e.getId()) && e.getDescription() != null) {
+                for (String word : keywords.high()) {
+                    if (e.getDescription().contains(word)) {
+                        hits.add(e.getId());
+                        break;
+                    }
+                }
+            }
+        }
+        return hits;
     }
 
     // ---- 生命周期 ----

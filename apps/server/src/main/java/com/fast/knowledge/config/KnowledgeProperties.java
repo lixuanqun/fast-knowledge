@@ -315,6 +315,12 @@ public class KnowledgeProperties {
         private int neighborChunkLimit = 8;
         /** 抽取时提供给 LLM 的全文长度上限（字符） */
         private int docPreviewChars = 8000;
+        /** WP7.1 双层检索：LLM 派生低层（实体）/高层（主题）关键词扩展实体链接（失败自动退化为子串链接） */
+        private boolean dualLevelEnabled = true;
+        /** WP7.1 PPR 瞬移概率（越大越贴种子实体） */
+        private double pprTeleport = 0.15;
+        /** WP7.1 PPR 扩散后参与证据召回的 top 邻居实体数 */
+        private int pprTopNeighbors = 12;
     }
 
     @Data
