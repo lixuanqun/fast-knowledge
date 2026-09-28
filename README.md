@@ -35,7 +35,8 @@
 
 ### 知识库与 AI
 
-- **混合检索** — 向量（本地文件索引，余弦相似度）+ MySQL FULLTEXT 关键词双路召回，按知识库 `search_alpha` 加权融合；可选云端 Rerank
+- **混合检索** — 向量（Lucene HNSW 进程内索引，余弦相似度；可切内存引擎）+ MySQL FULLTEXT 关键词双路召回，按知识库 `search_alpha` 加权融合；可选云端 Rerank
+- **知识图谱（GraphRAG 轻量版）** — LLM 抽取实体关系建图（per-KB 文件存储，MySQL 可选），LLM 双层关键词链接 + 个性化 PageRank 扩散召回
 - **双层缓存** — Caffeine L1 本地 + Redis L2，热查询 <1ms；单机模式可退化为纯 Caffeine（`CACHE_PROVIDER=caffeine`）
 - **RAG 问答** — 单次问答、多轮流式对话（含 Query Rewrite 指代消解）、AI 写文档，均附引用来源
 - **多格式文档** — PDF / DOCX / TXT / MD / PPTX / XLSX / HTML，异步索引与分块预览

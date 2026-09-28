@@ -4,6 +4,8 @@ knowledge:
   vector:
     local:
       storage-dir: ${VECTOR_LOCAL_DIR:./data/vectors}
+    # lucene（默认，HNSW + 段文件落盘）| memory（内存暴力扫描 + JSON，小规模/测试）
+    engine: ${VECTOR_ENGINE:lucene}
   embedding:
     # openai（OpenAI 兼容 /v1/embeddings：DashScope compatible-mode、硅基流动、OpenAI 等）| ollama | hash
     provider: ${EMBEDDING_PROVIDER:openai}
@@ -62,6 +64,9 @@ knowledge:
   kg:
     # WP7 知识图谱：索引后 LLM 抽取实体关系，检索时邻居 chunk 扩展召回
     enabled: ${KNOWLEDGE_KG_ENABLED:false}
+    # file（默认，per-KB 内存图 + JSON 落盘）| mysql（MySQL 邻接表）
+    storage: ${KNOWLEDGE_KG_STORAGE:file}
+    storage-dir: ${KNOWLEDGE_KG_STORAGE_DIR:./data/graphs}
     max-entities-per-doc: ${KNOWLEDGE_KG_MAX_ENTITIES_PER_DOC:20}
     neighbor-chunk-limit: ${KNOWLEDGE_KG_NEIGHBOR_CHUNK_LIMIT:8}
     doc-preview-chars: ${KNOWLEDGE_KG_DOC_PREVIEW_CHARS:8000}

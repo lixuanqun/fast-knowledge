@@ -4,14 +4,11 @@ import com.fast.knowledge.ai.port.ChatPort;
 import com.fast.knowledge.config.KnowledgeProperties;
 import com.fast.knowledge.mapper.DocumentChunkMapper;
 import com.fast.knowledge.mapper.DocumentMapper;
-import com.fast.knowledge.mapper.KgEdgeMapper;
-import com.fast.knowledge.mapper.KgEntityMapper;
 import com.fast.knowledge.model.entity.DocumentChunk;
 import com.fast.knowledge.model.entity.KbDocument;
 import com.fast.knowledge.model.entity.KgEdge;
 import com.fast.knowledge.model.entity.KgEntity;
 import com.fast.knowledge.model.vo.SearchHitVO;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -59,8 +56,7 @@ public class KnowledgeGraphService {
     private final KnowledgeProperties properties;
     private final ChatPort chatPort;
     private final ObjectMapper objectMapper;
-    private final KgEntityMapper entityMapper;
-    private final KgEdgeMapper edgeMapper;
+    private final com.fast.knowledge.graph.GraphStore graphStore;
     private final DocumentChunkMapper documentChunkMapper;
     private final DocumentMapper documentMapper;
 
@@ -72,13 +68,12 @@ public class KnowledgeGraphService {
                     .build();
 
     public KnowledgeGraphService(KnowledgeProperties properties, ChatPort chatPort, ObjectMapper objectMapper,
-                                 KgEntityMapper entityMapper, KgEdgeMapper edgeMapper,
+                                 com.fast.knowledge.graph.GraphStore graphStore,
                                  DocumentChunkMapper documentChunkMapper, DocumentMapper documentMapper) {
         this.properties = properties;
         this.chatPort = chatPort;
         this.objectMapper = objectMapper;
-        this.entityMapper = entityMapper;
-        this.edgeMapper = edgeMapper;
+        this.graphStore = graphStore;
         this.documentChunkMapper = documentChunkMapper;
         this.documentMapper = documentMapper;
     }
@@ -136,10 +131,7 @@ public class KnowledgeGraphService {
                 if (name == null) {
                     continue;
                 }
-                KgEntity existing = entityMapper.selectOne(Wrappers.<KgEntity>lambdaQuery()
-                        .eq(KgEntity::getKbId, kbId)
-                        .eq(KgEntity::getName, name)
-                        .last("LIMIT 1"));
+                KgEntity existing = graphStore.findEntity(kbId, name);
                 if (existing != null) {
                     nameToId.put(name, existing.getId());
                     continue;
@@ -149,7 +141,7 @@ public class KnowledgeGraphService {
                 entity.setName(name);
                 entity.setType(trim(str(e.get("type")) == null ? "其他" : str(e.get("type")), 32));
                 entity.setDescription(trim(str(e.get("description")) == null ? "" : str(e.get("description")), 512));
-                entityMapper.insert(entity);
+                graphStore.insertEntity(entity);
                 nameToId.put(name, entity.getId());
                 count++;
                 if (nameToId.size() >= maxEntities) {
@@ -172,12 +164,7 @@ public class KnowledgeGraphService {
                     continue;
                 }
                 String relation = trim(str(r.get("relation")) == null ? "相关" : str(r.get("relation")), 128);
-                Long exists = edgeMapper.selectCount(Wrappers.<KgEdge>lambdaQuery()
-                        .eq(KgEdge::getKbId, kbId)
-                        .eq(KgEdge::getSrcId, srcId)
-                        .eq(KgEdge::getDstId, dstId)
-                        .eq(KgEdge::getRelation, relation));
-                if (exists != null && exists > 0) {
+                if (graphStore.edgeExists(kbId, srcId, dstId, relation)) {
                     continue;
                 }
                 KgEdge edge = new KgEdge();
@@ -186,7 +173,7 @@ public class KnowledgeGraphService {
                 edge.setDstId(dstId);
                 edge.setRelation(relation);
                 edge.setEvidenceDocId(docId);
-                edgeMapper.insert(edge);
+                graphStore.insertEdge(edge);
                 count++;
             }
         }
@@ -225,8 +212,7 @@ public class KnowledgeGraphService {
         if (seedIds.isEmpty()) {
             return List.of();
         }
-        List<KgEdge> allEdges = edgeMapper.selectList(Wrappers.<KgEdge>lambdaQuery()
-                .eq(KgEdge::getKbId, kbId));
+        List<KgEdge> allEdges = graphStore.edges(kbId);
 
         // 无向邻接表：节点 → 相邻节点；边引用按端点索引，供证据文档回溯
         Map<Long, LinkedHashSet<Long>> adjacency = new LinkedHashMap<>();
@@ -304,7 +290,7 @@ public class KnowledgeGraphService {
 
     private List<String> entityNames(Set<Long> ids) {
         return ids.stream().map(id -> {
-            KgEntity e = entityMapper.selectById(id);
+            KgEntity e = graphStore.entityById(id);
             return e != null ? e.getName() : String.valueOf(id);
         }).toList();
     }
@@ -314,10 +300,8 @@ public class KnowledgeGraphService {
         if (query == null || query.length() < 2) {
             return List.of();
         }
-        List<KgEntity> all = entityMapper.selectList(Wrappers.<KgEntity>lambdaQuery()
-                .eq(KgEntity::getKbId, kbId));
         List<KgEntity> linked = new ArrayList<>();
-        for (KgEntity e : all) {
+        for (KgEntity e : graphStore.entities(kbId)) {
             if (e.getName() != null && e.getName().length() >= 2 && query.contains(e.getName())) {
                 linked.add(e);
             }
@@ -408,9 +392,7 @@ public class KnowledgeGraphService {
     /** 关键词扩展链接：low 词与实体名双向子串匹配；high 词匹配实体 description（子串任一方向） */
     Set<Long> linkByKeywords(Long kbId, KeywordPair keywords) {
         Set<Long> hits = new LinkedHashSet<>();
-        List<KgEntity> all = entityMapper.selectList(Wrappers.<KgEntity>lambdaQuery()
-                .eq(KgEntity::getKbId, kbId));
-        for (KgEntity e : all) {
+        for (KgEntity e : graphStore.entities(kbId)) {
             String name = e.getName();
             if (name == null || name.length() < 2) {
                 continue;
@@ -436,26 +418,21 @@ public class KnowledgeGraphService {
     // ---- 生命周期 ----
 
     public void deleteByKb(Long kbId) {
-        edgeMapper.delete(Wrappers.<KgEdge>lambdaQuery().eq(KgEdge::getKbId, kbId));
-        entityMapper.delete(Wrappers.<KgEntity>lambdaQuery().eq(KgEntity::getKbId, kbId));
+        graphStore.deleteByKb(kbId);
     }
 
     public void deleteEdgesByDocument(Long kbId, Long docId) {
-        edgeMapper.delete(Wrappers.<KgEdge>lambdaQuery()
-                .eq(KgEdge::getKbId, kbId)
-                .eq(KgEdge::getEvidenceDocId, docId));
+        graphStore.deleteEdgesByDocument(kbId, docId);
     }
 
     public List<KgEntity> listEntities(Long kbId, int limit) {
-        return entityMapper.selectList(Wrappers.<KgEntity>lambdaQuery()
-                .eq(KgEntity::getKbId, kbId)
-                .last("LIMIT " + Math.min(Math.max(limit, 1), 500)));
+        List<KgEntity> all = graphStore.entities(kbId);
+        return all.subList(0, Math.min(Math.max(limit, 1), all.size()));
     }
 
     public List<KgEdge> listEdges(Long kbId, int limit) {
-        return edgeMapper.selectList(Wrappers.<KgEdge>lambdaQuery()
-                .eq(KgEdge::getKbId, kbId)
-                .last("LIMIT " + Math.min(Math.max(limit, 1), 500)));
+        List<KgEdge> all = graphStore.edges(kbId);
+        return all.subList(0, Math.min(Math.max(limit, 1), all.size()));
     }
 
     @SuppressWarnings("unchecked")

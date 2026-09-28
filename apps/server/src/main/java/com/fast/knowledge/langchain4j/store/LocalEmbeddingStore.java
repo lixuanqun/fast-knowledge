@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * 逐出与停机时同步 flush 保证持久化。
  */
 @Slf4j
-public class LocalEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class LocalEmbeddingStore implements EmbeddingStore<TextSegment>, VectorIndexLifecycle {
 
     private static final ScheduledExecutorService FLUSHER = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "local-vector-flusher");
@@ -137,6 +137,11 @@ public class LocalEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (IOException e) {
             throw new UncheckedIOException("本地向量索引落盘失败: " + file, e);
         }
+    }
+
+    @Override
+    public synchronized void close() {
+        flush();
     }
 
     private void markDirty() {

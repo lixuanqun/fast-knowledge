@@ -123,6 +123,8 @@ public class KnowledgeProperties {
     public static class Vector {
         /** 本地文件向量索引（LocalEmbeddingStore：内存检索 + JSON 持久化） */
         private Local local = new Local();
+        /** 向量引擎：lucene（默认，HNSW + 段文件落盘）| memory（内存暴力扫描 + JSON 持久化，小规模/测试） */
+        private String engine = "lucene";
     }
 
     @Data
@@ -309,6 +311,10 @@ public class KnowledgeProperties {
     public static class Kg {
         /** 构建与检索扩展总开关（默认关） */
         private boolean enabled = false;
+        /** 图存储引擎：file（默认，内存图视图 + per-KB JSON 落盘，LightRAG 默认模式同型）| mysql（MySQL 邻接表） */
+        private String storage = "file";
+        /** file 引擎的落盘目录（per-KB 一个 JSON 文件） */
+        private String storageDir = "./data/graphs";
         /** 单文档抽取实体数上限（LLM 成本护栏） */
         private int maxEntitiesPerDoc = 20;
         /** 检索时邻居 chunk 扩展上限 */

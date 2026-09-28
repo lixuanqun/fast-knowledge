@@ -1,10 +1,28 @@
 # 图存储选型记录（GraphRAG 存储层）
 
-> **状态**：已决策（供后期优化参考） | **关联**：[ROADMAP.md WP7](../ROADMAP.md)
+> **状态**：已决策（2026-09 修订） | **关联**：[ROADMAP.md WP7](../ROADMAP.md)
 >
-> **决策**：WP7 GraphRAG 采用 **MySQL 邻接表 + JGraphT 内存子图**，通过 `GraphPort` 接口封装实现，升级路径预留 TuGraph 单机。
+> **决策（修订）**：GraphRAG 图存储采用 **GraphStore 端口 + 双实现**——默认 **file 引擎**
+> （per-KB 内存图视图 + JSON 落盘，`knowledge.kg.storage=file`），保留 **mysql 引擎**
+> （邻接表 kg_entity/kg_edge）可选；升级路径仍预留 TuGraph 单机。
 >
-> **决策日期**：2026-09-15
+> **决策日期**：2026-09-15（首次）/ 2026-09-28（修订）
+
+## 0. 修订记录（2026-09-28）
+
+1. **实现勘误**：WP7 实际未引入 JGraphT——1-2 跳为 SQL 查询、PPR 为手写幂迭代
+   （`PersonalizedPageRank`），比首版决策更轻。端口命名为 `GraphStore`（即本文 §5 的 GraphPort 落地）。
+2. **默认引擎改为 file**（LightRAG 默认栈同型：内存图视图 + 文件落盘）：与向量引擎（Lucene 段文件）
+   共同构成"派生索引全部进程内/文件化、MySQL 只存事实源"的架构；图与向量一同脱离数据库方言，
+   备份简化为 `data/` 目录。mysql 引擎保留为运维偏好选项。
+   **破坏式变更（无存量迁移）**：默认引擎切换后 `kg_entity/kg_edge` 中的存量图谱不读取、不迁移、
+   不兼容；升级后图谱为空，需经管理端"重建索引"重灌（file 引擎数据位于 `data/graphs/kb-{id}.json`）。
+3. **市场再验证**：GraphRAG 框架星数前甲（LightRAG ~38.9k / MS GraphRAG ~36.1k / Graphiti ~30k）
+   底层存储全部为朴素方案（JSON/关系表/NetworkX），无一绑死专业图库——"关系表或文件存派生图 +
+   应用层算法"已是该赛道主流打法。
+4. **Kùzu 事件**：嵌入式图库头部明星 Kùzu 于 2025-10-10 归档（公司关停），社区分叉
+   LadybugDB/Bighorn/RyuGraph 承接——嵌入式图引擎的厂商可持续性风险实证，
+   进一步支持"图的可持续性跟随 MySQL/文件，不绑定小众引擎"。
 
 ---
 
